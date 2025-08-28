@@ -1,0 +1,266 @@
+@app.route('/recipes', methods=['GET']) - No json
+
+@app.route('/my_recipes', methods=['GET']) - no json
+
+@app.route('/my_recipes/<int:recipe_id>', methods=['DELETE']) - no json
+
+@app.route('/recipes/<int:recipe_id>', methods=['GET']) no json
+
+@app.route('/recipes', methods=['POST'])
+
+@app.route('/recipes/<int:recipe_id>', methods=['PATCH'])
+
+{
+    "update_ingredients": [
+        {
+            "ingredient_id": 2,
+            "quantity": 2.0,
+            "recipe_ingredient_id": 1,
+            "unit_id": 4,
+            "custome_price": 2.00,
+            "base_unit": "litre",
+            "place" : "local"
+        }
+    ],
+    "add_ingredients": [
+        {
+            "ingredient_id": ,
+            "name": "Flour",
+            "quantity": 2.0,
+            "unit_id": , 
+            "unit_name": "tsp",
+            "custom_price": 0.5000,
+            "base_unit": "kg",
+            "place": "market"
+        }
+    ],
+    
+    "remove_ingredients": [
+        {
+            "ingredient_id": 11,
+            "recipe_ingredient_id": 23
+        }
+    ]
+}
+
+{
+    "add_ingredients" : [
+        {
+            "ingredient_id": 11,
+            "quantity": 2.0,
+            "unit_id": 44
+        }
+    ]
+}
+
+@app.route('/dishes', methods=['GET']) - no json
+
+@app.route('/dishes/<int:dish_id>', methods=['GET']) - no json
+
+@app.route('/dishes/<int:dish_id>', methods=['DELETE']) - no json
+
+@app.route('/dishes/<int:recipe_id>', methods=['POST']) 
+
+{
+    "ingredients": [
+        {
+            "cost": 2.0000,
+            "ingredient_id": 2,
+            "name": "sunflower oil",
+            "price": 0.0600000000000,
+            "quantity": 2.000,
+            "unit": "litre",
+            "unit_id": 4,
+            "unit_name": "tbsp",
+            "source": "local"
+        },
+        {
+            "cost": 4.0000,
+            "ingredient_id": 4,
+            "name": "ginger garlic paste",
+            "price": 0.0280000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 15,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 1.7900,
+            "ingredient_id": 5,
+            "name": "tomatoes",
+            "price": 0.4564500000000,
+            "quantity": 1.500,
+            "unit": "kg",
+            "unit_id": 32,
+            "unit_name": "pc",
+            "source": "local"
+            
+        },
+        {
+            "cost": 5.0000,
+            "ingredient_id": 3,
+            "name": "turmeric powder",
+            "price": 0.0112500000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 9,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 7.0000,
+            "ingredient_id": 6,
+            "name": "dhana jeera powder",
+            "price": 0.0147000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 35,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 6.0000,
+            "ingredient_id": 7,
+            "name": "red chilli reshampatti powder",
+            "price": 0.0144000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 38,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 9.0000,
+            "ingredient_id": 12,
+            "name": "red chilli kashmiri powder",
+            "price": 0.0207000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 47,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 0.6800,
+            "ingredient_id": 13,
+            "name": "potatoes",
+            "price": 0.1360000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 60,
+            "unit_name": "pc",
+            "source": "local"
+        },
+        {
+            "cost": 1.5500,
+            "ingredient_id": 8,
+            "name": "peas",
+            "price": 0.5115000000000,
+            "quantity": 2.000,
+            "unit": "kg",
+            "unit_id": 53,
+            "unit_name": "cup",
+            "source": "local"
+        },
+        {
+            "cost": 8.0000,
+            "ingredient_id": 9,
+            "name": "garam masala",
+            "price": 0.0084000000000,
+            "quantity": 0.500,
+            "unit": "kg",
+            "unit_id": 41,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 1.4000,
+            "ingredient_id": 11,
+            "name": "salt",
+            "price": 0.0168000000000,
+            "quantity": 2.000,
+            "unit": "kg",
+            "unit_id": 44,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+        {
+            "cost": 12.0000,
+            "ingredient_id": 10,
+            "name": "ghee",
+            "price": 0.1647000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 51,
+            "unit_name": "tbsp",
+            "source": "local"
+        }
+    ],
+    "recipe": {
+        "total_cost": 1.42,
+        "comment": "Aloo mutter in a thick tomato gravy sauce",
+        "recipe_id": 1
+    },
+    "steps": [
+        {
+            "estimated_time": 60,
+            "step_order": 1,
+            "step_text": "In a deep pan, heat oil over medium heat. Add ginger-garlic paste and stir-fry for 30 seconds until fragrant."
+        },
+        {
+            "estimated_time": 15,
+            "step_order": 2,
+            "step_text": "Pour tomato puree into the pan and stir to combine with the paste."
+        },
+        {
+            "estimated_time": 180,
+            "step_order": 3,
+            "step_text": "Add turmeric powder, dhana jeera (coriander-cumin) powder, and chili powder. Cook, stirring occasionally, until the mixture begins to simmer."
+        },
+        {
+            "estimated_time": 60,
+            "step_order": 4,
+            "step_text": "Add diced potatoes (peeled) and green peas to the pan. Stir to coat with the spiced puree."
+        },
+        {
+            "estimated_time": 0,
+            "step_order": 5,
+            "step_text": "Add water to achieve a slightly runny gravy. Stir well."
+        },
+        {
+            "estimated_time": 600,
+            "step_order": 6,
+            "step_text": "Cook on low-medium heat for 10 minutes, stirring occasionally, until potatoes are tender."
+        },
+        {
+            "estimated_time": 0,
+            "step_order": 7,
+            "step_text": "In a small bowl, mix wheat flour with hot water to form a thick, smooth paste."
+        },
+        {
+            "estimated_time": 120,
+            "step_order": 8,
+            "step_text": "Add the flour paste to the pan and stir continuously until fully dissolved into the gravy."
+        },
+        {
+            "estimated_time": 300,
+            "step_order": 9,
+            "step_text": "Simmer for an additional 5 minutes on low heat to blend flavours."
+        },
+        {
+            "estimated_time": 0,
+            "step_order": 10,
+            "step_text": "Assess the gravy’s thickness. Add more water if too thick, or cook for a few more minutes if too runny."
+        },
+        {
+            "estimated_time": 0,
+            "step_order": 11,
+            "step_text": "Turn off the heat. Stir in ghee and garam masala until well combined."
+        }
+    ]
+}
+
+@app.route('/user_prices', methods=['POST'])
+
+

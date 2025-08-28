@@ -1,0 +1,42 @@
+How cookbook app created on window OS
+
+Prerequisite:
+1. python installed
+2. ubuntu (Linux) installed
+ 
+# Navigate to the project folder
+cd /mnt/c/Users/chira/Desktop/dataEngineeringProjects/cookbook
+
+# Create virtual Environment
+python -m venv venv
+
+# Activate the virtual environment
+. venv/bin/activate
+
+# Install Flask and mysql-connector-python
+pip install flask mysql-connector-python
+
+# Verify installations
+pip list
+
+# Save dependencies
+pip freeze > requirements.txt
+
+
+START MySQL 
+# Step 1: Open a new WSL terminal
+# (Run 'wsl' in Windows Command Prompt or open Ubuntu in Windows Terminal)
+
+# Step 2: Start the MySQL service
+sudo service mysql start
+
+# Step 3: Check MySQL service status
+sudo service mysql status
+
+# Step 4: Test connection to cookbook_db
+mysql -u root -p -e "USE cookbook_db; SELECT 'Database is running' AS status;"
+
+
+Starting the Server
+# Save app.py file with flask and database config 
+python app.py   # this command with start the server with http link

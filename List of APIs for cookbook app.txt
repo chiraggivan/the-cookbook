@@ -1,0 +1,51 @@
+List of APIs for cookbook app
+
+@app.route('/recipes', methods=['GET'])
+@app.route('/my_recipes', methods=['GET'])
+@app.route('/my_recipes/<int:recipe_id>', methods=['DELETE'])
+@app.route('/recipes/<int:recipe_id>', methods=['GET'])
+@app.route('/recipes', methods=['POST'])
+@app.route('/recipes/<int:recipe_id>', methods=['PATCH'])
+@app.route('/dishes', methods=['GET'])
+@app.route('/dishes/<int:dish_id>', methods=['GET'])
+@app.route('/dishes/<int:dish_id>', methods=['DELETE'])
+@app.route('/dishes/<int:recipe_id>', methods=['POST'])
+@app.route('/user_prices', methods=['POST'])
+
+@app.route('<int:user_id>/recipes', methods=['GET']) - recipes of a certain user
+@app.route('/ingredients', methods=['POST']) - add new ingredient by admin/user
+
+# view ingredients by admin
+# update ingredient by admin
+# delete ingredient by user
+
+# view all users by admin
+# update user by admin
+# delete user by admin
+
+# create new unit for special ingredient(without kg, l, etc)
+# update units by admin
+# delete units by admin
+
+# update user_prices by admin
+# delete user_prices by admin
+
+# view all recipes by admin
+# update recipes by admin
+# delete recipe by admin
+
+# view all recipe_ingredients by admin
+# update recipe_ingredients by admin
+# delete recipe_ingredients by admin
+
+# view all recipe_procedures by admin
+# update recipe_procedures by admin
+# delete recipe_procedures by admin
+
+# view all dishes by admin
+# update dishes by admin
+# delete dishes by admin
+
+# view all dish_ingredients by admin
+# update dish_ingredients by admin
+# delete dish_ingredients by admin
