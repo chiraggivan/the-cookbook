@@ -1,8 +1,38 @@
+pushing to local git 
+
+1. cd path/to/cookbook		Open terminal (or Git Bash) and navigate to the folder
+2. git init			Initialize a new Git repository. This will create a hidden .git folder inside cookbook
+3. git status			Check the status (optional, just to confirm)
+4. git add .			Add your files to the staging area (. means add all files in this folder.)
+
+5. git commit -m "Initial commit - added cookbook project"		Commit your changes
+
+pushing to remote repository(via SSH key) if already generated once on the same machine
+
+*. ls ~/.ssh			To check if you already have a key
+*. ssh -T git@github.com	To test with GitHub. If it says “Hi chiraggivan! You’ve successfully authenticated…”, you’re 
+*. git remote -v		To check what remote URL your repo is using.(https or SSH)
+
+*. git remote set-url origin git@github.com:chiraggivan/the-cookbook.git		switch to SSH if the above shows https//... 
+*. git push -u origin main	Now it will push to remote repository
+
+new update/add/delete files from the local git to remote repo
+
+git status
+git add .
+git commit -m "some message"
+git push			Since you already did git push -u origin main once, now git push alone is enough.
+
+
+---------------------------------------------------------------------------------------------
 How cookbook app created on window OS
 
 Prerequisite:
 1. python installed
-2. ubuntu (Linux) installed
+2. ubuntu (Linux) or wsl installed
+
+# if wsl installed - In windows command prompt
+wsl
  
 # Navigate to the project folder
 cd /mnt/c/Users/chira/Desktop/dataEngineeringProjects/cookbook
@@ -35,6 +65,13 @@ sudo service mysql status
 
 # Step 4: Test connection to cookbook_db
 mysql -u root -p -e "USE cookbook_db; SELECT 'Database is running' AS status;"
+ 
+# step 5: Stop the MySQL service
+sudo service mysql stop
+
+# Restart MySQL Service 
+sudo service MySQL restart
+
 
 
 Starting the Server
