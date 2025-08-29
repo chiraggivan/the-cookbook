@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, g
+from flask import Flask, jsonify, request, g, render_template
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from bcrypt import hashpw, checkpw, gensalt
 import mysql.connector
@@ -28,6 +28,10 @@ def get_db_connection():
         print(f"Error connecting to database: {err}")
         return None
 
+# Serve the login HTML page
+@app.route('/login', methods=['GET'])
+def login_page():
+    return render_template("login.html")
 
 # Login endpoint to generate JWT
 @app.route('/login', methods=['POST'])
@@ -54,8 +58,12 @@ def login():
     access_token = create_access_token(identity=str(user['user_id']))
     return jsonify({'access_token': access_token}), 200
 
+@app.route('/recipes', methods=['GET'])  
+def recipes_page():
+    return render_template("recipes.html")
+
 # Get all recipes - checked
-@app.route('/recipes', methods=['GET'])
+@app.route('/recipes_data', methods=['GET'])
 @jwt_required()
 def get_recipes():
 
@@ -69,7 +77,7 @@ def get_recipes():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-        SELECT recipe_id, name, user_id,portion_size 
+        SELECT recipe_id, name, user_id, portion_size, description 
         FROM recipes 
         WHERE is_active = TRUE
         AND (user_id = %s OR privacy = 'public') """,(s_user_id,))

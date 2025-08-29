@@ -1,0 +1,121 @@
+JavaScripts.js
+
+document.getElementById("demo").innerHTML = "Hello Dolly.";
+
+<script>
+
+document.getElementById("demo").innerHTML = "My First JavaScript";
+
+
+<script>
+
+function myFunction() {
+
+&nbsp; document.getElementById("demo").innerHTML = "Paragraph changed.";
+
+}
+
+
+Outside html as file
+
+function myFunction() {
+  document.getElementById("demo").innerHTML = "Paragraph changed.";
+}
+<script src="myScript.js"></script>  ---- add in html
+
+<script>			# Using document.write() after an HTML document is loaded, will delete all existing HTML:
+
+document.write(5 + 6);		# The document.write() method should only be used for testing.  
+
+---
+window.alert(5 + 6);
+alert(5 + 6);			# the window object is the global scope object.
+console.log(5 + 6);
+window.print()
+
+Variables
+let 	- can be declared only once in block. can be undefined and then given value. cant be reassigned.
+const 	- must be assigned a value at declaration. cant change the value but CAN change element of array or object(dictionary)
+
+Operator
+??= 	- like coalesce. if var is null then assign the value
+... 	- let text = "12345"; let min = Math.min(...text);let max = Math.max(...text); -- min will be 1 and max will be 5
+
+String
+let text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+let length = text.length;	- to check length of string
+
+Template String
+`Welcome ${firstName}, ${lastName}!` allows ${} within ``
+
+Numbers
+This format stores numbers in 64 bits, where the number (the fraction) is stored in bits 0 to 51, the exponent in bits 52 to 62, and the sign in bit 63
+Integers (numbers without a period or exponent notation) are accurate up to 15 digits.
+The maximum number of decimals is 17.
+Floating point arithmetic is not always 100% accurate(x = 0.2 + 0.1;). To solve the problem above, it helps to multiply and divide: (y = (0.2*10 + 0.1*10) / 10)
+NaN is a number: typeof NaN returns number
+Division by 0 (zero) also generates Infinity
+Infinity is a number: typeof Infinity returns number.
+JavaScript interprets numeric constants as hexadecimal if they are preceded by 0x.
+Never write a number with a leading zero (like 07). Some JavaScript versions interpret numbers as octal if they are written with a leading zero.
+
+Arrays
+It is a common practice to declare arrays with the const keyword.
+.toString() 	- converts an array to a string of (comma separated) array values.
+Arrays are a special type of objects. The typeof operator in JavaScript returns "object" for arrays.
+.length   // Returns the number of elements       .sort()   // Sorts the array
+The length property is always one more than the highest array index.
+.length - 1	- accessing last element of array
+add a new element to an array is using the push() method. can also be added to an array using the length property.
+JavaScript does not support arrays with named indexes.
+Array.isArray(fruits) OR (fruits instanceof Array)	- shows if the variable is an array or not.
+
+Dates
+JavaScript counts months from 0 to 11: (January = 0 AND December = 11).
+new Date()			# returns current date and time
+new Date(date string)
+new Date(year,month,day,hours,minutes,seconds,ms)
+new Date(milliseconds)
+6 numbers specify year, month, day, hour, minute, second.
+One and two digit years will be interpreted as 19xx
+.toDateString(); 		The toDateString() method converts a date to a more readable format
+The toUTCString() method converts a date to a string using the UTC standard:
+The toISOString() method converts a date to a string using the ISO standard:
+
+Math Properties (Constants)
+Math.sign(x) returns if x is negative, null or positive.
+Math.pow(x, y) returns the value of x to the power of y
+Math.sqrt(x) returns the square root of x
+Math.abs(x) returns the absolute (positive) value of x
+Math.random() returns a random number between 0 (inclusive), and 1 (exclusive):
+
+logical Operators
+The ?? operator returns the first argument if it is not nullish (null or undefined)
+The Conditional (Ternary) Operator -- let voteable = (age < 18) ? "Too young" : "Old enough";
+The ?. operator returns undefined if an object is undefined or null (instead of throwing an error). eg. document.getElementById("demo").innerHTML = car?.name;
+
+Switch
+Switch uses strict comparison (===). The values must be of the same type to match.
+switch (var){
+    case a:
+ 	msg
+ 	break;
+    case b:
+ 	msg
+ 	break;
+    default:
+ 	msg;
+}
+
+Break
+break labelname;	Without a label reference, break can only jump out of a loop or a switch. With a label reference, break can jump out of any code block.
+break and continue are the only JavaScript statements that can "jump out of" a code block.
+
+Errors
+Six different values can be returned by the error name property
+EvalError	An error has occurred in the eval() function -- new version syntax error
+RangeError	A number "out of range" has occurred
+ReferenceError	An illegal reference has occurred
+SyntaxError	A syntax error has occurred
+TypeError	A type error has occurred
+URIError	An error in encodeURI() has occurred
