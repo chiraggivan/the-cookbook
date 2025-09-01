@@ -6,13 +6,14 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="recipes-page">
-  <a href="/recipes/my" class="my-recipes">My Recipes</a>
-  <h2>All Recipes</h2>
+  <a href="/recipes/" class="my-recipes">All Recipes</a>
+  <h2>My Recipes</h2>
   <table id="recipeList">
     <thead>
       <tr>
         <th>ID</th>
         <th>Name</th>
+        <th>Portion Size</th>
         <th>Description</th>
         <th>By</th>
       </tr>
@@ -24,13 +25,12 @@
   
   <script>
     const token = localStorage.getItem("access_token");
-
     async function loadRecipes() {
       try {
-        const res = await fetch("/recipes/api/all_recipes", {
+        const res = await fetch("/recipes/api/my_recipes", {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        console.log("Response object:", res);
+        // console.log("Response object:", res);
   
         if (!res.ok) {
           throw new Error("Failed to load recipes");
@@ -43,9 +43,11 @@
           tr.innerHTML = `
             <td>${r.recipe_id}</td>
             <td><a href="/recipes/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
+            <td>${r.portion_size}</td>
             <td>${r.description}</td>
-            <td>${r.user_id}</td>
-          `;
+            <td>${r.username}</td>
+        `;
+
           tbody.appendChild(tr);
         });
       } catch (err) {

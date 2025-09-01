@@ -123,3 +123,17 @@ body {
 .create-recipe-btn:hover {
   background-color: #45a049;
 }
+
+/* Table links for recipe names */
+.recipe-link {
+    display: inline;        /* stays inside the table cell */
+    color: #535853;         /* green text */
+    text-decoration: none;   /* no underline by default */
+    font-weight: bold;       /* optional, make it stand out */
+}
+
+.recipe-link:hover,
+.recipe-link:active {
+    color: #242524;          /* darker green on hover */
+    text-decoration: underline; /* underline on hover */
+}

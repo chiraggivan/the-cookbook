@@ -6,87 +6,19 @@ from datetime import timedelta
 from mysql.connector import Error
 import re
 
+from config import Config
+from db import get_db_connection
+from routes.auth import auth_bp
+
+from routes.recipes import recipes_html_bp,  recipes_api_bp
+
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'verysecretpassword'  
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
+app.config.from_object(Config)
+app.register_blueprint(auth_bp, url_prefix="/auth")
+app.register_blueprint(recipes_html_bp, url_prefix="/recipes")
+app.register_blueprint(recipes_api_bp, url_prefix="/recipes")
+
 jwt = JWTManager(app)
-
-# Database configuration
-db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'Password@1234', 
-    'database': 'cookbook_db'
-}
-
-# Helper function to get database connection
-def get_db_connection():
-    try:
-        conn = mysql.connector.connect(**db_config)
-        return conn
-    except Error as err:
-        print(f"Error connecting to database: {err}")
-        return None
-
-# Serve the login HTML page
-@app.route('/login', methods=['GET'])
-def login_page():
-    return render_template("login.html")
-
-# Login endpoint to generate JWT
-@app.route('/login', methods=['POST'])
-def login():
-    #check if username and password is provided
-    data = request.get_json()
-    if not data or 'username' not in data or 'password' not in data:
-        return jsonify({'error': 'Username and password required'}), 400
-
-    #try connecting db
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({'error': 'Database connection failed'}), 500
-    cursor = conn.cursor(dictionary=True)
-
-    #check if user and password matches in db
-    cursor.execute("SELECT user_id, password FROM users WHERE username = %s AND is_active = TRUE", (data['username'],))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if not user or not checkpw(data['password'].encode('utf-8'), user['password'].encode('utf-8')):
-        return jsonify({'error': 'Invalid credentials'}), 401
-
-    access_token = create_access_token(identity=str(user['user_id']))
-    return jsonify({'access_token': access_token}), 200
-
-@app.route('/recipes', methods=['GET'])  
-def recipes_page():
-    return render_template("recipes.html")
-
-# Get all recipes - checked
-@app.route('/recipes_data', methods=['GET'])
-@jwt_required()
-def get_recipes():
-
-    s_user_id = get_jwt_identity()
-    print("logged in user id : ",s_user_id)
-    if not s_user_id:
-        return jsonify({'error': 'No user identity found in token'}), 401
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return jsonify({'error': 'Database connection failed'}), 500
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-        SELECT recipe_id, name, user_id, portion_size, description 
-        FROM recipes 
-        WHERE is_active = TRUE
-        AND (user_id = %s OR privacy = 'public') """,(s_user_id,))
-        recipes = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(recipes)
-    except Error as err:
-        return jsonify({'error': str(err)}), 500
 
 # Get all the recipe of a certain user
 @app.route('/<int:user_id>/recipes', methods=['GET'])
@@ -133,40 +65,6 @@ def get_user_recipes(user_id):
     except Error as err:
         return jsonify({'error': str(err)}), 500
 
-# Get my recipes - checked
-@app.route('/my_recipes', methods=['GET'])
-@jwt_required()
-def get_my_recipes():
-
-    s_user_id = get_jwt_identity()
-    #print("logged in user id : ",s_user_id)
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return jsonify({'error': 'Database connection failed'}), 500
-        cursor = conn.cursor(dictionary=True)
-
-        # Validate user_id exists
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s", (s_user_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({'error': 'User not found'}), 404
-        
-        # get all the recipes of the user
-        cursor.execute("""
-            SELECT r.recipe_id, r.name, r.user_id, r.portion_size, r.description, u.username
-            FROM recipes r 
-            JOIN users u ON r.user_id = u.user_id
-            WHERE r.is_active = TRUE
-            AND r.user_id = %s 
-        """,(s_user_id,))
-        recipes = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(recipes)
-    except Error as err:
-        return jsonify({'error': str(err)}), 500
 
 # Delete recipe - checked
 @app.route('/my_recipes/<int:recipe_id>', methods=['DELETE'])
@@ -212,7 +110,7 @@ def delete_recipe(recipe_id):
         return jsonify({'error': str(err)}), 500
 
 # Get recipe ingredient
-@app.route('/recipes/<int:recipe_id>', methods=['GET'])
+@app.route('/recipe/<int:recipe_id>', methods=['GET'])
 @jwt_required()
 def get_recipe_details(recipe_id):
 
