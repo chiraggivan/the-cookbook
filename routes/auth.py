@@ -1,15 +1,16 @@
 # routes/auth.py
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from db import get_db_connection
 from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import create_access_token
 
-auth_bp = Blueprint("auth", __name__)
+
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 # Serve the login HTML page
 @auth_bp.route("/login", methods=['GET'])
 def login_page():
-    return render_template("login.html")
+    return render_template("auth/login.html")
 
 # Login endpoint to generate JWT
 @auth_bp.route('/login', methods=['POST'])
@@ -34,4 +35,5 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     access_token = create_access_token(identity=str(user['user_id']))
+    session['user_id'] = user['user_id']
     return jsonify({'access_token': access_token}), 200

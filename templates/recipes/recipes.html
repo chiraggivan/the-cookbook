@@ -42,9 +42,9 @@
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${r.recipe_id}</td>
-            <td><a href="/recipes/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
+            <td><a href="/recipes/details/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
             <td>${r.description}</td>
-            <td>${r.user_id}</td>
+            <td><a href="/recipes/user/${r.user_id}" class="recipe-link">${r.user_id}</a></td>
           `;
           tbody.appendChild(tr);
         });

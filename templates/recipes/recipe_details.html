@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recipe Details</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+  <a href="/recipes/" class="back-link">← All Recipes</a>
+  <h1 id="recipe-name">Recipe Name</h1>
+  <p id="recipe-info"></p>
+
+  <h2>Ingredients</h2>
+  <table id="ingredients-table">
+    <thead>
+      <tr>
+        <th>Ingredient</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Cost</th>
+        <th>Base Quantity</th>
+        <th>Base unit</th>
+        <th>Base Price</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="steps-container"></div>
+
+  <div id="error"></div>
+
+  <script>
+    const token = localStorage.getItem("access_token");
+    //const recipeId = {{ recipe_id }};
+    console.log("token: ",token)
+    const recipeId = window.location.pathname.split("/").pop();
+    console.log("Recipe ID from Flask:", recipeId);
+    async function loadRecipeDetails() {
+      try {
+        const res = await fetch(`/recipes/api/recipe/${recipeId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to load recipe details");
+        }
+
+        const data = await res.json();
+        const recipe = data.recipe;
+        const ingredients = data.ingredients;
+        const steps = data.steps;
+
+        // Recipe Info
+        document.getElementById("recipe-name").textContent = recipe.name;
+        document.getElementById("recipe-info").innerHTML = `
+          <strong>Portion Size:</strong> ${recipe.portion_size} |
+          <strong>By:</strong> ${recipe.username} |
+          <strong>Created At:</strong> ${recipe.created_at}
+        `;
+
+        // Ingredients Table
+        const tbody = document.querySelector("#ingredients-table tbody");
+        tbody.innerHTML = "";
+        ingredients.forEach(i => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${i.name}</td>
+            <td>${i.quantity}</td>
+            <td>${i.unit_name}</td>
+            <td>${Number(i.price).toFixed(4)}</td>
+            <td>${Number(1)}</td>
+            <td>${i.unit}</td>
+            <td>${Number(i.cost).toFixed(2)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Steps (numbered list)
+        const stepsContainer = document.getElementById("steps-container");
+        stepsContainer.innerHTML = "";
+        if (steps.length > 0) {
+          const stepsTitle = document.createElement("h2");
+          stepsTitle.textContent = "Steps";
+          stepsContainer.appendChild(stepsTitle);
+
+          const ol = document.createElement("ol");
+          steps.forEach(s => {
+            const li = document.createElement("li");
+            li.textContent = s.step_text;
+            ol.appendChild(li);
+          });
+          stepsContainer.appendChild(ol);
+        }
+
+      } catch (err) {
+        document.getElementById("error").textContent = err.message;
+      }
+    }
+
+    if (token) {
+      loadRecipeDetails();
+    } else {
+      document.getElementById("error").textContent = "Please log in to view recipe details.";
+      setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
+    }
+  </script>
+</body>
+</html>
