@@ -41,3 +41,7 @@ def user_recipes_page(user_id):
 @recipes_html_bp.route('/details/<int:recipe_id>', methods=['GET']) 
 def recipe_detail_page(recipe_id):
     return render_template("recipes/recipe_details.html", recipe_id=recipe_id)  
+
+@recipes_html_bp.route('/create_recipe', methods=['GET'])
+def create_recipe_page():
+    return render_template("recipes/create_recipe.html")

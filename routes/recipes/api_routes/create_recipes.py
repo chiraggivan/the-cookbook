@@ -4,6 +4,40 @@ from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
 
+# search ingredients for recipe
+@recipes_api_bp.route("/ingredients/search")
+@jwt_required()
+def search_ingredients():
+
+    s_user_id = get_jwt_identity()
+    print("user id is: ", s_user_id)
+    q = request.args.get("q", "").strip().lower()
+    print(" value of q :", q)
+    if not q:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT ingredient_id, name
+            FROM ingredients
+            WHERE LOWER(name) LIKE %s
+            AND (approval_status = "approved" OR submitted_by = %s)
+            LIMIT 20
+        """,(f"%{q}%", s_user_id))
+        results = cursor.fetchall()
+        print("result: ", results)
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+
+    except Exception as e:
+        print("Error in search_ingredients:", e)
+        return jsonify([])
+
 # Create new recipe
 @recipes_api_bp.route('/recipes', methods=['POST'])
 @jwt_required()

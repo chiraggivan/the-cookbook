@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Recipe</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+
+  <a href="/recipes/" class="back-link">← All Recipes</a>
+  <h1>Create New Recipe</h1>
+
+  <!-- Recipe Info -->
+  <section id="recipe-info-section">
+    <label for="recipe-name">Recipe Name:</label>
+    <input type="text" id="recipe-name" name="recipe-name" placeholder="Enter recipe name">
+    <div class="error-create-recipe" id="errorName"></div>
+
+    <label for="portion-size">Portion Size:</label>
+    <input type="text" id="portion-size" name="portion-size" placeholder="e.g., 2 portion or 3 people or 1.5 kg, etc.">
+    <div class="error-create-recipe" id="errorPS"></div>
+
+    <label for="description">Description:</label>
+    <textarea id="description" name="description" rows="3" placeholder="Enter description"></textarea>
+    <div class="error-create-recipe" id="errorDesc"></div>
+
+    <label for="privacy">Private Recipe:</label>
+    <input type="checkbox" id="privacy" name="privacy" checked>
+  </section>
+
+  <!-- Placeholder for Recipe Image -->
+  <section id="recipe-image-section">
+    <p>Recipe image placeholder (to be added later)</p>
+    <div class="image-placeholder"></div>
+  </section>
+
+  <!-- Ingredients Table with 10 rows -->
+  <h2>Ingredients</h2>
+  <table id="ingredients-table">
+    <thead>
+      <tr>
+        <th>Ingredient</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Base Quantity</th>
+        <th>Base Unit</th>
+        <th>Base Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- 10 empty rows -->
+      {% for i in range(10) %}
+      <tr>
+        <td style="position: relative;">
+            <input type="text" 
+                    name="ingredient_name_{{i}}" 
+                    class="ingredient-input" 
+                    placeholder="Ingredient" 
+                    autocomplete="off">
+            <div class="suggestions" id="suggestions_{{i}}"></div>
+        </td>
+        <td><input type="number" step="any" name="quantity_{{i}}" placeholder="Qty"></td>
+        <td><input type="text" name="unit_{{i}}" placeholder="Unit"></td>
+        <td><input type="number" step="any" name="base_quantity_{{i}}" placeholder="Base Qty"></td>
+        <td><input type="text" name="base_unit_{{i}}" placeholder="Base Unit"></td>
+        <td><input type="number" step="any" name="base_price_{{i}}" placeholder="Base Price"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Steps with 10 rows -->
+  <h2>Steps</h2>
+  <table id="steps-table">
+    <thead>
+      <tr>
+        <th>Step Number</th>
+        <th>Step Text</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in range(10) %}
+      <tr>
+        <td>{{ i+1 }}</td>
+        <td><input type="text" name="step_text_{{i}}" placeholder="Step description"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="error" class="error-message"></div>
+  <button type="submit" id="submit-recipe-btn">Save Recipe</button>
+
+  <script>
+    function validateRecipeForm() {
+        const name = document.getElementById("recipe-name").value.trim();
+        const portionSize = document.getElementById("portion-size").value.trim();
+        const description = document.getElementById("description").value.trim();
+        const privacy = document.getElementById("privacy").checked ? "private" : "public";
+
+        const errorName = document.getElementById("errorName");
+        const errorPS = document.getElementById("errorPS");
+        const errorDesc = document.getElementById("errorDesc");
+
+        // Clear old errors
+        errorName.textContent = "";
+        errorPS.textContent = "";
+        errorDesc.textContent = "";
+        document.getElementById("error").textContent = "";
+
+        let hasError = false;
+
+        // --- Name validation ---
+        if (!name) {
+            errorName.textContent = "Recipe name is required.";
+            hasError = true;
+        } else if (name.length > 50) {
+            errorName.textContent = "Recipe name must be less than 50 characters.";
+            hasError = true;
+        }
+
+        // --- Portion size validation ---
+        if (!portionSize) {
+            errorPS.textContent = "Portion size is required.";
+            hasError = true;
+        } else if (portionSize.length > 20) {
+            errorPS.textContent = "Portion size must be less than 20 characters.";
+            hasError = true;
+        }
+
+        // --- Description validation ---
+        if (description.length > 500) {
+            errorDesc.textContent = "Description must be ≤ 500 characters.";
+            hasError = true;
+        }
+
+        // --- Privacy validation (shouldn’t fail normally) ---
+        if (!["public", "private"].includes(privacy)) {
+            document.getElementById("error").textContent = "Privacy must be public or private.";
+            hasError = true;
+        }
+
+        if (hasError) return false;
+
+        return { name, portion_size: portionSize, description, privacy };
+        }
+    
+    document.getElementById("submit-recipe-btn").addEventListener("click", async () => {
+    const recipeData = validateRecipeForm();
+    if (!recipeData) return; // errors displayed, stop submission
+
+    console.log("Validated recipe data:", recipeData);
+    
+    // Send ingredient name to backend API...
+    });
+
+    const token = localStorage.getItem("access_token");
+    document.querySelectorAll(".ingredient-input").forEach((input, index) => {
+        const suggestionBox = document.getElementById(`suggestions_${index}`);
+
+        input.addEventListener("input", async function () {
+            const query = this.value.trim().toLowerCase();
+            if (query.length < 1) {
+                suggestionBox.style.display = "none";
+            return;
+            }
+
+            try {
+                
+                const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`  
+                }
+                });
+                console.log("response : ", res)
+                if (!res.ok) {
+                throw new Error("Failed to fetch ingredients");
+                }
+                
+                const data = await res.json();
+
+                suggestionBox.innerHTML = "";
+                if (data.length === 0) {
+                    suggestionBox.style.display = "none";
+                    return;
+                }
+                console.log("Fetched ingredients list: ", data);
+
+                data.forEach(item => {
+                    const div = document.createElement("div");
+                    div.textContent = item.name;
+                    div.addEventListener("click", () => {
+                    input.value = item.name;  // select ingredient
+                    suggestionBox.style.display = "none";
+                    });
+                    suggestionBox.appendChild(div);
+                });
+
+                suggestionBox.style.display = "block";
+            } catch (err) {
+            console.error("Error fetching ingredients:", err);
+            }
+        });
+    });
+
+
+
+  </script>
+</body>
+</html>
