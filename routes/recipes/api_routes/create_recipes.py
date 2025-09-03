@@ -10,9 +10,9 @@ from . import recipes_api_bp
 def search_ingredients():
 
     s_user_id = get_jwt_identity()
-    print("user id is: ", s_user_id)
+    #print("user id is: ", s_user_id)
     q = request.args.get("q", "").strip().lower()
-    print(" value of q :", q)
+    #print(" value of q :", q)
     if not q:
         return jsonify([])
 
@@ -22,20 +22,52 @@ def search_ingredients():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT ingredient_id, name
-            FROM ingredients
-            WHERE LOWER(name) LIKE %s
-            AND (approval_status = "approved" OR submitted_by = %s)
+            SELECT i.ingredient_id, i.name, COALESCE(up.custom_price , i.default_price) as price, i.base_unit
+            FROM ingredients i LEFT JOIN user_prices up ON i.ingredient_id = up.ingredient_id 
+            AND up.user_id = %s AND up.is_active = 1
+            WHERE LOWER(i.name) LIKE %s
+            AND (i.approval_status = "approved" OR i.submitted_by = %s)
             LIMIT 20
-        """,(f"%{q}%", s_user_id))
+        """,( s_user_id, f"%{q}%", s_user_id))
         results = cursor.fetchall()
-        print("result: ", results)
+        #print("result: ", results)
         cursor.close()
         conn.close()
         return jsonify(results)
 
     except Exception as e:
         print("Error in search_ingredients:", e)
+        return jsonify([])
+
+# search units for selected ingredients
+@recipes_api_bp.route("/ingredient-units")
+@jwt_required()
+def get_ingredient_units():
+    s_user_id = get_jwt_identity()
+    print("user id is: ", s_user_id)
+    ingredient_id = request.args.get("ingredient", type=int)
+    print(" value of ingredient id :", ingredient_id)
+    if not ingredient_id:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT unit_id, unit_name, conversion_factor
+            FROM units 
+            WHERE ingredient_id = %s AND is_active = 1
+        """,(ingredient_id,))
+        results = cursor.fetchall()
+        print("result: ", results)
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+    
+    except Exception as e:
+        print("Error in search ingredient units:", e)
         return jsonify([])
 
 # Create new recipe

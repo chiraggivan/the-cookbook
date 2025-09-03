@@ -60,7 +60,11 @@
             <div class="suggestions" id="suggestions_{{i}}"></div>
         </td>
         <td><input type="number" step="any" name="quantity_{{i}}" placeholder="Qty"></td>
-        <td><input type="text" name="unit_{{i}}" placeholder="Unit"></td>
+        <td>
+          <select name="unit_{{i}}" class="unit-select">
+            <option value="">-- Select unit --</option>
+          </select>
+        </td>
         <td><input type="number" step="any" name="base_quantity_{{i}}" placeholder="Base Qty"></td>
         <td><input type="text" name="base_unit_{{i}}" placeholder="Base Unit"></td>
         <td><input type="number" step="any" name="base_price_{{i}}" placeholder="Base Price"></td>
@@ -144,65 +148,246 @@
         return { name, portion_size: portionSize, description, privacy };
         }
     
-    document.getElementById("submit-recipe-btn").addEventListener("click", async () => {
-    const recipeData = validateRecipeForm();
-    if (!recipeData) return; // errors displayed, stop submission
+    function populateUnits(row, ingredientId) {
+      const unitSelect = row.querySelector(".unit-select");
+      // Clear previous options
+      unitSelect.innerHTML = '<option value="">-- Select unit --</option>';
+      //console.log("ingredientId from func populateUnits: ", ingredientId)
+      if (!ingredientId) return; // No ingredient, leave empty
 
-    console.log("Validated recipe data:", recipeData);
-    
-    // Send ingredient name to backend API...
+      fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          data.forEach(unit => {
+            const option = document.createElement("option");
+            option.value = unit.unit_id;
+            option.textContent = unit.unit_name;
+            unitSelect.appendChild(option);
+          });
+        })
+        .catch(err => console.error("Failed to fetch units:", err));
+    }
+
+    function validateIngredientsForm() {
+      const rows = document.querySelectorAll("#ingredients-table tbody tr");
+      let filledRowsCount = 0;
+      let errorMessage = "";
+      const ingredientsData = [];
+
+      rows.forEach((row, index) => {
+        const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
+        const quantityInput = row.querySelector(`input[name^="quantity_"]`);
+        const unitSelect = row.querySelector(`select[name^="unit_"]`);
+        const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
+        const baseUnitInput = row.querySelector(`input[name^="base_unit_"]`);
+        const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
+
+        const values = [
+          nameInput.value.trim(),
+          quantityInput.value.trim(),
+          unitSelect.value.trim(),
+          baseQtyInput.value.trim(),
+          baseUnitInput.value.trim(),
+          basePriceInput.value.trim()
+        ];
+
+        const isAnyFieldFilled = values.some(v => v !== "");
+        const isAllFieldsFilled = values.every(v => v !== "");
+
+        if (isAnyFieldFilled && !isAllFieldsFilled) {
+          errorMessage = `Row ${index + 1}: All fields must be filled if any field is entered.`;
+        }
+
+        if (isAllFieldsFilled) {
+          filledRowsCount++;
+
+          // Collect ingredient details into an object
+          ingredientsData.push({
+            name: nameInput.value.trim(),
+            quantity: parseFloat(quantityInput.value),
+            unit: unitSelect.value,
+            base_quantity: parseFloat(baseQtyInput.value),
+            base_unit: baseUnitInput.value,
+            base_price: parseFloat(basePriceInput.value)
+          });
+        }
+      });
+
+      if (!errorMessage && filledRowsCount < 2) {
+        errorMessage = "At least 2 rows of ingredients must be fully filled.";
+      }
+
+      if (errorMessage) {
+        document.getElementById("error").textContent = errorMessage;
+        return false;
+      }
+
+      // Clear previous error
+      document.getElementById("error").textContent = "";
+
+      return ingredientsData; // return the list of ingredient objects
+    }
+
+    document.querySelectorAll(".ingredient-input").forEach((input, index) => {
+      const suggestionBox = document.getElementById(`suggestions_${index}`);
+      let fetchedIngredients = [];   // store suggestions from API
+      let activeIndex = -1;          // for keyboard navigation
+      let ingredientData = [];       // store full data with price/base_unit
+
+      // --- Fetch suggestions as user types ---
+      input.addEventListener("input", async function () {
+        const query = this.value.trim().toLowerCase();
+        activeIndex = -1; // reset navigation
+        if (query.length < 1) {
+          suggestionBox.style.display = "none";
+          return;
+        }
+
+        try {
+          const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+
+          if (!res.ok) throw new Error("Failed to fetch ingredients");
+
+          const data = await res.json();
+          ingredientData = data; // store full data
+          fetchedIngredients = data.map(item => item.name.toLowerCase());
+
+          suggestionBox.innerHTML = "";
+          if (data.length === 0) {
+            suggestionBox.style.display = "none";
+            return;
+          }
+
+          data.forEach(item => {
+            const div = document.createElement("div");
+            div.textContent = item.name;
+            div.classList.add("suggestion-item");
+
+            div.addEventListener("click", () => {
+              selectIngredient(item);
+            });
+
+            suggestionBox.appendChild(div);
+          });
+
+          suggestionBox.style.display = "block";
+        } catch (err) {
+          console.error("Error fetching ingredients:", err);
+        }
+      });
+
+      // --- Keyboard navigation ---
+      input.addEventListener("keydown", function (e) {
+        const items = suggestionBox.querySelectorAll(".suggestion-item");
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % items.length;
+          highlightItem(items, activeIndex);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + items.length) % items.length;
+          highlightItem(items, activeIndex);
+        } else if (e.key === "Enter" || e.key === "Tab") {
+          if (activeIndex >= 0 && activeIndex < items.length) {
+            const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
+            selectIngredient(selectedItem);
+          }
+          suggestionBox.style.display = "none";
+          // allow Tab to move focus naturally
+        }
+      });
+
+      // --- Blur handling: clear invalid values ---
+      input.addEventListener("blur", function () {
+        setTimeout(() => {
+          const items = suggestionBox.querySelectorAll(".suggestion-item");
+
+          if (activeIndex >= 0 && activeIndex < items.length) {
+            // Keep highlighted value
+            const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
+            if (selectedItem) selectIngredient(selectedItem);
+          } else if (!fetchedIngredients.includes(this.value.trim().toLowerCase())) {
+            // Clear invalid input
+            this.value = "";
+            const row = input.closest("tr");
+            row.querySelector(`input[name="base_quantity_${index}"]`).value = "";
+            row.querySelector(`input[name="base_unit_${index}"]`).value = "";
+            row.querySelector(`input[name="base_price_${index}"]`).value = "";
+          }
+
+          suggestionBox.style.display = "none";
+          activeIndex = -1;
+        }, 150);
+      });
+
+      // --- Helper: highlight active item and scroll ---
+      function highlightItem(items, index) {
+        items.forEach((item, i) => {
+          item.style.background = (i === index) ? "#ddd" : "";
+        });
+
+        if (index >= 0) {
+          items[index].scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }
+
+      // --- Helper: select ingredient and populate base fields ---
+      function selectIngredient(item) {
+        //console.log(item)
+        input.value = item.name;
+        const row = input.closest("tr");
+
+        // Store ingredient ID in row for later use
+        row.dataset.ingredientId = item.ingredient_id
+        //console.log("row is : ",row)
+        //console.log("row's ingredient id is : ",item.ingredient_id)
+        row.querySelector(`input[name="base_quantity_${index}"]`).value = 1;
+        row.querySelector(`input[name="base_unit_${index}"]`).value = item.base_unit || "";
+        row.querySelector(`input[name="base_price_${index}"]`).value = item.price || "";
+
+        // Populate units dropdown
+        populateUnits(row, item.ingredient_id);
+      }
+    });
+
+    document.getElementById("submit-recipe-btn").addEventListener("click", async () => {
+      const completeRecipe = []
+      const recipeData = validateRecipeForm();      
+      if (!recipeData) return; // errors displayed, stop submission
+      const ingredientsData = validateIngredientsForm();
+      if (!ingredientsData) return; // validation failed
+
+      // Combine into a single object
+      completeRecipe.push({
+        recipe: recipeData,
+        ingredients: ingredientsData
+      });
+
+      console.log("Validated recipe data:", recipeData);
+      console.log("Validated ingredients data:", ingredientsData);
+      console.log("complete recipe data: ", completeRecipe)
+      
+      // Send ingredient name to backend API...
     });
 
     const token = localStorage.getItem("access_token");
-    document.querySelectorAll(".ingredient-input").forEach((input, index) => {
-        const suggestionBox = document.getElementById(`suggestions_${index}`);
 
-        input.addEventListener("input", async function () {
-            const query = this.value.trim().toLowerCase();
-            if (query.length < 1) {
-                suggestionBox.style.display = "none";
-            return;
-            }
 
-            try {
-                
-                const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`  
-                }
-                });
-                console.log("response : ", res)
-                if (!res.ok) {
-                throw new Error("Failed to fetch ingredients");
-                }
-                
-                const data = await res.json();
 
-                suggestionBox.innerHTML = "";
-                if (data.length === 0) {
-                    suggestionBox.style.display = "none";
-                    return;
-                }
-                console.log("Fetched ingredients list: ", data);
-
-                data.forEach(item => {
-                    const div = document.createElement("div");
-                    div.textContent = item.name;
-                    div.addEventListener("click", () => {
-                    input.value = item.name;  // select ingredient
-                    suggestionBox.style.display = "none";
-                    });
-                    suggestionBox.appendChild(div);
-                });
-
-                suggestionBox.style.display = "block";
-            } catch (err) {
-            console.error("Error fetching ingredients:", err);
-            }
-        });
-    });
 
 
 
