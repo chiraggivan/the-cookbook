@@ -44,9 +44,9 @@ def search_ingredients():
 @jwt_required()
 def get_ingredient_units():
     s_user_id = get_jwt_identity()
-    print("user id is: ", s_user_id)
+    #print("user id is: ", s_user_id)
     ingredient_id = request.args.get("ingredient", type=int)
-    print(" value of ingredient id :", ingredient_id)
+    #print(" value of ingredient id :", ingredient_id)
     if not ingredient_id:
         return jsonify([])
 
@@ -61,7 +61,7 @@ def get_ingredient_units():
             WHERE ingredient_id = %s AND is_active = 1
         """,(ingredient_id,))
         results = cursor.fetchall()
-        print("result: ", results)
+        #print("result: ", results)
         cursor.close()
         conn.close()
         return jsonify(results)
@@ -109,6 +109,23 @@ def create_recipe():
                 cleaned["ingredients"] = normalized_ingredients
             else:
                 return jsonify({"error": "ingredients field is not a proper type", "submitted_data": data}), 400 
+            
+            # Handle procedures(list of steps)
+            steps = data.gets("steps",[])
+            if isinstance(steps, list):
+                normalized_steps = []
+                for step in steps:
+                    
+                    if isinstance(step, str):
+
+                        norm_step = re.sub(r"\s+", " ", v.strip()).lower()
+                    elif isinstance(step, (int,float)):
+                        norm_step = step
+                    else:
+                        return f"Error in normalizing steps: step not sent as str or number."
+
+                    normalized_steps.append(norm_step)
+                cleaned['steps'] = normalized_steps
             
             return cleaned
             
@@ -160,11 +177,8 @@ def create_recipe():
                
                 # --- base_unit ---
                 base_unit = ing.get("base_unit")
-                if not base_unit or not isinstance(base_unit, str) or len(base_unit) > 10 :
+                if not base_unit or not isinstance(base_unit, str) or base_unit not in ['kg', 'l', 'pc', 'bunch']:
                     return f"Invalid base_unit {base_unit}: must be within ['kg' 'l', 'pc', 'bunch']"
-
-                if base_unit not in ['kg', 'l', 'pc', 'bunch']:
-                    return f"Invalid base unit  for ingredient : must be a in ['kg', 'l', 'pc', 'bunch']"
    
                 # --- base_price ---
                 base_price = ing.get("base_price")
@@ -206,6 +220,12 @@ def create_recipe():
                 if not isinstance(location, str) or len(location) > 50:
                     return f"Invalid location: must be a string ≤ 50 chars"
 
+            # validate steps data
+            for step in steps:
+                if (not isinstance(step, str) and not isinstance(step,(int,float))) or len(step) > 100:
+                    return f"Error in normalizing steps: step not sent as str or number or length is more than 100 character."
+
+            # return none if validation doesnt throw any error
             return None 
 
         data = normalize_ingredient_data(request.get_json())
@@ -219,6 +239,7 @@ def create_recipe():
         privacy = data['privacy']
         description = data['description']
         ingredients = data['ingredients']
+        steps = data['steps']
         # ------------------validation of every field of data done, now connect with db -------------------------------
         # connect to db        
         conn = get_db_connection()
@@ -256,6 +277,7 @@ def create_recipe():
                 return jsonify({'error': f"Unit ID {ing['unit_id']} not valid for ingredient ID {ing['ingredient_id']}"}), 400   
 
             # get the base price, base unit for the ingredient which user might have changed(only base price) which is also active
+            # mostly done for someone who is not sending data thru web app but forcefully sending json data to mess up system
             cursor.execute("""
                 SELECT i.ingredient_id, COALESCE(up.custom_price, i.default_price) AS price, i.base_unit as base_unit
                 FROM ingredients i  LEFT JOIN user_prices up
@@ -282,6 +304,8 @@ def create_recipe():
                 conn.close()
                 return jsonify({'error': f"base price : price = {round(price,6)} ing['base_price'] = {round(f_base_price,6)} of ingredient {ing['ingredient_id']} not matched with stored data"}), 400    
 
+        # validate steps for recipe_procedures
+        
         #return jsonify({'message': "Every thing accepted and ready to insert recipe", 'submitted_data': data}), 400
         
         # Insert into recipes
@@ -297,13 +321,12 @@ def create_recipe():
                 INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active)
                 VALUES (%s, %s, %s, %s, TRUE)
             """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id']))
-              
-        # Update user_prices if custom_price is provided and different 
-        for ing in ingredients:
+
+            # Update user_prices if custom_price is provided and differen
             if ing['custom_quantity'] != 1 or ing['base_unit'] != ing['unit_supplied'] or ing['base_price'] != ing['custom_price']: 
 
                 if ing['custom_quantity'] != 1: 
-                    custom_price = ing['custom_price']/ing['custom_quantity']
+                    custom_price = round(ing['custom_price']/ing['custom_quantity'], 6)
                     custom_quantity = 1
                 else:
                     custom_price = ing['custom_price']

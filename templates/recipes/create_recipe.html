@@ -47,30 +47,41 @@
         <th>Base Price</th>
       </tr>
     </thead>
-    <tbody>
-      <!-- 10 empty rows -->
-      {% for i in range(10) %}
+    <tbody id="ingredients-tbody">
       <tr>
         <td style="position: relative;">
-            <input type="text" 
-                    name="ingredient_name_{{i}}" 
-                    class="ingredient-input" 
-                    placeholder="Ingredient" 
-                    autocomplete="off">
-            <div class="suggestions" id="suggestions_{{i}}"></div>
+          <input type="text" name="ingredient_name_0" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+          <div class="suggestions" id="suggestions_0"></div>
         </td>
-        <td><input type="number" step="any" name="quantity_{{i}}" placeholder="Qty"></td>
+        <td><input type="number" step="any" name="quantity_0" placeholder="Qty" min="0.01" class="validated-number"></td>
         <td>
-          <select name="unit_{{i}}" class="unit-select">
+          <select name="unit_0" class="unit-select">
             <option value="">-- Select unit --</option>
           </select>
         </td>
-        <td><input type="number" step="any" name="base_quantity_{{i}}" placeholder="Base Qty"></td>
-        <td><input type="text" name="base_unit_{{i}}" placeholder="Base Unit"></td>
-        <td><input type="number" step="any" name="base_price_{{i}}" placeholder="Base Price"></td>
+        <td><input type="number" step="any" name="base_quantity_0" placeholder="Base Qty" min="0.01" class="validated-number"></td>
+        <td><input type="text" name="base_unit_0" placeholder="Base Unit"></td>
+        <td><input type="number" step="any" name="base_price_0" placeholder="Base Price" min="0.01" class="validated-number"></td>
       </tr>
-      {% endfor %}
+
+      <tr>
+        <td style="position: relative;">
+          <input type="text" name="ingredient_name_1" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+          <div class="suggestions" id="suggestions_1"></div>
+        </td>
+        <td><input type="number" step="any" name="quantity_1" placeholder="Qty"></td>
+        <td>
+          <select name="unit_1" class="unit-select">
+            <option value="">-- Select unit --</option>
+          </select>
+        </td>
+        <td><input type="number" step="any" name="base_quantity_1" placeholder="Base Qty"></td>
+        <td><input type="text" name="base_unit_1" placeholder="Base Unit"></td>
+        <td><input type="number" step="any" name="base_price_1" placeholder="Base Price"></td>
+      </tr>
     </tbody>
+
+
   </table>
 
   <!-- Steps with 10 rows -->
@@ -82,19 +93,22 @@
         <th>Step Text</th>
       </tr>
     </thead>
-    <tbody>
-      {% for i in range(10) %}
+    <tbody id="steps-tbody">
+      <!-- Initially only 1 row -->
       <tr>
-        <td>{{ i+1 }}</td>
-        <td><input type="text" name="step_text_{{i}}" placeholder="Step description"></td>
+        <td>1</td>
+        <td>
+          <input type="text" name="step_text_0" class="step-input" placeholder="Step description">
+        </td>
       </tr>
-      {% endfor %}
     </tbody>
   </table>
   <div id="error" class="error-message"></div>
   <button type="submit" id="submit-recipe-btn">Save Recipe</button>
 
   <script>
+    const token = localStorage.getItem("access_token");
+
     function validateRecipeForm() {
         const name = document.getElementById("recipe-name").value.trim();
         const portionSize = document.getElementById("portion-size").value.trim();
@@ -171,7 +185,7 @@
             unitSelect.appendChild(option);
           });
         })
-        .catch(err => console.error("Failed to fetch units:", err));
+        .catch(err => console.error("Failed to fetch units.", err));
     }
 
     function validateIngredientsForm() {
@@ -234,6 +248,275 @@
       return ingredientsData; // return the list of ingredient objects
     }
 
+    function initializeIngredientInput(row, index) {
+      const input = row.querySelector(".ingredient-input");
+      const suggestionBox = row.querySelector(`#suggestions_${index}`);
+      let fetchedIngredients = [];   // store suggestions
+      let ingredientData = [];       // full data (id, base_unit, price)
+      let activeIndex = -1;
+
+      // --- Fetch suggestions ---
+      input.addEventListener("input", async function () {
+        const query = this.value.trim().toLowerCase();
+        activeIndex = -1;
+        if (query.length < 1) {
+          suggestionBox.style.display = "none";
+          return;
+        }
+
+        try {
+          const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+
+          if (!res.ok) throw new Error("Failed to fetch ingredients");
+
+          const data = await res.json();
+          ingredientData = data;
+          fetchedIngredients = data.map(item => item.name.toLowerCase());
+
+          suggestionBox.innerHTML = "";
+          if (data.length === 0) {
+            suggestionBox.style.display = "none";
+            return;
+          }
+
+          data.forEach(item => {
+            const div = document.createElement("div");
+            div.textContent = item.name;
+            div.classList.add("suggestion-item");
+            div.addEventListener("click", () => selectIngredient(item));
+            suggestionBox.appendChild(div);
+          });
+
+          suggestionBox.style.display = "block";
+        } catch (err) {
+          console.error("Error fetching ingredients:", err);
+        }
+      });
+
+      // --- Keyboard navigation ---
+      input.addEventListener("keydown", function (e) {
+        const items = suggestionBox.querySelectorAll(".suggestion-item");
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % items.length;
+          highlightItem(items, activeIndex);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + items.length) % items.length;
+          highlightItem(items, activeIndex);
+        } else if (e.key === "Enter" || e.key === "Tab") {
+          if (activeIndex >= 0 && activeIndex < items.length) {
+            selectIngredient(ingredientData.find(d => d.name === items[activeIndex].textContent));
+          }
+          suggestionBox.style.display = "none";
+        }
+      });
+
+      // --- Blur handling ---
+      input.addEventListener("blur", function () {
+        setTimeout(() => {
+          const items = suggestionBox.querySelectorAll(".suggestion-item");
+          if (activeIndex >= 0 && activeIndex < items.length) {
+            selectIngredient(ingredientData.find(d => d.name === items[activeIndex].textContent));
+          } else if (!fetchedIngredients.includes(this.value.trim().toLowerCase())) {
+            this.value = "";
+            const rowIndex = row.rowIndex - 1; // adjust for table header
+            row.querySelector(`input[name="base_quantity_${index}"]`).value = "";
+            row.querySelector(`input[name="base_unit_${index}"]`).value = "";
+            row.querySelector(`input[name="base_price_${index}"]`).value = "";
+            row.querySelector(`select[name="unit_${index}"]`).value = "";
+          }
+          suggestionBox.style.display = "none";
+          activeIndex = -1;
+        }, 150);
+      });
+
+      // --- Helper: highlight suggestion item ---
+      function highlightItem(items, idx) {
+        items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
+        if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      // --- Helper: select ingredient and populate base fields ---
+      function selectIngredient(item) {
+        if (!item) return;
+        input.value = item.name;
+
+        const rowElem = input.closest("tr");
+        rowElem.dataset.ingredientId = item.ingredient_id; // store ingredient ID
+
+        // Populate base fields
+        rowElem.querySelector(`input[name="base_quantity_${index}"]`).value = 1;
+        rowElem.querySelector(`input[name="base_unit_${index}"]`).value = item.base_unit || "";
+        rowElem.querySelector(`input[name="base_price_${index}"]`).value = item.price || "";
+
+        // ✅ Use your central populateUnits function
+        populateUnits(rowElem, item.ingredient_id);
+      }
+
+    }
+
+    function attachNumberValidation(input) {
+      // Prevent typing e, E, +, -
+      input.addEventListener("keydown", (e) => {
+        if (["e", "E", "+", "-"].includes(e.key)) {
+          e.preventDefault();
+        }
+      });
+
+      // Force positive float with max 2 decimals
+      input.addEventListener("input", () => {
+        let value = input.value;
+
+        // Block zero or negative numbers
+        if (value && parseFloat(value) <= 0) {
+          input.value = "";
+          return;
+        }
+
+        // Limit decimals to 2
+        if (value.includes(".")) {
+          const [int, dec] = value.split(".");
+          if (dec.length > 2) {
+            input.value = int + "." + dec.slice(0, 2);
+          }
+        }
+      });
+    }
+
+        // --- Function to get all steps for submission ---
+    function validateStepsForm() {
+      const stepsTbody = document.getElementById("steps-tbody");
+      const rows = Array.from(stepsTbody.querySelectorAll("tr"));
+      const steps = [];
+      let error = "";
+
+      rows.forEach((row, i) => {
+        const input = row.querySelector(".step-input");
+        const value = input.value.trim().replace(/\s{2,}/g, " ");
+        console.log("from validateStepForm func value of step text:", value)
+        if (value !== "") steps.push(value);
+      });
+
+      //if (steps.length === 0) {
+      //  error = "Please enter at least 1 step.";
+      //}
+
+      if (error) {
+        document.getElementById("error").textContent = error;
+        return false;
+      }
+
+      document.getElementById("error").textContent = "";
+      console.log("from validateStepForm func value of steps object", steps)
+      return steps;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const tbody = document.getElementById("ingredients-tbody");
+
+      // Attach validation to all initial numeric inputs
+      tbody.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
+        attachNumberValidation(input);
+      });
+
+      // Attach input listeners to a row
+      function attachRowListeners(row) {
+        row.querySelectorAll("input, select").forEach(input => {
+          input.addEventListener("input", handleRowChange);
+        });
+      }
+
+      // Handle input changes
+      function handleRowChange() {
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        const lastRow = rows[rows.length - 1];
+
+        // Check if last row is fully filled
+        const values = Array.from(lastRow.querySelectorAll("input, select")).map(i => i.value.trim());
+        if (values.every(v => v !== "")) {
+          // Create a new empty row dynamically
+          const index = rows.length;
+          const newRow = document.createElement("tr");
+          newRow.innerHTML = `
+            <td style="position: relative;">
+              <input type="text" name="ingredient_name_${index}" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+              <div class="suggestions" id="suggestions_${index}"></div>
+            </td>
+            <td><input type="number" step="any" name="quantity_${index}" placeholder="Qty"></td>
+            <td>
+              <select name="unit_${index}" class="unit-select">
+                <option value="">-- Select unit --</option>
+              </select>
+            </td>
+            <td><input type="number" step="any" name="base_quantity_${index}" placeholder="Base Qty"></td>
+            <td><input type="text" name="base_unit_${index}" placeholder="Base Unit"></td>
+            <td><input type="number" step="any" name="base_price_${index}" placeholder="Base Price"></td>
+          `;
+          tbody.appendChild(newRow);
+          
+          // Attach number validation to new numeric inputs
+          newRow.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
+            attachNumberValidation(input);
+          });
+
+          // Attach other listeners and autocomplete
+          attachRowListeners(newRow);
+          initializeIngredientInput(newRow, index);
+        }
+      }
+
+      const stepsTbody = document.getElementById("steps-tbody");
+
+      // Attach listeners to initial rows
+      tbody.querySelectorAll("tr").forEach((row, index) => {
+        attachRowListeners(row);
+        initializeIngredientInput(row, index);
+      });     
+
+      // Attach listeners to initial rows of steps
+      function attachStepListener(row, index) {
+        const input = row.querySelector(".step-input");
+
+        // --- Clean spaces on blur ---
+        input.addEventListener("blur", () => {
+          input.value = input.value.trim().replace(/\s{2,}/g, " ");
+        });
+
+        // --- Add new row dynamically ---
+        input.addEventListener("input", () => {
+          const rows = Array.from(stepsTbody.querySelectorAll("tr"));
+          const lastRow = rows[rows.length - 1];
+          const lastInput = lastRow.querySelector(".step-input");
+
+          if (lastInput.value.trim() !== "") {
+            const newIndex = rows.length;
+            const newRow = document.createElement("tr");
+            newRow.innerHTML = `
+              <td>${newIndex + 1}</td>
+              <td><input type="text" name="step_text_${newIndex}" class="step-input" placeholder="Step description"></td>
+            `;
+            stepsTbody.appendChild(newRow);
+
+            // Attach listener recursively
+            attachStepListener(newRow, newIndex);
+          }
+        });
+      }
+
+      // --- Initialize first step row ---
+      attachStepListener(stepsTbody.querySelector("tr"), 0);
+
+    });
+
     document.querySelectorAll(".ingredient-input").forEach((input, index) => {
       const suggestionBox = document.getElementById(`suggestions_${index}`);
       let fetchedIngredients = [];   // store suggestions from API
@@ -289,79 +572,13 @@
       });
 
       // --- Keyboard navigation ---
-      input.addEventListener("keydown", function (e) {
-        const items = suggestionBox.querySelectorAll(".suggestion-item");
-        if (items.length === 0) return;
-
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % items.length;
-          highlightItem(items, activeIndex);
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + items.length) % items.length;
-          highlightItem(items, activeIndex);
-        } else if (e.key === "Enter" || e.key === "Tab") {
-          if (activeIndex >= 0 && activeIndex < items.length) {
-            const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
-            selectIngredient(selectedItem);
-          }
-          suggestionBox.style.display = "none";
-          // allow Tab to move focus naturally
-        }
-      });
-
+      
       // --- Blur handling: clear invalid values ---
-      input.addEventListener("blur", function () {
-        setTimeout(() => {
-          const items = suggestionBox.querySelectorAll(".suggestion-item");
-
-          if (activeIndex >= 0 && activeIndex < items.length) {
-            // Keep highlighted value
-            const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
-            if (selectedItem) selectIngredient(selectedItem);
-          } else if (!fetchedIngredients.includes(this.value.trim().toLowerCase())) {
-            // Clear invalid input
-            this.value = "";
-            const row = input.closest("tr");
-            row.querySelector(`input[name="base_quantity_${index}"]`).value = "";
-            row.querySelector(`input[name="base_unit_${index}"]`).value = "";
-            row.querySelector(`input[name="base_price_${index}"]`).value = "";
-          }
-
-          suggestionBox.style.display = "none";
-          activeIndex = -1;
-        }, 150);
-      });
-
+     
       // --- Helper: highlight active item and scroll ---
-      function highlightItem(items, index) {
-        items.forEach((item, i) => {
-          item.style.background = (i === index) ? "#ddd" : "";
-        });
-
-        if (index >= 0) {
-          items[index].scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-      }
-
+      
       // --- Helper: select ingredient and populate base fields ---
-      function selectIngredient(item) {
-        //console.log(item)
-        input.value = item.name;
-        const row = input.closest("tr");
-
-        // Store ingredient ID in row for later use
-        row.dataset.ingredientId = item.ingredient_id
-        //console.log("row is : ",row)
-        //console.log("row's ingredient id is : ",item.ingredient_id)
-        row.querySelector(`input[name="base_quantity_${index}"]`).value = 1;
-        row.querySelector(`input[name="base_unit_${index}"]`).value = item.base_unit || "";
-        row.querySelector(`input[name="base_price_${index}"]`).value = item.price || "";
-
-        // Populate units dropdown
-        populateUnits(row, item.ingredient_id);
-      }
+      
     });
 
     document.getElementById("submit-recipe-btn").addEventListener("click", async () => {
@@ -370,27 +587,33 @@
       if (!recipeData) return; // errors displayed, stop submission
       const ingredientsData = validateIngredientsForm();
       if (!ingredientsData) return; // validation failed
+      const stepsData = validateStepsForm();
+      if (!stepsData) return; // validation failed
 
       // Combine into a single object
       completeRecipe.push({
         recipe: recipeData,
-        ingredients: ingredientsData
+        ingredients: ingredientsData,
+        steps: stepsData
       });
 
       console.log("Validated recipe data:", recipeData);
       console.log("Validated ingredients data:", ingredientsData);
+      console.log("validated Steps data:",stepsData )
       console.log("complete recipe data: ", completeRecipe)
       
       // Send ingredient name to backend API...
     });
 
-    const token = localStorage.getItem("access_token");
+    // Initial rows
+    document.querySelectorAll("#ingredients-table tbody tr").forEach((row, index) => {
+      initializeIngredientInput(row, index);
+    });
 
+    // For dynamically added rows
+    // Call initializeIngredientInput(newRow, newIndex) after appending new row
 
-
-
-
-
+    
   </script>
 </body>
 </html>
