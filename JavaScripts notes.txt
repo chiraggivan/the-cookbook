@@ -119,3 +119,36 @@ ReferenceError	An illegal reference has occurred
 SyntaxError	A syntax error has occurred
 TypeError	A type error has occurred
 URIError	An error in encodeURI() has occurred
+
+HTML DOM Methods
+* - document.getElementById("demo").innerHTML = "Hello World!"; 
+In the example above, getElementById is a method, while innerHTML is a property.
+
+EventListener
+In bubbling the inner most element's event is handled first and then the outer: the <p> element's click event is handled first, then the <div> element's click event.
+
+In capturing the outer most element's event is handled first and then the inner: the <div> element's click event will be handled first, then the <p> element's click event.
+
+addEventListener(event, function, useCapture);
+The default value is false, which will use the bubbling propagation, when the value is set to true, the event uses the capturing propagation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

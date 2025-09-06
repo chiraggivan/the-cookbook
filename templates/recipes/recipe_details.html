@@ -29,13 +29,36 @@
   <div id="steps-container"></div>
 
   <div id="error"></div>
+  <!-- show the below buttons only if logged in user and recipe owner same-->
+  <div id="recipe-actions" style="margin-top: 2rem; display: none;">
+    <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
+    <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
+  </div>
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div id="alert-box" class="alert-box">
+      <p id="alert-message"></p>
+      <div id="alert-actions" style="display:none;">
+        <button id="alert-ok">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const token = localStorage.getItem("access_token");
-    //const recipeId = {{ recipe_id }};
-    console.log("token: ",token)
-    const recipeId = window.location.pathname.split("/").pop();
-    console.log("Recipe ID from Flask:", recipeId);
+    function parseJwt(token) {
+        try {
+            const base64Payload = token.split('.')[1]; 
+            const payload = atob(base64Payload);  // decode base64
+            return JSON.parse(payload);
+        } catch (e) {
+            console.error("Invalid token", e);
+            return null;
+        }
+    }
+    const decoded = parseJwt(token); //console.log("decoded : ",decoded)
+    const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
+    const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
+    
     async function loadRecipeDetails() {
       try {
         const res = await fetch(`/recipes/api/recipe/${recipeId}`, {
@@ -46,10 +69,18 @@
           throw new Error("Failed to load recipe details");
         }
 
-        const data = await res.json();
+        const data = await res.json(); //console.log("data from backend: ", data);
+        const recipeOwnerId = data.recipe['user_id']; //console.log(" recipe user id : ", recipe_user_id)
         const recipe = data.recipe;
         const ingredients = data.ingredients;
         const steps = data.steps;
+
+        // check logged in user and recipe owner same or not and show buttons accordingly
+        if (loggedInUserId && loggedInUserId === recipeOwnerId) {
+            document.getElementById('recipe-actions').style.display = 'block';
+        } else {
+            document.getElementById('recipe-actions').style.display = 'none';
+        }
 
         // Recipe Info
         document.getElementById("recipe-name").textContent = recipe.name;
@@ -98,12 +129,98 @@
       }
     }
 
+    function showAlert(message, isError = false, autoClose = true) {
+      const overlay = document.getElementById("modal-overlay");
+      const alertBox = document.getElementById("alert-box");
+      const alertMessage = document.getElementById("alert-message");
+      const alertActions = document.getElementById("alert-actions");
+
+      alertMessage.textContent = message;
+      alertBox.className = "alert-box" + (isError ? " error" : " success");
+      overlay.style.display = "flex";
+      alertActions.style.display = "none"; // hide OK button if autoclose
+
+      if (autoClose) {
+        setTimeout(() => {
+          overlay.style.display = "none";
+        }, 2000); // hide after 2s
+      } else {
+        alertActions.style.display = "block"; // show OK button
+        document.getElementById("alert-ok").onclick = () => {
+          overlay.style.display = "none";
+        };
+      }
+    }
+
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById("modal-overlay");
+        const alertBox = document.getElementById("alert-box");
+        const alertMessage = document.getElementById("alert-message");
+        const alertActions = document.getElementById("alert-actions");
+
+        alertMessage.textContent = message;
+        alertBox.className = "alert-box";
+        overlay.style.display = "flex";
+
+        // Replace actions with Yes/No buttons
+        alertActions.innerHTML = `
+          <button id="confirm-yes">Yes</button>
+          <button id="confirm-no" style="background:#f44336;">No</button>
+        `;
+        alertActions.style.display = "block";
+
+        document.getElementById("confirm-yes").onclick = () => {
+          overlay.style.display = "none";
+          resolve(true);
+        };
+        document.getElementById("confirm-no").onclick = () => {
+          overlay.style.display = "none";
+          resolve(false);
+        };
+      });
+    }
+
     if (token) {
       loadRecipeDetails();
     } else {
       document.getElementById("error").textContent = "Please log in to view recipe details.";
       setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const deleteBtn = document.getElementById("delete-recipe-btn");
+
+      deleteBtn.addEventListener("click", async () => {
+        // ✅ use custom modal confirm instead of native confirm
+        const confirmed = await showConfirm("Are you sure you want to delete this recipe?");
+        if (!confirmed) return;
+
+        try {
+          const response = await fetch(`/recipes/api/delete_recipe/${recipeId}`, {
+            method: "DELETE",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          console.log("response is : ", response);
+          const data = await response.json();
+          console.log("data is : ", data);
+
+          if (response.ok) {
+            showAlert(data.message || "Recipe deleted successfully!");
+            setTimeout(() => { window.location.href = "/recipes"; }, 2500);
+          } else {
+            showAlert(data.error || "Failed to delete recipe.", true);
+          }
+        } catch (err) {
+          console.error("Error deleting recipe:", err);
+          showAlert("Something went wrong.", true);
+        }
+      });
+    });
   </script>
 </body>
 </html>

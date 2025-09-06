@@ -8,16 +8,54 @@
 
 @app.route('/recipes', methods=['POST'])
 
+{
+    "recipe": {
+            "name": "chana chat",
+            "portion_size": "" ,
+            "privacy": "private",
+            "description": ""
+            
+        },
+    "ingredients": [
+        {
+            "ingredient_id": 2,
+            "quantity": 2.000,
+            "unit_id": 4,
+            "base_unit": "l",
+            "base_price": 1.98,
+	    "custom_price": 3.49,
+	    "custom_quantity": 2,
+	    "unit_supplied": "l"
+            "source": ""
+        },
+        {
+            "cost": 4.0000,
+            "ingredient_id": 4,
+            "name": "ginger garlic paste",
+            "price": 0.0280000000000,
+            "quantity": 1.000,
+            "unit": "kg",
+            "unit_id": 15,
+            "unit_name": "tsp",
+            "source": "local"
+        },
+
 @app.route('/recipes/<int:recipe_id>', methods=['PATCH'])
 
 {
+    "name":"",
+    "portion_size":"",
+    "privacy":"",
+    "description":"",
+}
     "update_ingredients": [
         {
             "ingredient_id": 2,
             "quantity": 2.0,
             "recipe_ingredient_id": 1,
             "unit_id": 4,
-            "custome_price": 2.00,
+            "base_price": 2.00,
+	    "base_quantity": 2,
             "base_unit": "litre",
             "place" : "local"
         }
@@ -25,10 +63,9 @@
     "add_ingredients": [
         {
             "ingredient_id": ,
-            "name": "Flour",
             "quantity": 2.0,
-            "unit_id": , 
-            "unit_name": "tsp",
+            "unit_id": 45, 
+            "base_quantity": 2,
             "custom_price": 0.5000,
             "base_unit": "kg",
             "place": "market"

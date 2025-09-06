@@ -78,7 +78,6 @@ def get_ingredient_units():
 def create_recipe():
 
     s_user_id = get_jwt_identity()
-    print("logged in user id : ",s_user_id)
     #print("json data : ", request.get_json())
     def to_int(value, field_name):
         try:
@@ -91,6 +90,27 @@ def create_recipe():
             return float(value)
         except (TypeError, ValueError):
             raise ValueError(f"Invalid {field_name}: must be numeric")
+
+    # convert units to single form. either kg, l, bunch, pc
+    def normalize_unit(price, quantity, unit):
+        # normalize quantity first
+        if quantity != 1:
+            price = round(price / quantity, 6)
+            quantity = 1
+
+        # conversion factors to a standard unit
+        conversions = {
+            "g":    (1000, "kg"),
+            "oz":   (35.274, "kg"),
+            "lbs":  (2.205, "kg"),
+
+            "ml":   (1000, "l"),
+            "fl.oz":(35.1951, "l"),
+            "pint": (1.75975, "l")
+        }
+
+        factor, new_unit = conversions.get(unit, (1, unit))
+        return price * factor, quantity, new_unit
 
     try:
         def normalize_ingredient_data(data):
@@ -145,7 +165,7 @@ def create_recipe():
             
         def validate_ingredient(data):
             
-            print(data)
+            #print(data)
             recipe_dict  = data
             # --- name ---
             name = recipe_dict.get("name")
@@ -300,7 +320,7 @@ def create_recipe():
                 cursor.close()
                 conn.close()
                 return jsonify({'error': f"Unit ID {ing['unit_id']} not valid for ingredient ID {ing['ingredient_id']}"}), 400   
-            print("ingredients and unit id match with units table")
+            print(f"ingredients with id {ing['ingredient_id']} and unit id match with units table")
             # check if json has any one of -- base_unit, base_price or base_quantity then validate if new base new unit provided is compatible with old one.
             # eg: old base unit in kg. so new base unit has to be in [kg, g, oz, lbs] as finally it will be storted as kg by applying conversion later while inserting
             if ing.get('base_unit'):
@@ -319,18 +339,22 @@ def create_recipe():
                     conn.close()
                     return jsonify({'error': f"Ingredient details for id {ing['ingredient_id']} not found in db"}), 404
 
-                if ing_data['base_unit'] in ['kg', 'g', 'oz', 'lbs']:
-                    if ing['base_unit'] not in ['kg', 'g', 'oz', 'lbs']:
-                        return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
-                elif ing_data['base_unit'] in ['l', 'ml', 'fl.oz', 'pint']:
-                    if ing['base_unit'] not in ['kg', 'g', 'oz', 'lbs']:
-                        return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
-                elif ing_data['base_unit'] == 'pc':
-                    if ing['base_unit'] != 'pc':
-                        return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
-                elif ing_data['base_unit'] == 'bunch':
-                    if ing['base_unit'] != 'bunch':
-                        return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
+                groups = {
+                    "kg": ["kg", "g", "oz", "lbs"],
+                    "g": ["kg", "g", "oz", "lbs"],
+                    "oz": ["kg", "g", "oz", "lbs"],
+                    "lbs": ["kg", "g", "oz", "lbs"],
+                    "l": ["l", "ml", "fl.oz", "pint"],
+                    "ml": ["l", "ml", "fl.oz", "pint"],
+                    "fl.oz": ["l", "ml", "fl.oz", "pint"],
+                    "pint": ["l", "ml", "fl.oz", "pint"],
+                    "pc": ["pc"],
+                    "bunch": ["bunch"]
+                }
+
+                if ing['base_unit'] not in groups.get(ing_data['base_unit'], []):
+                    return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
+
                 
                 # base_unit = ing_data['base_unit']
                 # price = ing_data['price']
@@ -342,7 +366,7 @@ def create_recipe():
 
         # validate steps for recipe_procedures
         
-        return jsonify({'message': "Every thing accepted and ready to insert recipe", 'submitted_data': data}), 200
+        # return jsonify({'message': "Every thing accepted and ready to insert recipe", 'submitted_data': data}), 200
 
 
         # ---------------- Data checked and ready to be inserted. About to actually insert data in db ---------------------------
@@ -361,42 +385,8 @@ def create_recipe():
             """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id']))
 
             # Update user_prices if base_unit/base_price/base_quantity is provided and different
-            if ing['base_unit']: 
-
-                if ing['base_quantity'] != 1: 
-                    base_price = round(ing['base_price']/ing['base_quantity'], 6)
-                    base_quantity = 1
-                else:
-                    base_price = ing['base_price']
-                    base_quantity = ing['base_quantity']
-                
-                if ing['base_unit'] == 'kg':
-                    base_unit = 'kg'
-                elif ing['base_unit'] == 'g':
-                    base_price = base_price*1000
-                    base_unit = 'kg'
-                elif ing['base_unit'] == 'oz':
-                    base_price = base_price*35.274
-                    base_unit = 'kg'
-                elif ing['base_unit'] == 'lbs':
-                    base_price = base_price*2.205
-                    base_unit = 'kg'
-
-                elif ing['base_unit'] == 'l':
-                    base_unit = 'l'
-                elif ing['base_unit'] == 'ml':
-                    base_price = base_price*1000
-                    base_unit = 'l'
-                elif ing['base_unit'] == 'fl.oz':
-                    base_price = base_price*35.1951
-                    base_unit = 'l'
-                elif ing['base_unit'] == 'pint':
-                    base_price = base_price*1.75975
-                    base_unit = 'l'
-                elif ing['base_unit'] == 'pc':
-                    base_unit = 'pc'
-                elif ing['base_unit'] == 'bunch':
-                    base_unit = 'bunch'
+            if ing.get('base_unit'):
+                base_price, base_quantity, base_unit = normalize_unit(ing['base_price'],ing['base_quantity'],ing['base_unit'])
             
                 cursor.callproc('update_insert_user_price', (
                     s_user_id, 

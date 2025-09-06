@@ -5,7 +5,7 @@ from flask_jwt_extended import JWTManager, jwt_required, create_access_token, ge
 from . import recipes_api_bp
 
 # Delete recipe - checked
-@recipes_api_bp.route('/my_recipes/<int:recipe_id>', methods=['DELETE'])
+@recipes_api_bp.route('/delete_recipe/<int:recipe_id>', methods=['DELETE'])
 @jwt_required()
 def delete_recipe(recipe_id):
 

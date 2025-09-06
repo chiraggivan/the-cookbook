@@ -42,7 +42,7 @@ BEGIN
     WHERE recipe_id = p_recipe_id;
 
     UPDATE recipe_ingredients
-    SET is_active = 0
+    SET is_active = 0, end_date = CURRENT_TIMESTAMP
     WHERE recipe_id = p_recipe_id;
 
 END //

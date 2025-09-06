@@ -1,0 +1,26 @@
+helpful MySQL commands
+
+show tables;
+show create table recipes;
+
+SHOW PROCEDURE STATUS
+WHERE Db = 'your_database_name';
+
+SHOW FUNCTION STATUS
+WHERE Db = 'your_database_name';
+
+
+SHOW TRIGGERS
+FROM your_database_name;
+
+-- Procedures & Functions
+SELECT ROUTINE_TYPE, ROUTINE_NAME
+FROM INFORMATION_SCHEMA.ROUTINES
+WHERE ROUTINE_SCHEMA = 'cookbook_db';
+
+-- Triggers
+SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_TIMING
+FROM INFORMATION_SCHEMA.TRIGGERS
+WHERE TRIGGER_SCHEMA = 'cookbook_db';
+
+DROP PROCEDURE IF EXISTS delete_recipe;
