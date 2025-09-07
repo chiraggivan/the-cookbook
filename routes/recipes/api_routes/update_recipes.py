@@ -4,8 +4,73 @@ from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
 
+# update privacy only(PUT)
+@recipes_api_bp.route('/update-privacy/<int:recipe_id>', methods=['PUT'])
+@jwt_required()
+def update_privacy(recipe_id):
+
+    s_user_id = int(get_jwt_identity())
+    print("logged in user id : ",s_user_id, " ", type(s_user_id))
+    try:
+        # get data , normalize and validate 
+        data = request.get_json()
+        privacy = data.get("privacy")
+        if privacy not in ['private', 'public']:
+            return jsonify({"error": "privacy not matched to the allowed values"}), 400  
+        
+        # get db connection
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        # Validate user_id exists
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1" , (s_user_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+
+        # Check if recipe exists and belongs to user
+        cursor.execute("""
+            SELECT user_id FROM recipes 
+            WHERE recipe_id = %s  AND is_active = TRUE
+        """, (recipe_id,))
+        recipeOwner = cursor.fetchone()
+        print("recipeOwner user_id : ", recipeOwner["user_id"], " ", type(recipeOwner["user_id"]))
+        if not recipeOwner["user_id"]:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Recipe not found'}), 404
+        if recipeOwner["user_id"] != s_user_id:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'You are not authorised to change privacy setting.'}), 403
+
+        # update privacy after recipe id and user id are checked and verified 
+        cursor.execute("""
+            UPDATE recipes SET privacy = %s WHERE recipe_id = %s AND user_id = %s
+        """,(privacy,recipe_id,s_user_id))
+        if cursor.rowcount > 0 :
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "Recipe's privacy updated successfully"}), 200
+        else:
+            cursor.close()
+            conn.close()
+            return jsonify({'message': 'Recipe DID NOT updated successfully'}), 200
+
+
+    except Exception as err:
+        if conn and conn.is_connected():
+            conn.rollback()
+            cursor.close()
+            conn.close()
+        return jsonify({'error': str(err)}), 500
+
 # Update recipe (PATCH)
-@recipes_api_bp.route('/recipes/<int:recipe_id>', methods=['PATCH'])
+@recipes_api_bp.route('/update-recipe/<int:recipe_id>', methods=['PATCH'])
 @jwt_required()
 def update_recipe(recipe_id):
 
@@ -219,15 +284,14 @@ def update_recipe(recipe_id):
             return None
 
         data, error = normalize_recipe_and_ingredient_data(request.get_json())
-        if error:
-            return jsonify({"error": error}), 400  
+        #Check if any data provided
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+  
         error = validate_recipe_and_ingredient_data(data)
         if error:
             return jsonify({"error": error, "submitted_data": data}), 400  
         # -------------------------- normailisation and validation done -----------------------
-        #Check if any data provided
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
         
         # get db connection
         conn = get_db_connection()
