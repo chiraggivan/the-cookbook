@@ -8,15 +8,19 @@
 <body class="recipes-page">
   <a href="/recipes/" class="back-link">← All Recipes</a>
   <h1 id="recipe-name">Recipe Name</h1>
-  <p id="recipe-info"></p>
-  
-  <div id="privacy-actions" style="margin-top: 1rem; display:none;">
+  <p id="recipe-info" style="display: flex; justify-content: space-between; align-items: center;">
+  <span id="recipe-meta"></span>
+  <span id="privacy-actions" style="display:none;">
+    <span id="privacy-label"></span>
     <label class="switch">
       <input type="checkbox" id="privacy-toggle">
       <span class="slider round"></span>
     </label>
-    <span id="privacy-label"></span>
-  </div>
+  </span>
+</p>
+
+<p id="recipe-description"></p>
+
 
 
   <h2>Ingredients</h2>
@@ -79,13 +83,15 @@
         }
 
         const data = await res.json(); //console.log("data from backend: ", data);
-        const recipeOwnerId = data.recipe['user_id']; //console.log(" recipe user id : ", recipe_user_id)
         const recipe = data.recipe;
         const ingredients = data.ingredients;
         const steps = data.steps;
+        const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
+        const isOwner = (loggedInUserId === recipeOwnerId); //
+        console.log("isOwner:", isOwner);
 
         // check logged in user and recipe owner same or not and show buttons accordingly (toggle switch + buttons)
-        if (loggedInUserId && loggedInUserId === recipeOwnerId) {
+        if (isOwner) {
             document.getElementById('recipe-actions').style.display = 'block';
 
             document.getElementById("privacy-actions").style.display = "block";            
@@ -109,9 +115,12 @@
 
         // Recipe Info
         document.getElementById("recipe-name").textContent = recipe.name;
-        document.getElementById("recipe-info").innerHTML = `
+        document.getElementById("recipe-meta").innerHTML = `
           <strong>Portion Size:</strong> ${recipe.portion_size} |
-          <strong>By:</strong> ${recipe.username} |
+          <strong>By:</strong> ${recipe.username}
+        `;
+
+        document.getElementById("recipe-description").innerHTML = `
           <strong>Description:</strong> ${recipe.description}
         `;
 
@@ -254,10 +263,7 @@
               "Content-Type": "application/json"
             }
           });
-
-          console.log("response is : ", response);
-          const data = await response.json();
-          console.log("data is : ", data);
+          const data = await response.json(); //console.log("data is : ", data);
 
           if (response.ok) {
             showAlert(data.message || "Recipe deleted successfully!");
@@ -289,8 +295,10 @@
             },
             body: JSON.stringify({ privacy: newPrivacy })
           });
-          const data = await response.json();
-          console.log("data is :", data)
+          console.log("just before result = await response.json()")
+          console.log(response)
+          const result = await response.json();
+          console.log("privacy update response:", result);
           if (!response.ok) {
             showAlert(data.error || "Failed to update privacy.", true);
           } else {
