@@ -4,6 +4,19 @@ from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
 
+#get units of ingredients from unit table.
+@recipes_api_bp.route('/units/<int:ingredient_id>', methods=["GET"])
+@jwt_required()
+def get_units(ingredient_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)#print("type of ing is :", type(ingredient_id))
+    cursor.execute("SELECT unit_id, unit_name FROM units WHERE ingredient_id = %s AND is_active = 1",(ingredient_id,))
+    units = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    print("units :", units)
+    return jsonify(units), 200
+
 # update privacy only(PUT)
 @recipes_api_bp.route('/update-privacy/<int:recipe_id>', methods=['PUT'])
 @jwt_required()

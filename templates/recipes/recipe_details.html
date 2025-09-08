@@ -9,19 +9,17 @@
   <a href="/recipes/" class="back-link">← All Recipes</a>
   <h1 id="recipe-name">Recipe Name</h1>
   <p id="recipe-info" style="display: flex; justify-content: space-between; align-items: center;">
-  <span id="recipe-meta"></span>
-  <span id="privacy-actions" style="display:none;">
-    <span id="privacy-label"></span>
-    <label class="switch">
-      <input type="checkbox" id="privacy-toggle">
-      <span class="slider round"></span>
-    </label>
-  </span>
-</p>
+    <span id="recipe-meta"></span>
+    <span id="recipe-actions"></span>
+  </p>
 
-<p id="recipe-description"></p>
+  <p id="recipe-description"></p>
 
-
+  <!-- show the below buttons only if logged in user and recipe owner same-->
+  <div id="recipe-buttons" style="margin-top: 2rem; display: none;">
+    <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
+    <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
+  </div>
 
   <h2>Ingredients</h2>
   <table id="ingredients-table">
@@ -43,7 +41,7 @@
 
   <div id="error"></div>
   <!-- show the below buttons only if logged in user and recipe owner same-->
-  <div id="recipe-actions" style="margin-top: 2rem; display: none;">
+  <div id="recipe-buttons" style="margin-top: 2rem; display: none;">
     <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
     <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
   </div>
@@ -87,56 +85,68 @@
         const ingredients = data.ingredients;
         const steps = data.steps;
         const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
-        const isOwner = (loggedInUserId === recipeOwnerId); //
-        console.log("isOwner:", isOwner);
+        const isOwner = (loggedInUserId === recipeOwnerId); // console.log("isOwner:", isOwner);
 
-        // check logged in user and recipe owner same or not and show buttons accordingly (toggle switch + buttons)
-        if (isOwner) {
-            document.getElementById('recipe-actions').style.display = 'block';
-
-            document.getElementById("privacy-actions").style.display = "block";            
-            const privacyToggle = document.getElementById("privacy-toggle");
-            const privacyLabel = document.getElementById("privacy-label");
-
-            // Initialize toggle state
-            if (recipe.privacy === "private") {
-              privacyToggle.checked = true;
-              privacyLabel.textContent = "Private";
-            } else {
-              privacyToggle.checked = false;
-              privacyLabel.textContent = "Public";
-            }
-        } else {
-            document.getElementById('recipe-actions').style.display = 'none';
-            document.getElementById("privacy-actions").style.display = "none";
-        }
-
-       
-
-        // Recipe Info
+        // Title + Meta + Description
         document.getElementById("recipe-name").textContent = recipe.name;
+
         document.getElementById("recipe-meta").innerHTML = `
-          <strong>Portion Size:</strong> ${recipe.portion_size} |
-          <strong>By:</strong> ${recipe.username}
+          <strong>Portion Size:</strong> ${recipe.portion_size}
         `;
 
         document.getElementById("recipe-description").innerHTML = `
           <strong>Description:</strong> ${recipe.description}
         `;
+        
+        // check logged in user and recipe owner same or not and show buttons accordingly (toggle switch + buttons)
+        const actionsEl = document.getElementById("recipe-actions");
+        if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
+          document.getElementById('recipe-buttons').style.display = 'block';
+          actionsEl.innerHTML = `
+            <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+              <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Public"}</span>
+              <label class="switch">
+                <input type="checkbox" id="privacy-toggle" ${recipe.privacy === "private" ? "checked" : ""}>
+                <span class="slider round"></span>
+              </label>
+            </span>
+          `;
 
-        // Privacy toggle
-        const privacyToggle = document.getElementById("privacy-toggle");
-        const privacyLabel = document.getElementById("privacy-label");
+          // Bind toggle logic only when toggle exists
+          const privacyToggle = document.getElementById("privacy-toggle");
+          const privacyLabel = document.getElementById("privacy-label");
 
-        // assume recipe.privacy = "private" or "public"
-        if (recipe.privacy === "private") {
-          privacyToggle.checked = true;
-          privacyLabel.textContent = "Private";
-        } else {
-          privacyToggle.checked = false;
-          privacyLabel.textContent = "Public";
+          privacyToggle.addEventListener("change", async () => {
+            const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
+            privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
+            
+            try {
+              const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
+                method: "PUT",
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ privacy: newPrivacy })
+              });
+              const result = await response.json(); //console.log("privacy update response:", result);
+
+              if (!response.ok) {
+                showAlert(result.error || "Failed to update privacy.", true);
+              } else {
+                //showAlert(result.message || "Privacy updated successfully!");
+              }
+            } catch (err) {
+              //console.error("Error updating privacy:", err);
+              showAlert("Something went really wrong.", true);
+            }
+          });
+        } else { //console.log("Rendering 'By' section for viewer...");
+          document.getElementById('recipe-buttons').style.display = 'none';
+          actionsEl.innerHTML = `
+            <span><strong>By:</strong> ${recipe.username}</span>
+          `;
         }
-
 
         // Ingredients Table
         const tbody = document.querySelector("#ingredients-table tbody");
@@ -241,13 +251,23 @@
 
     if (token && !isTokenExpired(token)) {
       loadRecipeDetails();
-    } else {
+    } 
+    else {
       localStorage.removeItem("access_token");
       document.getElementById("error").textContent = "Please log in to view recipe details.";
       setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
     }
     
     document.addEventListener("DOMContentLoaded", () => {
+      const editBtn = document.getElementById("edit-recipe-btn");
+      editBtn.addEventListener("click", async () => {
+        try{
+          window.location.href = `/recipes/edit/${recipeId}`;          
+        } catch(err) {
+
+        }
+      });
+
       const deleteBtn = document.getElementById("delete-recipe-btn");
 
       deleteBtn.addEventListener("click", async () => {
@@ -272,41 +292,8 @@
             showAlert(data.error || "Failed to delete recipe.", true);
           }
         } catch (err) {
-          console.error("Error deleting recipe:", err);
-          showAlert("Something went wrong.", true);
-        }
-      });
-
-      // Handle toggle changes
-      const privacyToggle = document.getElementById("privacy-toggle");
-      const privacyLabel = document.getElementById("privacy-label");
-
-      privacyToggle.addEventListener("change", async () => {
-        const newPrivacy = privacyToggle.checked ? "private" : "public";
-        console.log("new privacy is :", newPrivacy);
-        privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
-
-        try {
-          const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
-            method: "PUT",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ privacy: newPrivacy })
-          });
-          console.log("just before result = await response.json()")
-          console.log(response)
-          const result = await response.json();
-          console.log("privacy update response:", result);
-          if (!response.ok) {
-            showAlert(data.error || "Failed to update privacy.", true);
-          } else {
-            //showAlert(data.message || "Privacy updated successfully!");
-          }
-        } catch (err) {
-          console.error("Error updating privacy:", err);
-          showAlert("Something went wrong.", true);
+            console.error("Error deleting recipe:", err);
+            showAlert("Something went wrong.", true);
         }
       });
     });
