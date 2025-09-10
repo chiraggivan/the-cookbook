@@ -23,14 +23,25 @@
   <h1>Edit Recipe</h1>
 
   <div id="recipe-form">
-    <label>Recipe Name:</label>
-    <input type="text" id="recipe-name-input" />
+    <div class="form-field">
+      <label>Recipe Name:</label>
+      <input type="text" id="recipe-name-input" />
+    </div>
 
-    <label>Portion Size:</label>
-    <input type="text" id="portion-size-input" />
+    <div class="form-field">
+      <label>Portion Size:</label>
+      <input type="text" id="portion-size-input" />
+    </div>
 
-    <label>Description:</label>
-    <textarea id="description-input"></textarea>
+    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+      <label for="description-input" style="margin-right: 0.5rem;">Description:</label>
+      <textarea id="description-input" rows="4" style="width: 250px;"></textarea>
+    </div>
+
+    <!-- Total cost display -->
+    <div id="recipe-total-cost" style="text-align: right; font-weight: bold; margin-top: 0.5rem;">
+      Total Cost: £0.00
+    </div>
 
     <h2>Ingredients</h2>
     <table id="ingredients-table">
@@ -94,8 +105,7 @@
   <div id="error"></div>
 
     <script>
-    window.recipeId = window.location.pathname.split("/").pop(); // window coz to send recipeId in js
-    console.log("recipe id: ", window.recipeId);    
+    window.recipeId = window.location.pathname.split("/").pop(); // window coz to send recipeId in js    
     </script>
     <script src="/static/js/edit-recipe.js" defer></script>
 </body>

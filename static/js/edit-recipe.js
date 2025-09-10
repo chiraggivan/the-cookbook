@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function populateUnits(row, ingredientId, selectedUnitId, token) {
         const unitSelect = row.querySelector(".unit-select");
         unitSelect.innerHTML = ""; // clear old options
-        console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
+        //console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
         try {
             const res = await fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
             headers: { "Authorization": `Bearer ${token}` }
@@ -21,12 +21,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (!res.ok) throw new Error("Failed to load units for ingredient " + ingredientId);
 
-            const units = await res.json();
+            const units = await res.json();// console.log("units of ", ingredientId," :", units)
+            // store units with conversion factors in row for later use
+            row.dataset.units = JSON.stringify(units);
 
             units.forEach(u => {
             const option = document.createElement("option");
             option.value = u.unit_id;
             option.textContent = u.unit_name;
+            option.dataset.conversionFactor = u.conversion_factor; 
             if (u.unit_id === selectedUnitId) option.selected = true; // keep current unit selected
             unitSelect.appendChild(option);
             });
@@ -76,13 +79,96 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    const unitGroups = {
+    weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
+    volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
+    bunch: {base: "bunch", factors: {bunch :1}},
+    pc: {base: "pc", factors: {pc :1}}
+};
+
+    // recalculate teh cost of ingredient as per the unit selected
+    function recalcCost(row) {
+        const quantityInput = row.querySelector(".quantity");
+        const unitSelect = row.querySelector(".unit-select");
+        const baseQuantityInput = row.querySelector(".base-quantity");
+        const baseUnitSelect = row.querySelector(".base-unit-select");
+        const basePriceInput = row.querySelector(".base-price");
+        const costCell = row.querySelector(".cost-input");
+
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const baseQuantity = parseFloat(baseQuantityInput.value) || 0;
+        const baseUnit = baseUnitSelect.value;
+        const basePrice = parseFloat(basePriceInput.value) || 0;
+
+        if (!quantity || !baseQuantity || !baseUnit || !basePrice) {
+            costCell.textContent = "";
+            return;
+        }
+
+        // figure out which group the base unit belongs to
+        let group = null;
+        for (const [key, def] of Object.entries(unitGroups)) {
+            if (def.factors[baseUnit] !== undefined) {
+                group = def;
+                break;
+            }
+        }
+
+        if (!group) {
+            costCell.textContent = "";
+            return;
+        }
+
+        // price per 1 "canonical unit" (kg or l)
+        const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
+
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor || 1);
+
+        const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
+        costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
+
+        updateTotalRecipeCost();
+    }
+
+    // update total cost of recipe
+    function updateTotalRecipeCost() {
+        //console.log("within update recipe cost");
+        const costCells = document.querySelectorAll(".cost-input");
+        let total = 0;
+
+        costCells.forEach(cell => {
+            const value = parseFloat(cell.textContent.replace(/,/g, '')) || 0;
+            total += value;
+        });
+        console.log("total price is : ", total);
+        const totalCostEl = document.getElementById("recipe-total-cost");
+        if (totalCostEl) {
+            totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
+        }
+    }
+
+    // attach cost events
+    function attachCostEvents(row) {
+        const quantityInput = row.querySelector(".quantity");
+        const baseQuantityInput = row.querySelector(".base-quantity");
+        const basePriceInput = row.querySelector(".base-price");
+        const unitSelect = row.querySelector(".unit-select");
+        const baseUnitSelect = row.querySelector(".base-unit-select");
+
+        quantityInput.addEventListener("input", () => recalcCost(row));
+        baseQuantityInput.addEventListener("input", () => recalcCost(row));
+        basePriceInput.addEventListener("input", () => recalcCost(row));
+        unitSelect.addEventListener("change", () => recalcCost(row));
+        baseUnitSelect.addEventListener("change", () => recalcCost(row));
+    }
+
     // enforce quantities to be positive and more than zero and not more  than 1000000
     function enforceQuantityValidation(input, { allowEmpty = false, defaultValue = 1 } = {}) {
+        const row = input.closest("tr");
+
         input.addEventListener("input", () => {
             let val = input.value;
-
-            // Allow empty temporarily while typing
-            if (val === "") return;
 
             // Allow only numbers with up to 2 decimals
             if (!/^\d*\.?\d{0,2}$/.test(val)) {
@@ -93,27 +179,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         input.addEventListener("blur", () => {
             let val = input.value.trim();
 
-            // Empty case
+            // Empty case → force 0
             if (val === "") {
-                if (!allowEmpty && defaultValue !== null) {
-                    input.value = defaultValue;
-                }
+                input.value = "0";
+                recalcCost(row);
                 return;
             }
 
             let num = parseFloat(val);
 
-            // Invalid or <= 0
-            if (isNaN(num) || num <= 0) {
-                input.value = allowEmpty ? "" : defaultValue;
+            // Invalid → set to 0
+            if (isNaN(num)) {
+                input.value = "0";
+                recalcCost(row);
                 return;
             }
+
+            // Negative → set to 0
+            if (num < 0) num = 0;
 
             // Limit to 1,000,000
             if (num > 1000000) num = 1000000;
 
             // Fix to max 2 decimals
             input.value = num.toFixed(2).replace(/\.00$/, ""); // remove trailing .00
+            recalcCost(row);
         });
     }
 
@@ -127,8 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (!res.ok) throw new Error("Failed to load recipe");
 
-            const data = await res.json();
-            console.log("data is: ", data)
+            const data = await res.json();//console.log("data is: ", data)
             originalRecipeData = structuredClone(data); // deep copy to preserve original
             
             // populate form fields with data.recipe, ingredients, steps...
@@ -136,9 +225,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("portion-size-input").value = data.recipe.portion_size;
             document.getElementById("description-input").value = data.recipe.description;
 
-            // populate ingredients and steps into table/list as we did in Step 1
             // Populate ingredients table
-            ingredients = data.ingredients;
+            ingredients = data.ingredients;// console.log("ingredients:", ingredients);
             const tbody = document.getElementById("ingredients-tbody");
             tbody.innerHTML = ""; // clear existing rows
 
@@ -158,18 +246,19 @@ document.addEventListener("DOMContentLoaded", async () => {
                         <!-- You can add other options later -->
                     </select>
                     </td>
-                    <td>${Number(i.price).toFixed(4)}</td>
+                    <td class="cost-input" style="text-align: center;"></td>
                     <td><input type="number" class="base-quantity" value="${Number(1)}" step="any"></td>
                     <td>
                     <select class="base-unit-select">
                         <option value="${i.base_unit}" selected>${i.unit}</option>
-                        <!-- Options for kg/g/oz/lbs will come later -->
                     </select>
                     </td>
                     <td><input type="number" class="base-price" value="${Number(i.cost).toFixed(2)}" step="any"></td>
                     <td><button class="remove-ingredient-btn">Remove</button></td>
                 `;
                 tbody.appendChild(tr);
+                //const costCell = row.querySelector(".cost-input"); 
+                //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
 
                 initializeIngredientInput(tr, token);
 
@@ -177,14 +266,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 populateBaseUnits(tr, i.unit)
 
+                attachCostEvents(tr);
+
+                recalcCost(tr);
+
                 // For normal quantity (can be blank if user deletes it)
                 enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
 
                 // For base quantity (cannot be blank, defaults to 1)
                 enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
 
+                // For base quantity (cannot be blank, defaults to 1)
+                enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
+
                 
             });
+
+            // update total cost
+            //updateTotalRecipeCost();
 
             // Populate steps
             steps = data.steps;
@@ -200,7 +299,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             stepsContainer.appendChild(div);
             });
 
-            console.log("Recipe loaded successfully");
+            //console.log("Recipe loaded successfully");
         } catch (err) {
             console.error("Error loading recipe for edit:", err);
         }
@@ -291,10 +390,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (!fetchedIngredients.includes(currentValue)) {
                     this.value = "";
                     delete row.dataset.ingredientId;
-                    row.querySelector(".base-quantity").value = "";
-                    row.querySelector(".base-unit-select").innerHTML = "<option selected></option>";
-                    row.querySelector(".base-price").value = "";
-                    row.querySelector(".unit-select").innerHTML = "<option value=''>-- Select unit --</option>";
+                    row.querySelector(".quantity").value = "0";
+                    row.querySelector(".base-quantity").value = "0";
+                    row.querySelector(".base-unit-select").innerHTML = "<option>Select unit</option>";
+                    row.querySelector(".base-price").value = "0";
+                    row.querySelector(".unit-select").innerHTML = "<option value=''>Select unit</option>";
                 }
                 suggestionBox.style.display = "none";
                 activeIndex = -1;

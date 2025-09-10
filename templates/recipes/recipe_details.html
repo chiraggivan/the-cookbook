@@ -14,6 +14,7 @@
   </p>
 
   <p id="recipe-description"></p>
+  <p id="recipe-total-cost" style="text-align: right; font-weight: bold; margin-top: 0.25rem;"></p>
 
   <!-- show the below buttons only if logged in user and recipe owner same-->
   <div id="recipe-buttons" style="margin-top: 2rem; display: none;">
@@ -70,6 +71,7 @@
     const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
     const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
     
+    //load the data of recipe from the db to html page
     async function loadRecipeDetails() {
       try {
         const res = await fetch(`/recipes/api/recipe/${recipeId}`, {
@@ -157,13 +159,15 @@
             <td>${i.name}</td>
             <td>${i.quantity}</td>
             <td>${i.unit_name}</td>
-            <td>${Number(i.price).toFixed(4)}</td>
+            <td class="ingredient-price">${Number(i.price).toFixed(4)}</td>
             <td>${Number(1)}</td>
             <td>${i.unit}</td>
             <td>${Number(i.cost).toFixed(2)}</td>
           `;
           tbody.appendChild(tr);
         });
+
+        updateTotalRecipeCost(); // get total cost of recipe.
 
         // Steps (numbered list)
         const stepsContainer = document.getElementById("steps-container");
@@ -184,6 +188,22 @@
 
       } catch (err) {
         document.getElementById("error").textContent = err.message;
+      }
+    }
+
+    // calculate the total cost of recipe 
+    function updateTotalRecipeCost() {
+      const priceCells = document.querySelectorAll(".ingredient-price");
+      let total = 0;
+
+      priceCells.forEach(cell => {
+        const value = parseFloat(cell.textContent.replace(/,/g, "")) || 0;
+        total += value;
+      });
+
+      const totalCostEl = document.getElementById("recipe-total-cost");
+      if (totalCostEl) {
+        totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
       }
     }
 
