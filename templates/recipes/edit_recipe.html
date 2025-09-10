@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="/static/css/styles.css">
   <style>
     .ingredient-row input, .ingredient-row select {
-      width: 100%;
+      width: 90%;
     }
     .ingredient-row td {
       padding: 0.3rem;
@@ -94,7 +94,7 @@
   <div id="error"></div>
 
     <script>
-    window.recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId); window coz to send recipeId in js
+    window.recipeId = window.location.pathname.split("/").pop(); // window coz to send recipeId in js
     console.log("recipe id: ", window.recipeId);    
     </script>
     <script src="/static/js/edit-recipe.js" defer></script>

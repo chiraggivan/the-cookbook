@@ -46,7 +46,7 @@ def search_ingredients():
 @jwt_required()
 def get_ingredient_units():
     s_user_id = get_jwt_identity()
-    #print("user id is: ", s_user_id)
+    print("user id is: ", s_user_id)
     ingredient_id = request.args.get("ingredient", type=int)
     #print(" value of ingredient id :", ingredient_id)
     if not ingredient_id:
