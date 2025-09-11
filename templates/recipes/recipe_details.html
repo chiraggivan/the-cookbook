@@ -106,7 +106,7 @@
           document.getElementById('recipe-buttons').style.display = 'block';
           actionsEl.innerHTML = `
             <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-              <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Public"}</span>
+              <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Private"}</span>
               <label class="switch">
                 <input type="checkbox" id="privacy-toggle" ${recipe.privacy === "private" ? "checked" : ""}>
                 <span class="slider round"></span>
@@ -120,7 +120,7 @@
 
           privacyToggle.addEventListener("change", async () => {
             const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
-            privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
+            //privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
             
             try {
               const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {

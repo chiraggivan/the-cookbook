@@ -35,7 +35,7 @@ function validateRecipeForm() {
   if (!portionSize) {
     errorPS.textContent = "Portion size is required.";
     hasError = true;
-  } else if (portionSize.length > 20) {
+  } else if (portionSize.length < 1 || portionSize.length > 20) {
     errorPS.textContent = "Portion size must be less than 20 characters.";
     hasError = true;
   }

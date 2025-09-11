@@ -65,6 +65,7 @@
     <div id="steps-container"></div>
     <button id="add-step-btn" class="action-btn">Add Step</button>
 
+    <div id="error"></div>
     <div style="margin-top:1rem;">
       <button id="save-recipe-btn" class="action-btn">Save Recipe</button>
       <button id="cancel-edit-btn" class="action-btn">Cancel</button>
@@ -102,10 +103,11 @@
     </div>
   </template>
 
-  <div id="error"></div>
+  
 
     <script>
     window.recipeId = window.location.pathname.split("/").pop(); // window coz to send recipeId in js    
     </script>
+    <script src="/static/js/utils.js"></script>
     <script src="/static/js/edit-recipe.js" defer></script>
 </body>
