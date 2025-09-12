@@ -30,7 +30,7 @@
         const res = await fetch("/recipes/api/all_recipes", {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        console.log("Response object:", res);
+        //console.log("Response object:", res);
   
         if (!res.ok) {
           throw new Error("Failed to load recipes");

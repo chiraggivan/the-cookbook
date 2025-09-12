@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, session
+from flask import Blueprint, render_template, redirect, url_for, session, abort
+#from flask_jwt_extended import jwt_required, get_jwt_identity
 from db import get_db_connection
 from mysql.connector import Error
 
@@ -48,4 +49,22 @@ def create_recipe_page():
 
 @recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
 def edit_recipe_page(recipe_id):
-    return render_template("recipes/edit_recipe.html", recipe_id=recipe_id)
+   return render_template("recipes/edit_recipe.html", recipe_id=recipe_id)
+
+
+
+# @recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
+# @jwt_required()
+# def edit_recipe_page(recipe_id):
+#     user_id = get_jwt_identity()
+#     print("user_id :", user_id)
+#     recipe = Recipe.query.get_or_404(recipe_id)
+#     print("recipe is :", recipe)
+#     if recipe.owner_id != user_id:
+#         # Not the owner → redirect to view-only page
+#         return redirect(url_for("recipes/recipe_details.html", recipe_id=recipe_id))
+#         # OR abort(403) if you want to block entirely:
+#         # abort(403)
+
+#     # Owner → render edit page
+#     return render_template("recipes/edit_recipe.html", recipe_id=recipe_id)

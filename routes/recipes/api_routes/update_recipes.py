@@ -4,6 +4,87 @@ from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
 
+# get recipe details but also make sure owner is logged in
+@recipes_api_bp.route('/recipe/edit/<int:recipe_id>', methods=['GET'])
+@jwt_required()
+def get_recipe_details_for_update(recipe_id):
+
+    s_user_id = get_jwt_identity()
+    #print("logged in user id : ",s_user_id)
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        # check is the recipe owner is same as logged in users.
+        cursor.execute("""
+            SELECT 1 FROM recipes WHERE user_id =%s AND recipe_id = %s
+        """,(s_user_id, recipe_id))
+        isOwner = cursor.fetchone()
+        if not isOwner:
+            cursor.close()
+            conn.close()
+            return jsonify({'error':'you dont owe the recipe. please login with correct credentials'}), 403
+
+        #Get recipe info
+        cursor.execute("""
+            SELECT r.recipe_id, r.name, r.portion_size, r.description, r.privacy, r.created_at, r.user_id, u.username
+            FROM recipes r JOIN users u ON r.user_id = u.user_id 
+            WHERE r.recipe_id = %s 
+            AND r.is_active = 1
+            AND (r.user_id = %s
+            OR r.privacy = 'public')
+            """,(recipe_id, s_user_id))
+        recipe = cursor.fetchone()
+        if not recipe:
+            cursor.close()
+            conn.close()
+            return jsonify({'error':'Recipe not found.'}), 404
+
+        # Get recipe ingredients and its price
+        cursor.execute("""
+            SELECT 
+                i.ingredient_id,
+                i.name,
+                ri.recipe_ingredient_id,
+                ri.quantity,
+                u.unit_id,
+                u.unit_name,
+                ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
+                COALESCE(up.custom_price, i.default_price) AS cost,
+                COALESCE(up.base_unit, i.base_unit) AS unit
+            FROM recipe_ingredients ri 
+            JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+            JOIN units u ON ri.unit_id = u.unit_id
+            LEFT JOIN user_prices up ON up.user_id = %s 
+                AND up.ingredient_id = i.ingredient_id 
+                AND up.is_active = TRUE
+            WHERE ri.recipe_id = %s
+            AND ri.is_active = TRUE
+            """,(s_user_id, recipe_id))
+        ingredients = cursor.fetchall()
+
+        # Get recipe steps
+        cursor.execute("""
+            SELECT step_order, step_text, estimated_time
+            FROM recipe_procedures
+            WHERE recipe_id = %s
+            AND is_active = 1
+            ORDER BY step_order
+            """,(recipe_id,))
+        steps = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+        return jsonify({
+            'recipe': recipe,
+            'ingredients': ingredients,
+            'steps': steps
+            })
+    except Error as err:
+        return jsonify({'error': str(err)}), 500
+
 #get units of ingredients from unit table.
 @recipes_api_bp.route('/units/<int:ingredient_id>', methods=["GET"])
 @jwt_required()

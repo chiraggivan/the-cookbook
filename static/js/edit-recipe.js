@@ -214,12 +214,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function loadRecipeForEdit(recipeId, token) {
         
         try {
-            const res = await fetch(`/recipes/api/recipe/${recipeId}`, {
+            const res = await fetch(`/recipes/api/recipe/edit/${recipeId}`, {
             headers: { "Authorization": `Bearer ${token}` }
             });
 
-            if (!res.ok) throw new Error("Failed to load recipe");
-
+            //console.log("response is: ", await res)
+            if (res.status === 403) {
+                alert("You don’t have permission to edit this recipe.");
+                window.location.href = `/recipes/details/${recipeId}`; // redirect to view
+                return;
+        }
             const data = await res.json();//console.log("data is: ", data)
             originalRecipeData = structuredClone(data); // deep copy to preserve original
             
