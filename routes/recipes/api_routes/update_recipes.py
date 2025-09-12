@@ -3,6 +3,7 @@ from db import get_db_connection
 from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
+import re
 
 # get recipe details but also make sure owner is logged in
 @recipes_api_bp.route('/recipe/edit/<int:recipe_id>', methods=['GET'])
@@ -168,8 +169,8 @@ def update_privacy(recipe_id):
 @jwt_required()
 def update_recipe(recipe_id):
 
-    s_user_id = get_jwt_identity()
-    print("logged in user id : ",s_user_id)
+    s_user_id = get_jwt_identity() #print("logged in user id : ",s_user_id)
+    print("the body from frontend is : ", request.get_json())
     try:
         def normalize_recipe_and_ingredient_data(data):
             cleaned = {}
@@ -386,7 +387,8 @@ def update_recipe(recipe_id):
         if error:
             return jsonify({"error": error, "submitted_data": data}), 400  
         # -------------------------- normailisation and validation done -----------------------
-        
+        #print("data about to be checked with db is :", data)
+
         # get db connection
         conn = get_db_connection()
         if conn is None:
@@ -409,7 +411,7 @@ def update_recipe(recipe_id):
         if not recipe:
             cursor.close()
             conn.close()
-            return jsonify({'error': 'Recipe not found or not authorized'}), 404
+            return jsonify({'error': 'Recipe not found or not authorized'}), 403
 
         # Initialize update fields
         update_fields = []

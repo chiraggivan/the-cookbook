@@ -40,3 +40,55 @@ function validateRecipeForm({ name, portion_size, description, privacy }) {
   
   return {errors, data: { name, portion_size, description } };
 }
+// show alert function common for all pages
+function showAlert(message, isError = false, autoClose = true) {
+  const overlay = document.getElementById("modal-overlay");
+  const alertBox = document.getElementById("alert-box");
+  const alertMessage = document.getElementById("alert-message");
+  const alertActions = document.getElementById("alert-actions");
+
+  alertMessage.textContent = message;
+  alertBox.className = "alert-box" + (isError ? " error" : " success");
+  overlay.style.display = "flex";
+  alertActions.style.display = "none"; // hide OK button if autoclose
+
+  if (autoClose) {
+    setTimeout(() => {
+      overlay.style.display = "none";
+    }, 2000); // hide after 2s
+  } else {
+    alertActions.style.display = "block"; // show OK button
+    document.getElementById("alert-ok").onclick = () => {
+      overlay.style.display = "none";
+    };
+  }
+}
+// show confirm message
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modal-overlay");
+    const alertBox = document.getElementById("alert-box");
+    const alertMessage = document.getElementById("alert-message");
+    const alertActions = document.getElementById("alert-actions");
+
+    alertMessage.textContent = message;
+    alertBox.className = "alert-box";
+    overlay.style.display = "flex";
+
+    // Replace actions with Yes/No buttons
+    alertActions.innerHTML = `
+      <button id="confirm-yes">Yes</button>
+      <button id="confirm-no" style="background:#f44336;">No</button>
+    `;
+    alertActions.style.display = "block";
+
+    document.getElementById("confirm-yes").onclick = () => {
+      overlay.style.display = "none";
+      resolve(true);
+    };
+    document.getElementById("confirm-no").onclick = () => {
+      overlay.style.display = "none";
+      resolve(false);
+    };
+  });
+}

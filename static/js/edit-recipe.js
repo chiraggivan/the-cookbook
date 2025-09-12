@@ -451,6 +451,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id) });
                 return; // skip validation for removed row
             }
+             const ingredient_id = row.dataset.ingredientId || null;
             const name = row.querySelector(".ingredient-name").value.trim();
             const quantity = row.querySelector(".quantity").value.trim();
             const unit_id = row.querySelector(".unit-select").value;
@@ -470,6 +471,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const ingredientObj = {
                     recipe_ingredient_id: recipe_ingredient_id ? parseInt(recipe_ingredient_id) : null,
                     name,
+                    ingredient_id: parseInt(ingredient_id),
                     quantity: parseFloat(quantity),
                     unit_id: parseInt(unit_id),
                     base_quantity: parseFloat(base_quantity),
@@ -600,7 +602,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-
     // submitting changes of recipe Save BUTTON
     document.getElementById("save-recipe-btn").addEventListener("click", async () => {
         // Validate all form sections
@@ -639,15 +640,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Usage example
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
+
+        // Submit recipe to backend API
         console.log("Payload for recipe update:", recipePayload);
+        const errorBox = document.getElementById("error");
+        const recipeId =window.recipeId;
+        console.log(" recipeId :", recipeId)
+        console.log("about to fetch")
+        try {
+        const response = await fetch(`/recipes/api/update-recipe/${recipeId}`, {
+            method: "PATCH",
+            headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(recipePayload)
+        });
+        const data = await response.json();
+        //console.log("After fetch command for update-recipe", response)
+        console.log("data/msg in json coming from backend")
+        if (!response.ok) {
+            errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
+            console.log("Submitted data (for debug):", data.submitted_data);
+            return;
+        };
 
-
-
+        // Display success message and redirect
+        alert(data.message || "Recipe updated successfully!");
+        console.log("submitted data: ", data)
+        //errorBox.textContent = data.message || "Recipe created successfully!";
+        setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 0);
+        } catch (err) {
+        errorBox.textContent = err.message;
+        }        
 
     });
-
-    
-   
-
     
 });
