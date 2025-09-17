@@ -3,7 +3,23 @@ from db import get_db_connection
 from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
+from decimal import Decimal
 import re
+
+# normalise row data for decimals as float to send as number in json
+def normalize_row(row):
+    normalized = {}
+    for k, v in row.items():
+        if isinstance(v, Decimal):
+            normalized[k] = float(v)
+        else:
+            normalized[k] = v
+
+    if "base_quantity" not in normalized:
+        normalized["base_quantity"] = 1
+
+    return normalized
+    
 
 # get recipe details but also make sure owner is logged in
 @recipes_api_bp.route('/recipe/edit/<int:recipe_id>', methods=['GET'])
@@ -12,6 +28,7 @@ def get_recipe_details_for_update(recipe_id):
 
     s_user_id = get_jwt_identity()
     #print("logged in user id : ",s_user_id)
+
     try:
         conn = get_db_connection()
         if conn is None:
@@ -53,7 +70,7 @@ def get_recipe_details_for_update(recipe_id):
                 u.unit_id,
                 u.unit_name,
                 ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
-                COALESCE(up.custom_price, i.default_price) AS cost,
+                COALESCE(up.custom_price, i.default_price) AS base_price,
                 COALESCE(up.base_unit, i.base_unit) AS unit
             FROM recipe_ingredients ri 
             JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
@@ -64,7 +81,9 @@ def get_recipe_details_for_update(recipe_id):
             WHERE ri.recipe_id = %s
             AND ri.is_active = TRUE
             """,(s_user_id, recipe_id))
-        ingredients = cursor.fetchall()
+        ingredients = [normalize_row(r) for r in cursor.fetchall()]
+        
+            
 
         # Get recipe steps
         cursor.execute("""
@@ -104,8 +123,7 @@ def get_units(ingredient_id):
 @jwt_required()
 def update_privacy(recipe_id):
 
-    s_user_id = int(get_jwt_identity())
-    print("logged in user id : ",s_user_id, " ", type(s_user_id))
+    s_user_id = int(get_jwt_identity()) # print("logged in user id : ",s_user_id, " ", type(s_user_id))
     try:
         # get data , normalize and validate 
         data = request.get_json()
@@ -131,8 +149,7 @@ def update_privacy(recipe_id):
             SELECT user_id FROM recipes 
             WHERE recipe_id = %s  AND is_active = TRUE
         """, (recipe_id,))
-        recipeOwner = cursor.fetchone()
-        print("recipeOwner user_id : ", recipeOwner["user_id"], " ", type(recipeOwner["user_id"]))
+        recipeOwner = cursor.fetchone() # print("recipeOwner user_id : ", recipeOwner["user_id"], " ", type(recipeOwner["user_id"]))
         if not recipeOwner["user_id"]:
             cursor.close()
             conn.close()
@@ -169,8 +186,8 @@ def update_privacy(recipe_id):
 @jwt_required()
 def update_recipe(recipe_id):
 
-    s_user_id = get_jwt_identity() #print("logged in user id : ",s_user_id)
-    print("the body from frontend is : ", request.get_json())
+    s_user_id = get_jwt_identity() # print("logged in user id : ",s_user_id)
+    # print("the body from frontend is : ", request.get_json())
     try:
         def normalize_recipe_and_ingredient_data(data):
             cleaned = {}
@@ -271,7 +288,7 @@ def update_recipe(recipe_id):
                             cleaned_remove_ing[field] = value                
                     cleaned_remove_ingredients.append(cleaned_remove_ing)            
                 cleaned["remove_ingredients"] = cleaned_remove_ingredients
-            return cleaned, None
+            return cleaned
         
         def validate_recipe_and_ingredient_data(data):
             
@@ -378,7 +395,7 @@ def update_recipe(recipe_id):
                 
             return None
 
-        data, error = normalize_recipe_and_ingredient_data(request.get_json())
+        data = normalize_recipe_and_ingredient_data(request.get_json())
         #Check if any data provided
         if not data:
             return jsonify({'error': 'No data provided'}), 400
@@ -421,17 +438,17 @@ def update_recipe(recipe_id):
 
         # Handle recipe fields update
         if 'name' in data and data['name'] and isinstance(data['name'], str):
-            print("name :", data['name'])  #  ----------------------PRINT--------------------------------------
+            #print("name :", data['name'])  #  ----------------------PRINT--------------------------------------
             update_fields.append("name = %s")
             update_values.append(data['name'])
             current_name = data['name']
         if 'portion_size' in data and data['portion_size'] and isinstance(data['portion_size'], str):
-            print("portion_size :", data['portion_size']) #  ----------------------PRINT--------------------------------------
+            #print("portion_size :", data['portion_size']) #  ----------------------PRINT--------------------------------------
             update_fields.append("portion_size = %s")
             update_values.append(data['portion_size'])
             current_portion_size = data['portion_size']
         if 'privacy' in data and data['privacy'] in ('public', 'private'):
-            print("privacy :", data['privacy']) #  ----------------------PRINT--------------------------------------
+            #print("privacy :", data['privacy']) #  ----------------------PRINT--------------------------------------
             update_fields.append("privacy = %s")
             update_values.append(data['privacy'])
         if 'description' in data:
@@ -475,12 +492,13 @@ def update_recipe(recipe_id):
                     old_ing_id = row['ingredient_id']
                     old_quantity = row['quantity']
                     old_unit_id = row['unit_id']
-                    print("----------------") #  ----------------------PRINT--------------------------------------
-                    print("recipe_ingredient_id : ", ing.get('recipe_ingredient_id')) #  ----------------------PRINT--------------------------------------
-                    print("old ing id :", old_ing_id) #  ----------------------PRINT--------------------------------------
-                    print("old quantity:", old_quantity) #  ----------------------PRINT--------------------------------------
-                    print("old unit id :", old_unit_id) #  ----------------------PRINT--------------------------------------
-                    print("----------------") #  ----------------------PRINT--------------------------------------
+                    # print("----------------") #  ----------------------PRINT--------------------------------------
+                    # print("recipe_ingredient_id : ", ing.get('recipe_ingredient_id')) #  ----------------------PRINT--------------------------------------
+                    # print("old ing id :", old_ing_id) #  ----------------------PRINT--------------------------------------
+                    # print("old quantity:", old_quantity) #  ----------------------PRINT--------------------------------------
+                    # print("old unit id :", old_unit_id) #  ----------------------PRINT--------------------------------------
+                    # print("----------------") #  ----------------------PRINT--------------------------------------
+
                 # check if new ingredient id exists in ingredients table
                 if 'ingredient_id' in ing:
                     cursor.execute("""SELECT base_unit FROM ingredients 
@@ -538,7 +556,7 @@ def update_recipe(recipe_id):
             if not row:
                 return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
                                      
-        #return jsonify({"msg": "every ingredient check and data ready to to be inserted for update", "submitted_data":data}), 200
+        return jsonify({"msg": "every ingredient check and data ready to to be inserted for update", "submitted_data":data}), 200
         # Update recipe table if any fields are provided
         print("update_fields :", update_fields) #  ----------------------PRINT--------------------------------------
         if update_fields:
@@ -550,14 +568,6 @@ def update_recipe(recipe_id):
                 SET {', '.join(update_fields)} 
                 WHERE recipe_id = %s AND user_id = %s AND is_active = TRUE
             """, update_values)
-            cursor.execute("""
-                SELECT 1 FROM recipes
-                WHERE recipe_id = %s AND user_id = %s
-            """,(update_values[1], update_values[2]))
-            if not cursor.fetchone():
-                cursor.close()
-                conn.close()
-                return jsonify({'error': 'Recipe not found or not authorized'}), 404
                 
         # Remove ingredients if any fields are provided
         for ing in data.get('remove_ingredients', []):
@@ -576,7 +586,6 @@ def update_recipe(recipe_id):
 
                 if action == 'add':
                     #Check if ingredient exists in recipe_ingredients and is inactive
-                    #cursor = conn.cursor(MySQLdb.cursors.DictCursor)
                     cursor = conn.cursor(dictionary=True)
                     cursor.execute("""
                         SELECT recipe_ingredient_id FROM recipe_ingredients 

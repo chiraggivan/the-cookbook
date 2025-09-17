@@ -1,3 +1,52 @@
+MySQL Database Management
+| Command                                                                  | Description                                         |
+| ------------------------------------------------------------------------ | --------------------------------------------------- |
+| `SHOW DATABASES;`                                                        | List all databases (schemas) on the server          |
+| `SHOW SCHEMAS;`                                                          | Same as `SHOW DATABASES`                            |
+| `CREATE DATABASE mydb;`                                                  | Create a new database                               |
+| `CREATE DATABASE IF NOT EXISTS mydb;`                                    | Create database only if it doesn’t already exist    |
+| `CREATE DATABASE mydb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;` | Create database with specific charset & collation   |
+| `USE mydb;`                                                              | Select database to work with                        |
+| `SELECT DATABASE();`                                                     | Show currently selected database                    |
+| `ALTER DATABASE mydb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`  | Change database default charset/collation           |
+| `DROP DATABASE mydb;`                                                    | Permanently delete a database ⚠️                    |
+| `DROP DATABASE IF EXISTS mydb;`                                          | Delete only if it exists (avoids errors)            |
+| `RENAME DATABASE olddb TO newdb;`                                        | Rename database (⚠️ works in MariaDB, not MySQL 8+) |
+
+Backup & Restore (CLI)
+| Command                                       | Description                 |
+| --------------------------------------------- | --------------------------- |
+| `mysqldump -u root -p mydb > mydb_backup.sql` | Export (backup) a database  |
+| `mysql -u root -p mydb < mydb_backup.sql`     | Import (restore) a database |
+
+
+Table Management (inside a database)
+| Command                                                         | Description                                     |
+| --------------------------------------------------------------- | ----------------------------------------------- |
+| `SHOW TABLES;`                                                  | List all tables in current database             |
+| `DESCRIBE tablename;` or `DESC tablename;`                      | Show table structure (columns, types, keys)     |
+| `SHOW CREATE TABLE tablename;`                                  | Show the SQL used to create a table             |
+| `CREATE TABLE mytable (id INT PRIMARY KEY, name VARCHAR(100));` | Create new table                                |
+| `DROP TABLE mytable;`                                           | Delete table permanently                        |
+| `DROP TABLE IF EXISTS mytable;`                                 | Delete table only if it exists                  |
+| `ALTER TABLE mytable ADD COLUMN age INT;`                       | Add a new column                                |
+| `ALTER TABLE mytable MODIFY COLUMN name VARCHAR(200);`          | Modify column type/definition                   |
+| `ALTER TABLE mytable DROP COLUMN age;`                          | Remove a column                                 |
+| `TRUNCATE TABLE mytable;`                                       | Delete all rows in a table (fast, irreversible) |
+
+User & Access Management
+| Command                                                        | Description                                 |
+| -------------------------------------------------------------- | ------------------------------------------- |
+| `CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';` | Create new user                             |
+| `GRANT ALL PRIVILEGES ON mydb.* TO 'username'@'localhost';`    | Give user full rights on a database         |
+| `REVOKE ALL PRIVILEGES ON mydb.* FROM 'username'@'localhost';` | Remove privileges                           |
+| `DROP USER 'username'@'localhost';`                            | Delete user                                 |
+| `SHOW GRANTS FOR 'username'@'localhost';`                      | Show what privileges a user has             |
+| `FLUSH PRIVILEGES;`                                            | Reload privilege tables (run after changes) |
+
+
+
+
 helpful MySQL commands
 
 show tables;

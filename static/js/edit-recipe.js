@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         <option value="${i.base_unit}" selected>${i.unit}</option>
                     </select>
                     </td>
-                    <td><input type="number" class="base-price" value="${Number(i.cost).toFixed(2)}" step="any"></td>
+                    <td><input type="number" class="base-price" value="${Number(i.base_price).toFixed(2)}" step="any"></td>
                     <td><button class="remove-ingredient-btn">Remove</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -424,6 +424,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             row.querySelector(".base-price").value = item.price ? Number(item.price).toFixed(2) : "";
             row.querySelector(".base-unit-select").innerHTML = `<option selected>${item.base_unit || ""}</option>`;
 
+            // Store defaults for payload comparison
+            row._default_base_quantity = 1;
+            row._default_base_price = item.price ? Number(item.price).toFixed(2) : 0;
+            row._default_base_unit = item.base_unit || "";
+
             // Populate the units dropdown using the correct 4 params
             await populateUnits(row, item.ingredient_id, null, token);
             populateBaseUnits(row, item.base_unit); 
@@ -451,7 +456,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id) });
                 return; // skip validation for removed row
             }
-             const ingredient_id = row.dataset.ingredientId || null;
+            const ingredient_id = row.dataset.ingredientId || null;
             const name = row.querySelector(".ingredient-name").value.trim();
             const quantity = row.querySelector(".quantity").value.trim();
             const unit_id = row.querySelector(".unit-select").value;
@@ -476,7 +481,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                     unit_id: parseInt(unit_id),
                     base_quantity: parseFloat(base_quantity),
                     base_unit,
-                    base_price: parseFloat(base_price)
+                    base_price: parseFloat(base_price),
+
+                     // --- attach defaults ---
+                    _default_base_quantity: row._default_base_quantity,
+                    _default_base_unit: row._default_base_unit,
+                    _default_base_price: row._default_base_price
                 };
                 // check if its a new row or updating existing row
                 if (ingredientObj.recipe_ingredient_id) {
@@ -502,11 +512,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         return { filledRows, add_ingredients, update_ingredients, remove_ingredients, errorMessage: null };
     }
 
-    //
+    //compare the original recipe ingredientsand new. Only attach those that are not same - i.e. updated.
     function getRecipePayload(originalRecipeData, completeRecipeData) {
         const payload = {};
 
-        // Compare each field with original
+        // Compare top-level recipe fields
         if (completeRecipeData.name !== originalRecipeData.recipe.name) {
             payload.name = completeRecipeData.name;
         }
@@ -517,31 +527,73 @@ document.addEventListener("DOMContentLoaded", async () => {
             payload.description = completeRecipeData.description;
         }
 
-        // --- Ingredients ---
-        payload.add_ingredients = completeRecipeData.add_ingredients; // always include
-        payload.remove_ingredients = completeRecipeData.remove_ingredients; // always include
+        // Always include additions/removals
+        payload.add_ingredients = completeRecipeData.add_ingredients;
+        payload.remove_ingredients = completeRecipeData.remove_ingredients;
 
-        // Updates - filter to only include changed ones
-        payload.update_ingredients = completeRecipeData.update_ingredients.filter(updatedRow => {
-            const originalRow = originalRecipeData.ingredients.find(
-                ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
-            );
-            if (!originalRow) return true; // brand new row
+        // Updates — but only field-level selective
+        payload.update_ingredients = completeRecipeData.update_ingredients
+            .map(updatedRow => {
+                const originalRow = originalRecipeData.ingredients.find(
+                    ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
+                );
 
-            // Helpers
-            const clean = v => (typeof v === "string" ? v.trim() : v);
-            const num = v => (v === null || v === undefined ? null : parseFloat(v));
+                if (!originalRow) {
+                    // brand new row (shouldn't happen here usually, but just in case)
+                    return updatedRow;
+                }
 
-            // Compare only relevant fields
-            if (clean(updatedRow.name) !== clean(originalRow.name)) return true;
-            if (num(updatedRow.quantity) !== num(originalRow.quantity)) return true;
-            if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) return true;
+                const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
 
-            return false; // unchanged
-        });
+                // CASE 1: Ingredient name/id changed
+                if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
+                    changes.ingredient_id = updatedRow.ingredient_id;
+                    changes.quantity = updatedRow.quantity;
+                    changes.unit_id = updatedRow.unit_id;
 
+                    // compare base fields with "new defaults" (not originalRow)
+                    const newDefaults = {
+                        base_quantity: updatedRow._default_base_quantity, // keep these defaults when ingredient was selected
+                        base_unit: updatedRow._default_base_unit,
+                        base_price: updatedRow._default_base_price
+                    };
 
-        return payload; // empty object if nothing changed
+                    if (
+                        parseFloat(updatedRow.base_quantity) !== parseFloat(newDefaults.base_quantity) ||
+                        updatedRow.base_unit !== newDefaults.base_unit ||
+                        parseFloat(updatedRow.base_price) !== parseFloat(newDefaults.base_price)
+                    ) {
+                        changes.base_quantity = updatedRow.base_quantity;
+                        changes.base_unit = updatedRow.base_unit;
+                        changes.base_price = updatedRow.base_price;
+                    }
+
+                    return changes;
+                }
+
+                // CASE 2: Same ingredient → compare with original row
+                if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
+                    changes.quantity = updatedRow.quantity;
+                }
+                if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
+                    changes.unit_id = updatedRow.unit_id;
+                }
+
+                if (
+                    parseFloat(updatedRow.base_quantity) !== parseFloat(originalRow.base_quantity) ||
+                    updatedRow.base_unit !== originalRow.unit ||
+                    parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
+                ) {
+                    changes.base_quantity = updatedRow.base_quantity;
+                    changes.base_unit = updatedRow.base_unit;
+                    changes.base_price = updatedRow.base_price;
+                }
+
+                return Object.keys(changes).length > 1 ? changes : null;
+            })
+            .filter(Boolean);
+
+        return payload;
     }
 
      // add new row for ingredientin table
@@ -634,9 +686,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         completeRecipeData.add_ingredients = add_ingredients;
         completeRecipeData.update_ingredients = update_ingredients;
-        completeRecipeData.remove_ingredients = remove_ingredients;
+        completeRecipeData.remove_ingredients = remove_ingredients; // 
         console.log("completeRecipeData : ", completeRecipeData);
-        console.log("total Ingredients to save/update:", filledRows.length);
+        console.log("filled rows:", filledRows.length);
 
         // Usage example
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
@@ -644,9 +696,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Submit recipe to backend API
         console.log("Payload for recipe update:", recipePayload);
         const errorBox = document.getElementById("error");
-        const recipeId =window.recipeId;
-        console.log(" recipeId :", recipeId)
-        console.log("about to fetch")
+        const recipeId =window.recipeId; //console.log(" recipeId :", recipeId)
+        
         try {
         const response = await fetch(`/recipes/api/update-recipe/${recipeId}`, {
             method: "PATCH",
@@ -658,7 +709,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         const data = await response.json();
         //console.log("After fetch command for update-recipe", response)
-        console.log("data/msg in json coming from backend")
+
         if (!response.ok) {
             errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
             console.log("Submitted data (for debug):", data.submitted_data);
@@ -666,10 +717,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         // Display success message and redirect
-        alert(data.message || "Recipe updated successfully!");
-        console.log("submitted data: ", data)
+        //alert(data.message || "Recipe updated successfully!");
+        console.log("End of submit button function ")
         //errorBox.textContent = data.message || "Recipe created successfully!";
-        setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 0);
+        //setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 0);
         } catch (err) {
         errorBox.textContent = err.message;
         }        
