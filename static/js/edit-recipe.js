@@ -527,56 +527,77 @@ document.addEventListener("DOMContentLoaded", async () => {
             payload.description = completeRecipeData.description;
         }
 
-        // Always include additions/removals
-        payload.add_ingredients = completeRecipeData.add_ingredients;
+        // --- Additions (clean + selective base fields) ---
+        payload.add_ingredients = completeRecipeData.add_ingredients.map(newRow => {
+            const cleaned = {
+                ingredient_id: newRow.ingredient_id,
+                quantity: parseFloat(newRow.quantity),
+                unit_id: parseInt(newRow.unit_id)
+            };
+
+            // Compare against defaults
+            const defaultBaseQuantity = parseFloat(newRow._default_base_quantity);
+            const defaultBaseUnit = newRow._default_base_unit;
+            const defaultBasePrice = parseFloat(newRow._default_base_price);
+
+            if (
+                parseFloat(newRow.base_quantity) !== defaultBaseQuantity ||
+                newRow.base_unit !== defaultBaseUnit ||
+                parseFloat(newRow.base_price) !== defaultBasePrice
+            ) {
+                cleaned.base_quantity = parseFloat(newRow.base_quantity);
+                cleaned.base_unit = newRow.base_unit;
+                cleaned.base_price = Number(parseFloat(newRow.base_price).toFixed(2));
+            }
+
+            return cleaned;
+        });
+
+        // --- Removals (always include) ---
         payload.remove_ingredients = completeRecipeData.remove_ingredients;
 
-        // Updates — but only field-level selective
+        // --- Updates (your existing logic with tweak above) ---
         payload.update_ingredients = completeRecipeData.update_ingredients
             .map(updatedRow => {
                 const originalRow = originalRecipeData.ingredients.find(
                     ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
                 );
 
-                if (!originalRow) {
-                    // brand new row (shouldn't happen here usually, but just in case)
-                    return updatedRow;
-                }
+                if (!originalRow) return updatedRow;
 
                 const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
 
-                // CASE 1: Ingredient name/id changed
+                // CASE 1: Ingredient changed
                 if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
                     changes.ingredient_id = updatedRow.ingredient_id;
-                    changes.quantity = updatedRow.quantity;
-                    changes.unit_id = updatedRow.unit_id;
+                    changes.quantity = parseFloat(updatedRow.quantity);
+                    changes.unit_id = parseInt(updatedRow.unit_id);
 
-                    // compare base fields with "new defaults" (not originalRow)
                     const newDefaults = {
-                        base_quantity: updatedRow._default_base_quantity, // keep these defaults when ingredient was selected
+                        base_quantity: parseFloat(updatedRow._default_base_quantity),
                         base_unit: updatedRow._default_base_unit,
-                        base_price: updatedRow._default_base_price
+                        base_price: parseFloat(updatedRow._default_base_price)
                     };
 
                     if (
-                        parseFloat(updatedRow.base_quantity) !== parseFloat(newDefaults.base_quantity) ||
+                        parseFloat(updatedRow.base_quantity) !== newDefaults.base_quantity ||
                         updatedRow.base_unit !== newDefaults.base_unit ||
-                        parseFloat(updatedRow.base_price) !== parseFloat(newDefaults.base_price)
+                        parseFloat(updatedRow.base_price) !== newDefaults.base_price
                     ) {
-                        changes.base_quantity = updatedRow.base_quantity;
+                        changes.base_quantity = parseFloat(updatedRow.base_quantity);
                         changes.base_unit = updatedRow.base_unit;
-                        changes.base_price = updatedRow.base_price;
+                        changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
                     }
 
                     return changes;
                 }
 
-                // CASE 2: Same ingredient → compare with original row
+                // CASE 2: Same ingredient
                 if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
-                    changes.quantity = updatedRow.quantity;
+                    changes.quantity = parseFloat(updatedRow.quantity);
                 }
                 if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
-                    changes.unit_id = updatedRow.unit_id;
+                    changes.unit_id = parseInt(updatedRow.unit_id);
                 }
 
                 if (
@@ -584,9 +605,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     updatedRow.base_unit !== originalRow.unit ||
                     parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
                 ) {
-                    changes.base_quantity = updatedRow.base_quantity;
+                    changes.base_quantity = parseFloat(updatedRow.base_quantity);
                     changes.base_unit = updatedRow.base_unit;
-                    changes.base_price = updatedRow.base_price;
+                    changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
                 }
 
                 return Object.keys(changes).length > 1 ? changes : null;
