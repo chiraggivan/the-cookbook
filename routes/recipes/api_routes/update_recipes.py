@@ -115,7 +115,7 @@ def get_units(ingredient_id):
     units = cursor.fetchall()
     cursor.close()
     conn.close()
-    print("units :", units)
+    # print("units :", units)
     return jsonify(units), 200
 
 # update privacy only(PUT)
@@ -452,7 +452,7 @@ def update_recipe(recipe_id):
             update_fields.append("privacy = %s")
             update_values.append(data['privacy'])
         if 'description' in data:
-            print("description :", data['description']) #  ----------------------PRINT--------------------------------------
+            # print("description :", data['description']) #  ----------------------PRINT--------------------------------------
             update_fields.append("description = %s")
             update_values.append(data['description'] if data['description'] is not None else None)
 
@@ -556,13 +556,14 @@ def update_recipe(recipe_id):
             if not row:
                 return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
                                      
-        return jsonify({"msg": "every ingredient check and data ready to to be inserted for update", "submitted_data":data}), 200
+        # return jsonify({"msg": "every ingredient check and data ready to to be inserted for update"}), 200
+        # ----------------------------- UPDATE in DB BEGINS BELOW -------------------------------------------------
+
         # Update recipe table if any fields are provided
-        print("update_fields :", update_fields) #  ----------------------PRINT--------------------------------------
         if update_fields:
             update_values.append(recipe_id)
             update_values.append(s_user_id)
-            print("update_values :", update_values) #  ----------------------PRINT--------------------------------------
+        
             cursor.execute(f"""
                 UPDATE recipes 
                 SET {', '.join(update_fields)} 
@@ -687,7 +688,7 @@ def update_recipe(recipe_id):
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'message': 'Recipe updated successfully'}), 200
+        return jsonify({'message': 'Recipe updated successfully!!!'}), 200
 
     except Error as err:
         if conn and conn.is_connected():

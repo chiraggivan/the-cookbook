@@ -14,6 +14,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const unitSelect = row.querySelector(".unit-select");
         unitSelect.innerHTML = ""; // clear old options
         //console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
+
+        // Add the default "Select" option first
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "Select";
+        unitSelect.appendChild(defaultOption);
+
         try {
             const res = await fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
             headers: { "Authorization": `Bearer ${token}` }
@@ -86,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pc: {base: "pc", factors: {pc :1}}
 };
 
-    // recalculate teh cost of ingredient as per the unit selected
+    // recalculate the cost of ingredient as per the unit selected
     function recalcCost(row) {
         const quantityInput = row.querySelector(".quantity");
         const unitSelect = row.querySelector(".unit-select");
@@ -95,11 +102,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const basePriceInput = row.querySelector(".base-price");
         const costCell = row.querySelector(".cost-input");
 
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const baseQuantity = parseFloat(baseQuantityInput.value) || 0;
+        const quantity = parseFloat(quantityInput.value) || "";
+        const baseQuantity = parseFloat(baseQuantityInput.value) ||"";
         const baseUnit = baseUnitSelect.value;
-        const basePrice = parseFloat(basePriceInput.value) || 0;
-
+        const basePrice = parseFloat(basePriceInput.value) || "";
+        
         if (!quantity || !baseQuantity || !baseUnit || !basePrice) {
             costCell.textContent = "";
             return;
@@ -123,7 +130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
 
         const selectedOption = unitSelect.options[unitSelect.selectedIndex];
-        const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor || 1);
+        const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor);
 
         const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
         costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
@@ -184,7 +191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // Empty case → force 0
             if (val === "") {
-                input.value = "0";
+                input.value = "";
                 recalcCost(row);
                 return;
             }
@@ -320,8 +327,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         let fetchedIngredients = [];
         let ingredientData = [];
         let activeIndex = -1;
+        let initialValue = ""; // Track initial input value on focus
 
-        // fetching list for ingredients by text in input and click the ingredient
+        // Store initial value when the input is focused
+        input.addEventListener("focus", function () {
+            initialValue = this.value.trim().toLowerCase();
+        });
+
+        // Fetching list for ingredients by text in input and click the ingredient
         input.addEventListener("input", async function () {
             const query = this.value.trim().toLowerCase();
             activeIndex = -1;
@@ -384,7 +397,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
                     selectIngredient(selectedItem, row);
 
-                        // Move focus to the next input (quantity)
+                    // Move focus to the next input (quantity)
                     const nextInput = row.querySelector(".quantity");
                     if (nextInput) nextInput.focus();
                 }
@@ -392,17 +405,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         });
 
+        // Handle blur to clear row only if user typed an invalid value or input is empty
         input.addEventListener("blur", function () {
             setTimeout(() => {
                 const currentValue = this.value.trim().toLowerCase();
-                if (!fetchedIngredients.includes(currentValue)) {
+                // Clear row if input is empty or user typed an invalid value
+                if (!currentValue || (currentValue !== initialValue && !fetchedIngredients.includes(currentValue))) {
                     this.value = "";
                     delete row.dataset.ingredientId;
-                    row.querySelector(".quantity").value = "0";
-                    row.querySelector(".base-quantity").value = "0";
+                    row.querySelector(".quantity").value = "";
+                    row.querySelector(".base-quantity").value = "";
                     row.querySelector(".base-unit-select").innerHTML = "<option>Select unit</option>";
-                    row.querySelector(".base-price").value = "0";
+                    row.querySelector(".base-price").value = "";
                     row.querySelector(".unit-select").innerHTML = "<option value=''>Select unit</option>";
+                    recalcCost(row);
                 }
                 suggestionBox.style.display = "none";
                 activeIndex = -1;
@@ -435,9 +451,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             suggestionBox.style.display = "none";
         }
-
-        
-    }      
+    }
 
     // validation of ingredient data
     function validateIngredientRows() {
@@ -607,7 +621,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ) {
                     changes.base_quantity = parseFloat(updatedRow.base_quantity);
                     changes.base_unit = updatedRow.base_unit;
-                    changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
+                    changes.base_price = Number(parseFloat(updatedRow.base_price).toFixed(2));
                 }
 
                 return Object.keys(changes).length > 1 ? changes : null;
@@ -635,7 +649,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </select>
             </td>
             <td class="cost-input" style="text-align: right;"></td>
-            <td><input type="number" class="base-quantity" value="1" step="any"></td>
+            <td><input type="number" class="base-quantity" value="" step="any"></td>
             <td>
             <select class="base-unit-select">
                 <option value="">-- Select --</option>
@@ -656,11 +670,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
    
     // remove button logic for ingredients 
-    document.addEventListener("click", (e) => {
+    document.addEventListener("click", async (e) => {
         if (e.target.classList.contains("remove-ingredient-btn")) {
             const row = e.target.closest("tr");
             const recipeIngredientId = row.dataset.recipeIngredientId;
+            const ingredientName = row.querySelector(".ingredient-name").value;
 
+            // If ingredient is empty, remove row immediately
+            if (!ingredientName) {
+                row.remove();
+                updateTotalRecipeCost();
+                return;
+            }
+
+            // Ask for confirmation using the modal
+            const confirmed = await showConfirm(`Remove ${ingredientName}?`);
+
+            if (!confirmed) return; // user cancelled
             if (recipeIngredientId) {
             // Mark the row as removed
             row.dataset.removed = "true";
@@ -698,7 +724,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         } 
         const completeRecipeData = data;
         
-        console.log("originalRecipeData : ", originalRecipeData);
+        //console.log("originalRecipeData : ", originalRecipeData);
         const { filledRows, add_ingredients, update_ingredients, remove_ingredients, errorMessage}  = validateIngredientRows();
         if (errorMessage) {
             console.log("error from ingredients table:", errorMessage);
@@ -708,14 +734,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         completeRecipeData.add_ingredients = add_ingredients;
         completeRecipeData.update_ingredients = update_ingredients;
         completeRecipeData.remove_ingredients = remove_ingredients; // 
-        console.log("completeRecipeData : ", completeRecipeData);
-        console.log("filled rows:", filledRows.length);
+        //console.log("completeRecipeData : ", completeRecipeData);
+        //console.log("filled rows:", filledRows.length);
 
         // Usage example
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
 
         // Submit recipe to backend API
-        console.log("Payload for recipe update:", recipePayload);
+        //console.log("Payload for recipe update:", recipePayload);
         const errorBox = document.getElementById("error");
         const recipeId =window.recipeId; //console.log(" recipeId :", recipeId)
         
@@ -738,10 +764,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         // Display success message and redirect
-        //alert(data.message || "Recipe updated successfully!");
-        console.log("End of submit button function ")
-        //errorBox.textContent = data.message || "Recipe created successfully!";
-        //setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 0);
+        showAlert(data.message || "Recipe updated successfully!");
+        setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 1000);
         } catch (err) {
         errorBox.textContent = err.message;
         }        
