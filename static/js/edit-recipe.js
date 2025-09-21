@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
         loadRecipeForEdit(window.recipeId,token);
     }
-    let originalRecipeData = null; // global variable
+    let originalRecipeData = null; // global variable to compare the change in recipe
     recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
 
     // Populate units dropdown for a selected ingredient
