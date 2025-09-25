@@ -27,13 +27,13 @@ def login():
     cursor = conn.cursor(dictionary=True)
 
     #check if user and password matches in db
-    cursor.execute("SELECT user_id, password FROM users WHERE username = %s AND is_active = TRUE", (data['username'],))
+    cursor.execute("SELECT user_id, password, role FROM users WHERE username = %s AND is_active = TRUE", (data['username'],))
     user = cursor.fetchone()
     cursor.close()
     conn.close()
     if not user or not checkpw(data['password'].encode('utf-8'), user['password'].encode('utf-8')):
         return jsonify({'error': 'Invalid credentials'}), 401
-
-    access_token = create_access_token(identity=str(user['user_id']))
+    
+    access_token = create_access_token(identity=str(user['user_id']), additional_claims={"role": user['role']})
     session['user_id'] = user['user_id']
     return jsonify({'access_token': access_token}), 200

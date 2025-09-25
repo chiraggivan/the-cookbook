@@ -49,9 +49,6 @@ User & Access Management
 
 helpful MySQL commands
 
-show tables;
-show create table recipes;
-
 SHOW PROCEDURE STATUS
 WHERE Db = 'your_database_name';
 

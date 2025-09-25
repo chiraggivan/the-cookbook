@@ -20,7 +20,6 @@ def normalize_row(row):
 
     return normalized
     
-
 # get recipe details but also make sure owner is logged in
 @recipes_api_bp.route('/recipe/edit/<int:recipe_id>', methods=['GET'])
 @jwt_required()

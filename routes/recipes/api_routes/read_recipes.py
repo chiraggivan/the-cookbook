@@ -1,8 +1,8 @@
 # routes/read.py
-from flask import Blueprint, render_template, request, jsonify
+from flask import jsonify#, Blueprint, render_template, request
 from db import get_db_connection
-from bcrypt import hashpw, checkpw, gensalt
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+#from bcrypt import hashpw, checkpw, gensalt
+from flask_jwt_extended import jwt_required, get_jwt_identity#, JWTManager,  create_access_token
 from . import recipes_api_bp
 
 # Get all recipes

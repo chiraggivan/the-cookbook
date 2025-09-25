@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, g, render_template
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
-from bcrypt import hashpw, checkpw, gensalt
+#from bcrypt import hashpw, checkpw, gensalt
 import mysql.connector
 from datetime import timedelta
 from mysql.connector import Error
@@ -15,6 +15,7 @@ from routes.recipes.html_routes import recipes_html_bp
 from routes.recipes.api_routes import recipes_api_bp
 from routes.dishes.html_routes import dishes_html_bp
 from routes.dishes.api_routes import dishes_api_bp
+from routes.ingredients.api_routes import ingredients_api_bp
 
 
 app = Flask(__name__)
@@ -24,6 +25,7 @@ app.register_blueprint(recipes_html_bp)
 app.register_blueprint(recipes_api_bp)
 app.register_blueprint(dishes_html_bp)
 app.register_blueprint(dishes_api_bp)
+app.register_blueprint(ingredients_api_bp)
 
 jwt = JWTManager(app)
 
