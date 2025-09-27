@@ -20,16 +20,16 @@ CREATE PROCEDURE insert_ingredient_plus_units (
 )
 main_block: BEGIN
     DECLARE v_reference_unit VARCHAR(10);
-    DECLARE v_reference_quantity DECIMAL(10,4);
-    DECLARE v_default_price DECIMAL(10,4);
+    DECLARE v_reference_quantity DECIMAL(12,6);
+    DECLARE v_default_price DECIMAL(12,6);
     DECLARE v_exists INT DEFAULT 0;
-    DECLARE v_cup_weight DECIMAL(10,4);
-    DECLARE v_tbsp_weight DECIMAL(10,4);
-    DECLARE v_tsp_weight DECIMAL(10,4);
-    DECLARE v_per_ml_weight DECIMAL(10,4);
-    DECLARE v_litre_weight DECIMAL(10,4);
-    DECLARE v_kg_weight DECIMAL(10,4);
-    DECLARE v_gm_weight DECIMAL(10,4);
+    DECLARE v_cup_weight DECIMAL(12,6);
+    DECLARE v_tbsp_weight DECIMAL(12,6);
+    DECLARE v_tsp_weight DECIMAL(12,6);
+    DECLARE v_per_ml_weight DECIMAL(12,6);
+    DECLARE v_litre_weight DECIMAL(12,6);
+    DECLARE v_kg_weight DECIMAL(12,6);
+    DECLARE v_gm_weight DECIMAL(12,6);
     DECLARE v_ingredient_id INT;
 
      -- Normalize quantity to 1
@@ -55,11 +55,11 @@ main_block: BEGIN
         SET v_reference_unit = 'kg';
 
     ELSEIF p_reference_unit = 'oz' THEN
-        SET v_default_price = v_default_price * 35.274; -- 1 kg = 35.274 oz
+        SET v_default_price = v_default_price * 35.274;
         SET v_reference_unit = 'kg';
 
     ELSEIF p_reference_unit = 'lbs' THEN
-        SET v_default_price = v_default_price * 2.20462; -- 1 kg = 2.20462 lbs
+        SET v_default_price = v_default_price * 2.20462;
         SET v_reference_unit = 'kg';
 
     -- Handle volume units
@@ -71,11 +71,11 @@ main_block: BEGIN
         SET v_reference_unit = 'l';
 
     ELSEIF p_reference_unit = 'fl.oz' THEN
-        SET v_default_price = v_default_price * 33.814; -- 1 l = 33.814 fl.oz
+        SET v_default_price = v_default_price / 0.0284131; 
         SET v_reference_unit = 'l';
 
     ELSEIF p_reference_unit = 'pint' THEN
-        SET v_default_price = v_default_price * 2.11338; -- 1 l = 2.11338 pints
+        SET v_default_price = v_default_price / 0.568261; 
         SET v_reference_unit = 'l';
 
     -- Handle discrete units
@@ -133,15 +133,19 @@ main_block: BEGIN
             (v_ingredient_id, 'bunch', 1.000000, CURRENT_TIMESTAMP);
     END IF;
 
-    -- check that both cup fields are either filled or both empty, and no negatives
-    IF ((p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_weight <> 0) AND p_cup_equivalent_unit IS NULL)
-    OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND p_cup_equivalent_unit IS NOT NULL)
-    OR (p_cup_equivalent_weight < 0) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cup weight and cup unit must both be filled (positive), or both empty';
+    -- check that both cup fields are either filled (weight > 0 + unit) 
+    -- or both empty (NULL/0 + NULL/empty string), and disallow negatives
+    IF ((p_cup_equivalent_weight > 0 AND (p_cup_equivalent_unit IS NULL OR p_cup_equivalent_unit = ''))
+        OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND (p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> ''))
+        OR (p_cup_equivalent_weight < 0)) THEN
+        SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit)';
     END IF;
 
     -- check if cup weight and unit if given is valid or not
-    IF (p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_unit IS NOT NULL) THEN
+    IF (p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_weight > 0
+    AND p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> '') THEN
+
          -- Validate cup weight
         IF p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight <= 0 THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup equivalent weight. Must be a number and > 0';
@@ -164,7 +168,7 @@ main_block: BEGIN
                 SET v_cup_weight = p_cup_equivalent_weight;
             END IF;
         
-            SET v_tbsp_weight = ROUND(v_cup_weight/18,6);
+            SET v_tbsp_weight = ROUND(v_cup_weight/16,6);
             SET v_tsp_weight = ROUND(v_tbsp_weight/3,6);
             SET v_per_ml_weight = ROUND(v_cup_weight/240,6);
             SET v_litre_weight = ROUND(v_per_ml_weight * 1000,6);

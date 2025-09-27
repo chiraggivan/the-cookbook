@@ -6,10 +6,10 @@ from . import ingredients_api_bp
 import re
 
 
-# Create new ingredient
-@ingredients_api_bp.route('/new-ingredient', methods=['POST'])
+# update ingredient details
+@ingredients_api_bp.route('/ingredient/<int:ingredient_id>', methods=['PUT'])
 @jwt_required()
-def create_ingredient():
+def update_ingredient():
 
     user_id = get_jwt_identity()
     claims = get_jwt()
@@ -146,4 +146,3 @@ def create_ingredient():
     except Error as err:
         return jsonify({'error': str(err)}), 500
 
-        
