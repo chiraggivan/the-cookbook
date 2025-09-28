@@ -6,7 +6,7 @@ from . import ingredients_api_bp
 import re
 
 
-# update ingredient details
+# update ingredient details....
 @ingredients_api_bp.route('/ingredient/<int:ingredient_id>', methods=['PUT'])
 @jwt_required()
 def update_ingredient():
