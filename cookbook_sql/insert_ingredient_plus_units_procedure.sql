@@ -88,7 +88,6 @@ main_block: BEGIN
 
     -- Validate if ingredient name is already present
     SELECT COUNT(*) INTO v_exists FROM ingredients WHERE name =  p_name;
-
     IF v_exists > 0 THEN  
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in db. Cant have duplicate';  
     END IF;
@@ -195,7 +194,7 @@ main_block: BEGIN
             END IF;
         
             SET v_kg_weight = ROUND(1000 * v_cup_weight/240,6);
-            SET v_gm_weight = ROUND(v_kg_weight * 1000,6);
+            SET v_gm_weight = ROUND(v_kg_weight / 1000,6);
             -- insert into table units for kg and g
             INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
             VALUES

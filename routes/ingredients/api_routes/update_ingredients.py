@@ -9,7 +9,7 @@ import re
 # update ingredient details....
 @ingredients_api_bp.route('/ingredient/<int:ingredient_id>', methods=['PUT'])
 @jwt_required()
-def update_ingredient():
+def update_ingredient(ingredient_id):
 
     user_id = get_jwt_identity()
     claims = get_jwt()
@@ -116,33 +116,106 @@ def update_ingredient():
         
         # validate if ingredient name already present in db
         cursor.execute("""
-            SELECT 1 FROM ingredients WHERE name = %s 
-        """,(data.get('name'),))
+            SELECT 1 FROM ingredients WHERE name = %s AND ingredient_id != %s
+        """,(data.get('name'),ingredient_id))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'error': f'{data["name"]} - already exists'}), 403
 
-        #print("data is : ",data)
-        #return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200
+        # validate if ingredient exists which is to be updated
+        cursor.execute("""
+            SELECT 1 FROM ingredients WHERE ingredient_id = %s AND is_active = 1
+        """,(ingredient_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': f'{ingredient_id} - cant be updated as it does not exists.'}), 403
+
+        # fetch the old data for the ingredient id
+        cursor.execute("""
+            SELECT name, base_unit, default_price, notes 
+            FROM ingredients
+            WHERE ingredient_id = %s
+        """,(ingredient_id,))
+        old_ingredient = cursor.fetchone()
+        old_data = {}
+        old_data["name"] =old_ingredient.get('name')
+        old_data["reference_unit"] =old_ingredient.get('base_unit')
+        old_data["default_price"] =old_ingredient.get('default_price')
+        old_data["notes"] =old_ingredient.get('notes')
+
+        # normalise new reference unit for comparison
+        match data.get('reference_unit'):
+            case 'l':
+                new_ref_unit = 'l'
+                new_def_price = data.get('default_price')/data.get('reference_quantity')
+            case 'ml':
+                new_ref_unit = 'l'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 1000
+            case 'fl.oz':
+                new_ref_unit = 'l'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 35.1951  
+            case 'pint':
+                new_ref_unit = 'l'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 1.75975 
+            case 'kg':
+                new_ref_unit = 'kg'
+                new_def_price = data.get('default_price')/data.get('reference_quantity')
+            case 'g':
+                new_ref_unit = 'kg'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 1000
+            case 'oz':
+                new_ref_unit = 'kg'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 35.274
+            case 'lbs':
+                new_ref_unit = 'kg'
+                new_def_price = data.get('default_price')/data.get('reference_quantity') * 2.20462
+            case 'pc':
+                new_ref_unit = 'pc'
+                new_def_price = data.get('default_price')/data.get('reference_quantity')
+            case 'bunch':
+                new_ref_unit = 'bunch'
+                new_def_price = data.get('default_price')/data.get('reference_quantity')
+
+            case _:
+                raise ValueError(f"Unsupported reference unit: {ref_unit}")
+        
+        
+        # compare old ingredient data with new ingredient data
+        if ((old_data.get('name') != data.get('name') or 
+            old_data.get('reference_unit') != new_ref_unit or
+            float(old_data.get('default_price')) != round(new_def_price,4) or
+            old_data.get('notes') != data.get('notes')
+            )):
+           print("data is NOT same. so we need to update ingredients table.")
+        else:
+           print("data is  same. so we DONT need to update ingredients table.")  
+        
+        #return jsonify({"msg":"Everything fine and ready to start updating ingredient details in ingredients table.","old_data":old_data,"new_data":data}), 200
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
-        cursor.callproc('insert_ingredient_plus_units', (
-                    data.get('name'), 
-                    data.get('reference_quantity'), 
-                    data.get('reference_unit'), 
-                    data.get('default_price'),
-                    data.get('cup_equivalent_weight'), 
-                    data.get('cup_equivalent_unit'),
-                    data.get('notes'),
-                    user_id,
-                    user_role 
-                ))
+        cursor.callproc('update_ingredient_plus_units', (
+            ingredient_id,
+            data.get('name'), 
+            data.get('reference_quantity'), 
+            data.get('reference_unit'), 
+            data.get('default_price'),
+            data.get('cup_equivalent_weight'), 
+            data.get('cup_equivalent_unit'),
+            data.get('notes'),
+            user_id,
+            user_role 
+        ))
         
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
+        return jsonify({'message': f'{data.get("name")} : Ingredient updated successfully'}), 201
 
     except Error as err:
+        if conn and conn.is_connected():
+            conn.rollback()
+            cursor.close()
+            conn.close()
         return jsonify({'error': str(err)}), 500
 

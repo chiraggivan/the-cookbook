@@ -404,5 +404,9 @@ def create_recipe():
 
     except Exception as e:
         print("Error while trying to create recipe:", e)
+        if conn and conn.is_connected():
+            conn.rollback()
+            cursor.close()
+            conn.close()
         return jsonify([])
         

@@ -144,6 +144,10 @@ def create_ingredient():
         return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
 
     except Error as err:
+        if conn and conn.is_connected():
+            conn.rollback()
+            cursor.close()
+            conn.close()
         return jsonify({'error': str(err)}), 500
 
         
