@@ -6,7 +6,15 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="recipes-page">
-  <a href="/recipes/my" class="my-recipes">My Recipes</a>
+  <div class="nav-container">
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+    <a href="/recipes/my" class="my-recipes">My Recipes</a>
+  </div>
   <h2>All Recipes</h2>
   <table id="recipeList">
     <thead>
@@ -25,13 +33,37 @@
   <script>
     const token = localStorage.getItem("access_token");
 
+    // Function to decode JWT and check role
+    function getUserRole(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).role;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Show admin options if user is admin
+    if (token) {
+      const role = getUserRole(token);
+      if (role === 'admin') {
+        document.querySelector('.admin-options').style.display = 'inline-flex';
+      }
+      loadRecipes();
+    } else {
+      document.getElementById("error").textContent = "Please log in to view recipes.";
+      setTimeout(() => { window.location.href = "auth/login"; }, 1000);
+    }
+
     async function loadRecipes() {
       try {
         const res = await fetch("/recipes/api/all_recipes", {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        //console.log("Response object:", res);
-  
         if (!res.ok) {
           throw new Error("Failed to load recipes");
         }
@@ -51,13 +83,6 @@
       } catch (err) {
         document.getElementById("error").textContent = err.message;
       }
-    }
-
-    if (token) {
-      loadRecipes();
-    } else {
-      document.getElementById("error").textContent = "Please log in to view recipes.";
-      setTimeout(() => { window.location.href = "auth/login"; }, 2000);
     }
   </script>
 </body>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>All Ingredients</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+  <div class="nav-container">
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+    <a href="/recipes/" class="my-recipes">Recipes</a>
+  </div>
+  <h2>All Ingredients</h2>
+  <table id="ingredientList">
+    <thead>
+      <tr>
+        <th>Sr No.</th>
+        <th>Name</th>
+        <th>Base Unit</th>
+        <th>Default Price</th>
+        <th>Active</th>
+        <th>Submitted By</th>
+        <th>Approved By</th>
+        <th>Approval Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div class="pagination">
+    <button id="prevPage" disabled>Previous</button>
+    <span id="pageInfo"></span>
+    <button id="nextPage">Next</button>
+  </div>
+  <div id="error"></div>
+  
+  <script>
+    const token = localStorage.getItem("access_token");
+
+    // Function to decode JWT and check role
+    function getUserRole(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).role;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Show admin options if user is admin
+    if (token) {
+      const role = getUserRole(token);
+      if (role === 'admin') {
+        document.querySelector('.admin-options').style.display = 'inline-flex';
+        loadIngredients(page = 1);
+      }
+      
+    } else {
+      document.getElementById("error").textContent = "Please log in to view recipes.";
+      setTimeout(() => { window.location.href = "auth/login"; }, 1000);
+    }
+
+    async function loadIngredients(page = 1) {
+      try {
+        const res = await fetch(`/ingredients/api/all_ingredients?page=${page}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load ingredients");
+        }
+        const data = await res.json();
+        const tbody = document.querySelector("#ingredientList tbody");
+        tbody.innerHTML = "";
+        data.ingredients.forEach(i => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${i.ingredient_id}</td>
+            <td><a href="/admin/ingredient/details/${i.ingredient_id}" class="recipe-link">${i.name}</a></td>
+            <td>${i.base_unit}</td>
+            <td>${i.default_price}</td>
+            <td>${i.is_active ? 'Yes' : 'No'}</td>
+            <td>${i.submitted_by || ''}</td>
+            <td>${i.approved_by || ''}</td>
+            <td>${i.approval_status || ''}</td>
+            <td>${i.notes || ''}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        const pagination = data.pagination;
+        document.getElementById("pageInfo").textContent = `Page ${pagination.page} of ${pagination.total_pages}`;
+        document.getElementById("prevPage").disabled = pagination.page === 1;
+        document.getElementById("nextPage").disabled = pagination.page === pagination.total_pages;
+
+        document.getElementById("prevPage").onclick = () => loadIngredients(pagination.page - 1);
+        document.getElementById("nextPage").onclick = () => loadIngredients(pagination.page + 1);
+      } catch (err) {
+        document.getElementById("error").textContent = err.message;
+      }
+    }
+
+    function getUserRole(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).role;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    if (token) {
+      const role = getUserRole(token);
+      if (role === 'admin') {
+        document.querySelector('.admin-options').style.display = 'inline-flex';
+      }
+      loadIngredients();
+    } else {
+      document.getElementById("error").textContent = "Please log in to view ingredients.";
+      setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
+    }
+  </script>
+</body>
+</html>

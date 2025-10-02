@@ -93,7 +93,7 @@ def get_ingredient_details(ingredient_id):
     except Error as err:
         return jsonify({'error': str(err)}), 500
 
-# Get all deleted - ingredients
+# Show all deleted ingredients
 @ingredients_api_bp.route('/deleted_ingredients', methods=['GET'])
 @jwt_required()
 def get_all_deleted_ingredients():

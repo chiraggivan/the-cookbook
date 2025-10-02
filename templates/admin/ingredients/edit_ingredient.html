@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Ingredient</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+  <div class="nav-container">
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+    <a href="/recipes/" class="my-recipes">Recipes</a>
+  </div>
+  <h2>Edit Ingredient</h2>
+  <table id="ingredientEdit">
+    <tr>
+      <td><strong>Name:</strong></td>
+      <td><input type="text" id="ingredientName" name="name"></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>Reference Quantity:</strong></td>
+      <td><input type="number" id="referenceQuantity" name="reference_quantity"></td>
+      <td><strong>Reference Unit:</strong> <input type="text" id="referenceUnit" name="reference_unit"></td>
+      <td><strong>Default Price:</strong> <input type="number" id="defaultPrice" name="default_price"></td>
+    </tr>
+    <tr>
+      <td><strong>Cup Weight:</strong></td>
+      <td><input type="number" id="cupWeight" name="cup_weight" step="0.01"></td>
+      <td><strong>Cup Unit:</strong> <input type="text" id="cupUnit" name="cup_unit"></td>
+    </tr>
+    <tr>
+      <td><strong>Notes:</strong></td>
+      <td colspan="2"><textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea></td>
+    </tr>
+  </table>
+  <button class="action-btn edit-btn" id="saveIngredient">Save</button>
+  <a href="/admin/ingredient/details/{{ ingredient_id }}" class="back-link">Cancel</a>
+  <div id="error"></div>
+  
+  <script>
+    const token = localStorage.getItem("access_token");
+    const ingredientId = window.location.pathname.split('/').pop();
+
+    function getUserRole(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).role;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function loadIngredientDetails() {
+      try {
+        const res = await fetch(`/ingredients/api/ingredient/${ingredientId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load ingredient details");
+        }
+        const data = await res.json();
+        const details = data.details;
+        document.getElementById("ingredientName").value = details.name || '';
+        document.getElementById("referenceQuantity").value = details.reference_quantity || '1';
+        document.getElementById("referenceUnit").value = details.base_unit || '';
+        document.getElementById("defaultPrice").value = parseFloat(details.default_price || 0).toFixed(2);
+        document.getElementById("cupWeight").value = details.cup_weight || '';
+        document.getElementById("cupUnit").value = details.cup_unit || '';
+        document.getElementById("notes").value = details.notes || '';
+      } catch (err) {
+        document.getElementById("error").textContent = err.message;
+      }
+    }
+
+    if (token) {
+      const role = getUserRole(token);
+      if (role === 'admin') {
+        document.querySelector('.admin-options').style.display = 'inline-flex';
+        loadIngredientDetails();
+      } else {
+        document.getElementById("error").textContent = "Admin privileges required.";
+        setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
+      }
+    } else {
+      document.getElementById("error").textContent = "Please log in to edit ingredient.";
+      setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
+    }
+  </script>
+</body>
+</html>

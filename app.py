@@ -16,6 +16,7 @@ from routes.recipes.api_routes import recipes_api_bp
 from routes.dishes.html_routes import dishes_html_bp
 from routes.dishes.api_routes import dishes_api_bp
 from routes.ingredients.api_routes import ingredients_api_bp
+from routes.admin.html_routes import admin_html_bp
 
 
 app = Flask(__name__)
@@ -26,6 +27,7 @@ app.register_blueprint(recipes_api_bp)
 app.register_blueprint(dishes_html_bp)
 app.register_blueprint(dishes_api_bp)
 app.register_blueprint(ingredients_api_bp)
+app.register_blueprint(admin_html_bp)
 
 jwt = JWTManager(app)
 

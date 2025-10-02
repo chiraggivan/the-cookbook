@@ -60,6 +60,28 @@ body {
   padding: 2rem;
 }
 
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.admin-options {
+  display: none; /* Hidden by default */
+  gap: 1rem;
+}
+
+.admin-link {
+  color: #4CAF50;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
+}
+
 .recipes-page h2 {
   text-align: center;
 }
@@ -402,4 +424,34 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(24px);
+}
+
+/* pagination css */
+.pagination {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  margin: 0 5px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.pagination span {
+  margin: 0 10px;
+  font-weight: bold;
 }
