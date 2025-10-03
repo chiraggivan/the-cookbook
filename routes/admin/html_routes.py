@@ -27,6 +27,12 @@ def edit_ingredient_page(ingredient_id):
     #     return abort(403, description="Admin privileges required")
     return render_template("admin/ingredients/edit_ingredient.html")
 
+@admin_html_bp.route('/ingredient/create_ingredient', methods=['GET'])
+def create_ingredient_page():
+    # if session.get("role") != "admin":
+    #     return abort(403, description="Admin privileges required")
+    return render_template("admin/ingredients/create_ingredient.html")
+
 @admin_html_bp.route('/recipes', methods=['GET'])
 @jwt_required()
 def all_recipes_page():

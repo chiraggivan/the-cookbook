@@ -78,7 +78,7 @@ def get_ingredient_details(ingredient_id):
         # Get ingredients details
         cursor.execute("""
         SELECT ingredient_id, name, base_unit, default_price, is_active, submitted_by, 
-                approved_by, approval_status, approval_date, end_date, created_at, notes
+                approved_by, approval_status, approval_date, end_date, created_at, notes, cup_weight, cup_unit
         FROM ingredients 
         WHERE ingredient_id = %s""",(ingredient_id,))
         row  = cursor.fetchone()

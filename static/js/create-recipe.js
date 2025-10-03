@@ -409,7 +409,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const lastRow = rows[rows.length - 1];
     const values = Array.from(lastRow.querySelectorAll("input, select")).map(i => i.value.trim());
     // Add new row if last row is fully filled
-    if (values.every(v => v !== "")) {
+    if (values.some(v => v !== "")) {
       const index = rows.length;
       const newRow = document.createElement("tr");
       newRow.innerHTML = `

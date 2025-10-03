@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add New Ingredient</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+  <div class="nav-container">
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+    <a href="/recipes/" class="my-recipes">Recipes</a>
+  </div>
+  <h2>Add New Ingredient</h2>
+  <table id="ingredientEdit" class="recipes-page">
+    <tr>
+      <td><strong>Name:</strong></td>
+      <td><input type="text" id="ingredientName" name="name">
+        <div class="error-create-recipe" id="errorName"></div>
+      </td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><strong>Reference Quantity:</strong></td>
+      <td><input type="number" id="referenceQuantity" name="reference_quantity" placeholder="0.00">
+        <div class="error-create-recipe" id="errorRQ"></div>
+      </td>
+      <td><strong>Reference Unit:</strong> <select id="referenceUnit" name="reference_unit">
+        <option value="">select</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="oz">oz</option>
+        <option value="lbs">lbs</option>
+        <option value="l">l</option>
+        <option value="ml">ml</option>
+        <option value="fl.oz">fl.oz</option>
+        <option value="pint">pint</option>
+        <option value="pc">pc</option>
+        <option value="bunch">bunch</option>
+        </select>
+        <div class="error-create-recipe" id="errorRU"></div>
+      </td>
+      <td><strong>Default Price:</strong> <input type="number" id="defaultPrice" name="default_price" placeholder="0.00">
+        <div class="error-create-recipe" id="errorDP"></div>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cup Weight:</strong></td>
+      <td><input type="number" id="cupWeight" name="cup_weight" >
+        <div class="error-create-recipe" id="errorCW"></div>
+      </td>
+      <td>
+        <strong>Cup Unit:</strong>
+        <select id="cupUnit" name="cup_unit">
+        <option value="">Select</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="oz">oz</option>
+        <option value="lbs">lbs</option>
+        </select>
+        <div class="error-create-recipe" id="errorCU"></div>
+
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Notes:</strong></td>
+      <td colspan="2"><textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea>
+        <div class="error-create-recipe" id="errorNotes"></div>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Existing Ingredients:</strong></td>
+      <td colspan="2"><textarea id="existingIngredients" readonly rows="10" style="width: 100%;"></textarea></td>
+    </tr>
+  </table>
+  <button class="action-btn edit-btn" id="saveIngredient">Save</button>
+  <a href="/admin/ingredients" class="back-link">Cancel</a>
+  <!-- <div id="error" class="error"></div> -->
+  <div id="error" class="error-message"></div>
+  
+  <script src="/static/js/utils.js"></script>
+  <script src="/static/js/create-ingredient.js" defer></script>
+</body>
+</html>

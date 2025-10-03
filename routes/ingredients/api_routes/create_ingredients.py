@@ -5,6 +5,39 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from . import ingredients_api_bp
 import re
 
+# search ingredients for admin to help know which all are in db.
+@ingredients_api_bp.route("/ingredients/search")
+@jwt_required()
+def search_ingredients():
+
+    s_user_id = get_jwt_identity()
+   
+    q = request.args.get("q", "").strip().lower()
+    #print("user id:",s_user_id," value of q :", q)
+    if not q:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT  i.name
+            FROM ingredients i 
+            WHERE LOWER(i.name) LIKE %s
+            LIMIT 20
+        """,(f"%{q}%",))
+        results = cursor.fetchall()
+        #print("result: ", results)
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+
+    except Exception as e:
+        print("Error in search_ingredients:", e)
+        return jsonify([])
+
 
 # Create new ingredient
 @ingredients_api_bp.route('/new-ingredient', methods=['POST'])
@@ -76,15 +109,24 @@ def create_ingredient():
             if not default_price or not isinstance(default_price, (int,float)) or not (0 < default_price < 100000):
                 return f"Invalid default_price: ({default_price}) must be a number > 0 and less than 100000 "
             
-            # --- cup_equivalent_weight ---
+            # --- cup_equivalent_weight  and cup_equivalent_unit---
             cup_equivalent_weight = data.get("cup_equivalent_weight")
-            if cup_equivalent_weight is None or not isinstance(cup_equivalent_weight, (int,float)) or not(0 <= cup_equivalent_weight < 10000):
-                return f"Invalid cup_equivalent_weight: ({cup_equivalent_weight}) must be a number > 0 and less than 100000"
-            
-            # --- cup_equivalent_unit ---
             cup_equivalent_unit = data.get("cup_equivalent_unit")
-            if not isinstance(cup_equivalent_unit, str) or cup_equivalent_unit not in ('kg','g','oz','lbs',''):
-                return f"Invalid cup_equivalent_unit: ({cup_equivalent_unit}) must be a non-empty and within ('kg','g','oz','lbs')"
+
+            # Check if both are either empty or filled
+            if (cup_equivalent_weight in (None, '') and cup_equivalent_unit not in (None, '')) \
+            or (cup_equivalent_weight not in (None, '') and cup_equivalent_unit in (None, '')):
+                return "Both cup_equivalent_weight and cup_equivalent_unit must be provided together or left empty"
+
+            # --- cup_equivalent_weight --- if present
+            if cup_equivalent_weight not in (None, ''):  # only validate if value is present
+                if not isinstance(cup_equivalent_weight, (int, float)) or not (0 <= cup_equivalent_weight < 100000):
+                    return f"Invalid cup_equivalent_weight: ({cup_equivalent_weight}) must be a number >= 0 and less than 100000"
+
+            # --- cup_equivalent_unit --- if present            
+            if cup_equivalent_unit not in (None, ''):  # only validate if value is present
+                if not isinstance(cup_equivalent_unit, str) or cup_equivalent_unit not in ('kg','g','oz','lbs'):
+                    return f"Invalid cup_equivalent_unit: ({cup_equivalent_unit}) must be within ('kg','g','oz','lbs')"
 
             # --- notes ---
             notes = data.get("notes")
@@ -124,7 +166,8 @@ def create_ingredient():
             return jsonify({'error': f'{data["name"]} - already exists'}), 403
 
         #print("data is : ",data)
-        #return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200
+        #return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200 # for postman
+        return jsonify({"error":"Everything fine and ready to start adding ingredient details in ingredients table."}), 400
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
         cursor.callproc('insert_ingredient_plus_units', (
                     data.get('name'), 

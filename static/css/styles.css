@@ -112,6 +112,7 @@ body {
 }
 
 .recipes-page input,
+.recipes-page select,
 .recipes-page button {
   padding: 8px;
   margin: 5px;
@@ -454,4 +455,15 @@ input:checked + .slider:before {
 .pagination span {
   margin: 0 10px;
   font-weight: bold;
+}
+
+/* Remove number input arrows */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
 }
