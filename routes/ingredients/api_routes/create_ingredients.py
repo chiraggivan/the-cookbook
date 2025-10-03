@@ -167,7 +167,7 @@ def create_ingredient():
 
         #print("data is : ",data)
         #return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200 # for postman
-        return jsonify({"error":"Everything fine and ready to start adding ingredient details in ingredients table."}), 400
+        # return jsonify({"error":"Everything fine and ready to start adding ingredient details in ingredients table."}), 400
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
         cursor.callproc('insert_ingredient_plus_units', (
                     data.get('name'), 

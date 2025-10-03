@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
         reference_quantity: Number(ingredientData["referenceQuantity"]),
         reference_unit: ingredientData["referenceUnit"],
         default_price: Number(ingredientData["defaultPrice"]),
-        cup_weight: Number(ingredientData["cupWeight"]),
-        cup_unit: ingredientData["cupUnit"] || '',
+        cup_equivalent_weight: Number(ingredientData["cupWeight"]),
+        cup_equivalent_unit: ingredientData["cupUnit"] || '',
         notes: ingredientData["notes"] || ''
         };
 

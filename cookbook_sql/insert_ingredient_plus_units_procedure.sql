@@ -92,9 +92,18 @@ main_block: BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in db. Cant have duplicate';  
     END IF;
 
+    -- check that both cup fields are either filled (weight > 0 + unit) 
+    -- or both empty (NULL/0 + NULL/empty string), and disallow negatives
+    IF ((p_cup_equivalent_weight > 0 AND (p_cup_equivalent_unit IS NULL OR p_cup_equivalent_unit = ''))
+        OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND (p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> ''))
+        OR (p_cup_equivalent_weight < 0)) THEN
+        SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit)';
+    END IF;
+
     -- insert ingredient data in ingredients table 
-    INSERT INTO ingredients (name, base_unit, default_price, is_active, approval_status, approved_by, approval_date, notes)
-    VALUES(p_name, v_reference_unit, v_default_price, 1, 'approved', NULL, CURRENT_TIMESTAMP, p_notes);
+    INSERT INTO ingredients (name, base_unit, default_price, is_active, approval_status, approved_by, approval_date, notes, cup_weight, cup_unit)
+    VALUES(p_name, v_reference_unit, v_default_price, 1, 'approved', NULL, CURRENT_TIMESTAMP, p_notes, p_cup_equivalent_weight, p_cup_equivalent_unit);
 
     -- fetching ingredient id of recently add ingredient. To be used in units table
     SET v_ingredient_id = LAST_INSERT_ID();
@@ -130,15 +139,6 @@ main_block: BEGIN
         INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
         VALUES
             (v_ingredient_id, 'bunch', 1.000000, CURRENT_TIMESTAMP);
-    END IF;
-
-    -- check that both cup fields are either filled (weight > 0 + unit) 
-    -- or both empty (NULL/0 + NULL/empty string), and disallow negatives
-    IF ((p_cup_equivalent_weight > 0 AND (p_cup_equivalent_unit IS NULL OR p_cup_equivalent_unit = ''))
-        OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND (p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> ''))
-        OR (p_cup_equivalent_weight < 0)) THEN
-        SIGNAL SQLSTATE '45000' 
-            SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit)';
     END IF;
 
     -- check if cup weight and unit if given is valid or not
