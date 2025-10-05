@@ -1,5 +1,4 @@
 const token = localStorage.getItem("access_token");
-// const ingredientId = window.ingredientId;
 
 // check if user is admin and display menu accordingly
 if (token) {
@@ -240,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
             if (!response.ok) {
-                errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
+                errorBox.textContent = data.error || "Something went wrong while fetch new-ingredient.";
                 console.log("Submitted data (for debug):", data.submitted_data);
                 return;
             }

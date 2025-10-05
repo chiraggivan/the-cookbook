@@ -5,9 +5,44 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from . import ingredients_api_bp
 import re
 
+# search ingredients for admin to help know which all names are in db BUT not selecting same ingredient id.
+@ingredients_api_bp.route("/editIngredients/search")
+@jwt_required()
+def search_edit_ingredients():
+
+    s_user_id = get_jwt_identity()
+   
+    q = request.args.get("q", "").strip().lower()
+    #print("user id:",s_user_id," value of q :", q)
+    ingId = request.args.get("ingId","").strip()
+    #print(" ingredient Id :", ingId)
+    if not q:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT  i.name
+            FROM ingredients i 
+            WHERE LOWER(i.name) LIKE %s AND ingredient_id != %s
+            LIMIT 20
+        """,(f"%{q}%",ingId))
+        results = cursor.fetchall()
+        #print("result: ", results)
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+
+    except Exception as e:
+        print("Error in search_ingredients:", e)
+        return jsonify([])
+
 
 # update ingredient details....
-@ingredients_api_bp.route('/ingredient/<int:ingredient_id>', methods=['PUT'])
+@ingredients_api_bp.route('/edit-ingredient/<int:ingredient_id>', methods=['PUT'])
 @jwt_required()
 def update_ingredient(ingredient_id):
 
@@ -181,36 +216,33 @@ def update_ingredient(ingredient_id):
             case _:
                 raise ValueError(f"Unsupported reference unit: {ref_unit}")
         
+        #return jsonify({"message":"Everything fine and ready to start updating ingredient details in ingredients table.","old_data":old_data,"new_data":data}), 200
+        # ------------------------------ Now insert the data thru procedure ------------------------------------------
         
         # compare old ingredient data with new ingredient data
-        if ((old_data.get('name') != data.get('name') or 
-            old_data.get('reference_unit') != new_ref_unit or
-            float(old_data.get('default_price')) != round(new_def_price,4) or
-            old_data.get('notes') != data.get('notes')
-            )):
-           print("data is NOT same. so we need to update ingredients table.")
+        if ((old_data.get('name') != data.get('name') or old_data.get('reference_unit') != new_ref_unit or
+            float(old_data.get('default_price')) != round(new_def_price,4) or old_data.get('notes') != data.get('notes'))):
+            print("data is NOT same. so we need to update ingredients table.")
+            cursor.callproc('update_ingredient_plus_units', (
+                ingredient_id,
+                data.get('name'), 
+                data.get('reference_quantity'), 
+                data.get('reference_unit'), 
+                data.get('default_price'),
+                data.get('cup_equivalent_weight'), 
+                data.get('cup_equivalent_unit'),
+                data.get('notes'),
+                user_id,
+                user_role 
+            ))
+        
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({'message': f'{data.get("name")} : Ingredient updated successfully'}), 201
         else:
            print("data is  same. so we DONT need to update ingredients table.")  
-        
-        #return jsonify({"msg":"Everything fine and ready to start updating ingredient details in ingredients table.","old_data":old_data,"new_data":data}), 200
-        # ------------------------------ Now insert the data thru procedure ------------------------------------------
-        cursor.callproc('update_ingredient_plus_units', (
-            ingredient_id,
-            data.get('name'), 
-            data.get('reference_quantity'), 
-            data.get('reference_unit'), 
-            data.get('default_price'),
-            data.get('cup_equivalent_weight'), 
-            data.get('cup_equivalent_unit'),
-            data.get('notes'),
-            user_id,
-            user_role 
-        ))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({'message': f'{data.get("name")} : Ingredient updated successfully'}), 201
+           return jsonify({'message': f'Nothing changed'}), 201
 
     except Error as err:
         if conn and conn.is_connected():

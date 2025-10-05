@@ -19,29 +19,77 @@
   <table id="ingredientEdit">
     <tr>
       <td><strong>Name:</strong></td>
-      <td><input type="text" id="ingredientName" name="name"></td>
+      <td><input type="text" id="ingredientName" name="name" placeholder="eg. Sugar">
+        <div class="error-create-recipe" id="errorName"></div>
+      </td>
       <td></td>
     </tr>
     <tr>
       <td><strong>Reference Quantity:</strong></td>
-      <td><input type="number" id="referenceQuantity" name="reference_quantity"></td>
-      <td><strong>Reference Unit:</strong> <input type="text" id="referenceUnit" name="reference_unit"></td>
-      <td><strong>Default Price:</strong> <input type="number" id="defaultPrice" name="default_price"></td>
+      <td><input type="number" id="referenceQuantity" name="reference_quantity" placeholder="0.000">
+        <div class="error-create-recipe" id="errorRQ"></div>
+      </td>
+      <td><strong>Reference Unit:</strong> <select id="referenceUnit" name="reference_unit">
+        <option value="">select</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="oz">oz</option>
+        <option value="lbs">lbs</option>
+        <option value="l">l</option>
+        <option value="ml">ml</option>
+        <option value="fl.oz">fl.oz</option>
+        <option value="pint">pint</option>
+        <option value="pc">pc</option>
+        <option value="bunch">bunch</option>
+        </select>
+        <div class="error-create-recipe" id="errorRU"></div>
+      </td>
+      <td><strong>Default Price:</strong> <input type="number" id="defaultPrice" name="default_price" placeholder="0.00">
+        <div class="error-create-recipe" id="errorDP"></div>
+      </td>
     </tr>
     <tr>
       <td><strong>Cup Weight:</strong></td>
-      <td><input type="number" id="cupWeight" name="cup_weight" ></td>
-      <td><strong>Cup Unit:</strong> <input type="text" id="cupUnit" name="cup_unit"></td>
+      <td><input type="number" id="cupWeight" name="cup_weight" >
+        <div class="error-create-recipe" id="errorCW"></div>
+      </td>
+      <td>
+        <strong>Cup Unit:</strong>
+        <select id="cupUnit" name="cup_unit">
+        <option value="">Select</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="oz">oz</option>
+        <option value="lbs">lbs</option>
+        </select>
+        <div class="error-create-recipe" id="errorCU"></div>
+
+      </td>
     </tr>
     <tr>
       <td><strong>Notes:</strong></td>
-      <td colspan="2"><textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea></td>
+      <td colspan="2"><textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea>
+        <div class="error-create-recipe" id="errorNotes"></div>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Existing Ingredients:</strong></td>
+      <td colspan="2"><textarea id="existingIngredients" readonly rows="10" style="width: 100%;"></textarea></td>
     </tr>
   </table>
   <button class="action-btn edit-btn" id="saveIngredient">Save</button>
-  <a href="/admin/ingredient/details/{{ ingredient_id }}" class="back-link">Cancel</a>
+  <a id="cancelLink" class="back-link">Cancel</a>
   <div id="error" class="error"></div>
   
+  <!-- Reusable Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div id="alert-box" class="alert-box">
+        <p id="alert-message"></p>
+        <div id="alert-actions" style="display:none;">
+        <button id="alert-ok">OK</button>
+        </div>
+    </div>
+  </div>
 
   <script>
     window.ingredientId = window.location.pathname.split("/").pop(); // window coz to send ingredientId in js    
