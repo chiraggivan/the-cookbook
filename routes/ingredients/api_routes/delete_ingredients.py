@@ -18,6 +18,7 @@ def delete_recipe(ingredient_id):
     # check if user is having role as admin
     if not (user_role == "admin"):
         return jsonify({"error": "Admin privileges required"}), 403
+
     try:
         conn = get_db_connection()
         if conn is None:

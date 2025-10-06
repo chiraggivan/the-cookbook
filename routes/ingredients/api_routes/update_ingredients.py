@@ -149,7 +149,7 @@ def update_ingredient(ingredient_id):
             conn.close()
             return jsonify({'error': 'User not found or Admin privileges required'}), 403
         
-        # validate if ingredient name already present in db
+        # validate if new ingredient name already present in db
         cursor.execute("""
             SELECT 1 FROM ingredients WHERE name = %s AND ingredient_id != %s
         """,(data.get('name'),ingredient_id))
@@ -169,16 +169,18 @@ def update_ingredient(ingredient_id):
 
         # fetch the old data for the ingredient id
         cursor.execute("""
-            SELECT name, base_unit, default_price, notes 
+            SELECT name, base_unit, default_price, cup_weight, cup_unit, notes
             FROM ingredients
             WHERE ingredient_id = %s
         """,(ingredient_id,))
         old_ingredient = cursor.fetchone()
         old_data = {}
-        old_data["name"] =old_ingredient.get('name')
-        old_data["reference_unit"] =old_ingredient.get('base_unit')
-        old_data["default_price"] =old_ingredient.get('default_price')
-        old_data["notes"] =old_ingredient.get('notes')
+        old_data["name"] = old_ingredient.get('name')
+        old_data["reference_unit"] = old_ingredient.get('base_unit')
+        old_data["default_price"] = float(old_ingredient.get('default_price'))
+        old_data["cup_weight"] = float(old_ingredient.get('cup_weight'))
+        old_data["cup_unit"] = old_ingredient.get('cup_unit')
+        old_data["notes"] = old_ingredient.get('notes')
 
         # normalise new reference unit for comparison
         match data.get('reference_unit'):
@@ -215,13 +217,25 @@ def update_ingredient(ingredient_id):
 
             case _:
                 raise ValueError(f"Unsupported reference unit: {ref_unit}")
-        
+        print("new data : ",data)
+        print("old data :", old_data)
         #return jsonify({"message":"Everything fine and ready to start updating ingredient details in ingredients table.","old_data":old_data,"new_data":data}), 200
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
         
         # compare old ingredient data with new ingredient data
-        if ((old_data.get('name') != data.get('name') or old_data.get('reference_unit') != new_ref_unit or
-            float(old_data.get('default_price')) != round(new_def_price,4) or old_data.get('notes') != data.get('notes'))):
+        if ((old_data.get('name') != data.get('name')) or 
+            (old_data.get('reference_unit') != new_ref_unit) or
+            (float(old_data.get('default_price')) != round(new_def_price,4)) or 
+            ((old_data.get('notes') is None and data.get('notes') is not None) or
+                (old_data.get('notes') is not None and data.get('notes') is None) or
+                (old_data.get('notes') != data.get('notes')) and (old_data.get('notes') is not None and data.get('notes') is not None)) or
+            ((float(old_data.get('cup_weight')) is None and data.get('cup_equivalent_weight') is not None) or 
+                (float(old_data.get('cup_weight')) is not None and data.get('cup_equivalent_weight') is None) or 
+                (float(old_data.get('cup_weight')) != data.get('cup_equivalent_weight')) and old_data.get('cup_weight') is not None and data.get('cup_equivalent_weight') is not None) or
+            ((old_data.get('cup_unit') is None and data.get('cup_equivalent_unit') is not None) or
+                (old_data.get('cup_unit') is not None and data.get('cup_equivalent_unit') is None) or
+                (old_data.get('cup_unit') != data.get('cup_equivalent_unit')) and (old_data.get('cup_unit') is not None and data.get('cup_equivalent_unit') is not None))
+            ):  
             print("data is NOT same. so we need to update ingredients table.")
             cursor.callproc('update_ingredient_plus_units', (
                 ingredient_id,

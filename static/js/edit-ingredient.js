@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         // Submit recipe to backend API
-        console.log("data sent:", completeIngredient)
+        // console.log("data sent:", completeIngredient)
         const errorBox = document.getElementById("error");
 
 
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Display success message and redirect
             showAlert(data.message || "Ingredient created successfully!");
-            console.log("submitted data: ", data)
+            // console.log("submitted data: ", data)
             //errorBox.textContent = data.message || "Recipe created successfully!";
             setTimeout(() => { window.location.href = `/admin/ingredient/details/${ingredientId}`; }, 2000);
         } catch (err) {

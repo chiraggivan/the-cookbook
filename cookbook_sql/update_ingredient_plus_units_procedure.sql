@@ -10,10 +10,10 @@ DELIMITER //
 CREATE PROCEDURE update_ingredient_plus_units (
     IN p_ingredient_id INT,
     IN p_name VARCHAR(30),
-    IN p_reference_quantity DECIMAL(10,4),
+    IN p_reference_quantity DECIMAL(10,6),
     IN p_reference_unit VARCHAR(10),
     IN p_default_price DECIMAL(10,4),
-    IN p_cup_equivalent_weight DECIMAL(10,4),
+    IN p_cup_equivalent_weight DECIMAL(10,6),
     IN p_cup_equivalent_unit VARCHAR(10),
     IN p_notes VARCHAR(100),
     IN p_user_id INT,
@@ -23,7 +23,7 @@ main_block: BEGIN
     
     DECLARE v_reference_unit VARCHAR(10);
     DECLARE v_reference_quantity DECIMAL(12,6);
-    DECLARE v_default_price DECIMAL(12,6);
+    DECLARE v_default_price DECIMAL(10,5);
     DECLARE v_exists INT DEFAULT 0;
     DECLARE v_cup_weight DECIMAL(12,6);
     DECLARE v_tbsp_weight DECIMAL(12,6);
@@ -36,10 +36,20 @@ main_block: BEGIN
     DECLARE v_old_name VARCHAR(30);
     DECLARE v_old_base_unit VARCHAR(10);
     DECLARE v_old_default_price DECIMAL(12,6);
+    DECLARE v_old_cup_weight DECIMAL(12,3); 
+    DECLARE v_old_cup_unit VARCHAR(10);
     DECLARE v_old_notes VARCHAR(100);
     DECLARE v_msg TEXT;
     DECLARE v_temp_unit_id INT;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_temp_unit_id = NULL;
 
+    -- normalize ingredient name, reference unit, cup unit
+    SET p_name = REGEXP_REPLACE(TRIM(p_name), '\\s+', ' ');
+    SET p_reference_unit = TRIM(p_reference_unit);
+    SET p_cup_equivalent_unit = TRIM(p_cup_equivalent_unit);
+    SET p_notes = REGEXP_REPLACE(TRIM(p_notes), '\\s+', ' ');
+
+    -- Normalising number field is not required as trim is not neccessary and if string passed then it will convert to 0 which we are handling in validity process.
     -- validate ingredient id
     IF p_ingredient_id IS NULL OR p_ingredient_id <= 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid ingredient id. Must be a number and > 0';
@@ -105,15 +115,34 @@ main_block: BEGIN
 
     SET v_ingredient_id = p_ingredient_id;
 
+    -- Validate cup weight 
+    IF p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_weight != 0 THEN
+        IF v_reference_unit NOT IN ('kg','l') THEN 
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cant have cup weight and unit for any item with reference unit other than mass or volume.';
+        END IF;
+        IF p_cup_equivalent_weight < 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup weight. If supplied, must be a positive number';
+        END IF;
+    END IF;
+
+    -- Validate cup unit 
+    IF p_cup_equivalent_unit IS NOT NULL THEN
+        IF v_reference_unit NOT IN ('kg','l') and p_cup_equivalent_unit <> '' THEN 
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cant have cup weight and unit for any item with reference unit other than weight or litre volume.';
+        END IF;
+        IF p_cup_equivalent_unit NOT IN ('kg', 'g', 'oz', 'lbs','') THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup unit. Must be IN (kg, g, oz, lbs)';
+        END IF;
+    END IF;
+
     -- check that both cup fields are either filled (weight > 0 + unit) 
     -- or both empty (NULL/0 + NULL/empty string), and disallow negatives
     IF ((p_cup_equivalent_weight > 0 AND (p_cup_equivalent_unit IS NULL OR p_cup_equivalent_unit = ''))
-        OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND (p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> ''))
-        OR (p_cup_equivalent_weight < 0)) THEN
+        OR ((p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight = 0) AND (p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> ''))) THEN
         SIGNAL SQLSTATE '45000' 
-            SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit)';
+            SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit/"")';
     END IF;
-
+    -- -----------------Procedure parameters normalised and validated ----------------------------------------------
     -- Validate if ingredient id is already present
     SELECT COUNT(*) INTO v_exists FROM ingredients WHERE ingredient_id =  p_ingredient_id;
     IF v_exists = 0 THEN  
@@ -127,8 +156,8 @@ main_block: BEGIN
     END IF;
 
     -- compare old ingredient data with new ingredient data
-    SELECT name, base_unit, default_price, notes
-    INTO v_old_name, v_old_base_unit, v_old_default_price, v_old_notes
+    SELECT name, base_unit, default_price, notes, cup_weight, cup_unit
+    INTO v_old_name, v_old_base_unit, v_old_default_price, v_old_notes, v_old_cup_weight, v_old_cup_unit
     FROM ingredients
     WHERE ingredient_id = p_ingredient_id;
 
@@ -139,11 +168,14 @@ main_block: BEGIN
 
     -- if any of the details changes for ingredient table then update
     IF (v_old_name != p_name) OR (v_old_base_unit != v_reference_unit) OR 
-        (v_old_default_price != ROUND(v_default_price, 4)) OR (v_old_notes != p_notes OR (v_old_notes IS NULL) != (p_notes IS NULL)) THEN
+        (v_old_default_price != ROUND(v_default_price, 4)) OR (v_old_notes != p_notes OR (v_old_notes IS NULL) != (p_notes IS NULL)) OR
+        (v_old_cup_weight != v_cup_weight OR (v_old_cup_weight IS NULL) != (v_cup_weight IS NULL)) OR
+        (v_old_cup_unit != p_cup_equivalent_unit) THEN
         -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'There is some change in data for ingredients. Here it need to save new data in db for ingredients.' ; 
 
         UPDATE ingredients 
-        SET name = p_name, base_unit = v_reference_unit, default_price = v_default_price, notes = p_notes
+        SET name = p_name, base_unit = v_reference_unit, default_price = v_default_price, 
+            notes = p_notes, cup_weight = p_cup_equivalent_weight, cup_unit = p_cup_equivalent_unit
         WHERE ingredient_id = p_ingredient_id;
     -- ELSE
     --     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
@@ -334,297 +366,296 @@ main_block: BEGIN
     END IF;
 
     -- if cup weight and unit is given then units table will have more data to update or add
-    -- check if cup weight and unit if given is valid or not
-    IF (p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_weight > 0
-    AND p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> '') THEN
+    -- check if cup weight and unit if given can be used as it CANT be used for any items with reference units in weight or volume. 
+    IF (v_reference_unit IN ('kg', 'l')) THEN
+        IF (p_cup_equivalent_weight IS NOT NULL AND p_cup_equivalent_weight > 0
+        AND p_cup_equivalent_unit IS NOT NULL AND p_cup_equivalent_unit <> '') THEN
 
-         -- Validate cup weight
-        IF p_cup_equivalent_weight IS NULL OR p_cup_equivalent_weight <= 0 THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup equivalent weight. Must be a number and > 0';
+            -- make all units of ingredients inactivate
+            UPDATE units
+            SET is_active = 0, end_date = CURRENT_TIMESTAMP
+            WHERE ingredient_id = p_ingredient_id;
+
+            -- IF reference unit in kg
+            IF v_reference_unit = 'kg' THEN
+                -- convert cup unit to kg if other than gm selected like gm, oz, lbs
+                IF p_cup_equivalent_unit = 'g' THEN
+                    SET v_cup_weight = p_cup_equivalent_weight/1000;
+                ELSEIF p_cup_equivalent_unit = 'oz' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight * 0.0283495;
+                ELSEIF p_cup_equivalent_unit = 'lbs' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight * 0.453592;
+                ELSEIF p_cup_equivalent_unit = 'kg' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight;
+                END IF;
+            
+                SET v_tbsp_weight = ROUND(v_cup_weight/16,6);
+                SET v_tsp_weight = ROUND(v_tbsp_weight/3,6);
+                SET v_per_ml_weight = ROUND(v_cup_weight/240,6);
+                SET v_litre_weight = ROUND(v_per_ml_weight * 1000,6);
+
+                -- update/insert into table units for kg
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'kg';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET  conversion_factor = 1.000000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'kg', 1.000000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for g
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'g';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET  conversion_factor = 0.001000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'g', 0.001000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for oz
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'oz';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.0283495, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'oz', 0.0283495, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for lbs
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'lbs';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.453592, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'lbs', 0.453592, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for cup, tbsp, tsp, ml and l 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'cup';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_cup_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'cup', v_cup_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update into table units for tbsp if available 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tbsp';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_tbsp_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'tbsp', v_tbsp_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update into table units for tsp if available 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tsp';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_tsp_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'tsp', v_tsp_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update into table units for ml if available 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'ml';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_per_ml_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'ml', v_per_ml_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update into table units for l if available 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'l';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_litre_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'l', v_litre_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+            -- IF reference unit in litre       
+            ELSEIF v_reference_unit = 'l' THEN
+                -- convert cup unit to kg if other than gm selected like gm, oz, lbs
+                IF p_cup_equivalent_unit = 'g' THEN
+                    SET v_cup_weight = p_cup_equivalent_weight/1000;
+                ELSEIF p_cup_equivalent_unit = 'oz' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight * 0.0283495;
+                ELSEIF p_cup_equivalent_unit = 'lbs' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight * 0.453592;
+                ELSEIF p_cup_equivalent_unit = 'kg' THEN 
+                    SET v_cup_weight = p_cup_equivalent_weight;
+                END IF;
+            
+                SET v_kg_weight = ROUND(1000 * 0.240/v_cup_weight,6);
+                SET v_gm_weight = ROUND(v_kg_weight / 1000,6);
+
+                -- update/insert into table units for l
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'l';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 1.000000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'l', 1.000000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for ml
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'ml';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.001000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'ml', 0.001000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for cup
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'cup';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.240000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'cup', 0.240000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for tbsp
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tbsp';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.015000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'tbsp', 0.015000, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update/insert into table units for tsp
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tsp';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = 0.005000, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'tsp', 0.005000, CURRENT_TIMESTAMP);
+                END IF;
+                -- update/insert into table units for kg
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'kg';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_kg_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'kg', v_kg_weight, CURRENT_TIMESTAMP);
+                END IF;
+
+                -- update into table units for g if available 
+                SELECT unit_id 
+                INTO v_temp_unit_id
+                FROM units 
+                WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'g';
+
+                IF v_temp_unit_id IS NOT NULL THEN 
+                    UPDATE units
+                    SET conversion_factor = v_gm_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
+                    WHERE unit_id = v_temp_unit_id;
+                ELSE
+                    INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
+                    VALUES (v_ingredient_id, 'g', v_gm_weight, CURRENT_TIMESTAMP);
+                END IF;
+            
+            -- IF reference unit in pc
+
+            -- IF reference unit in bunch
+
+
+            END IF;   
         END IF;
-        -- validate cup unit
-        IF p_cup_equivalent_unit NOT IN ('kg', 'g', 'oz', 'lbs') THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup equivalent unit. Must be IN (kg, g, oz, lbs)';
-        END IF;
-
-        -- make all units of ingredients inactivate
-        UPDATE units
-        SET is_active = 0, end_date = CURRENT_TIMESTAMP
-        WHERE ingredient_id = p_ingredient_id;
-
-        -- IF reference unit in kg
-        IF v_reference_unit = 'kg' THEN
-            -- convert cup unit to kg if other than gm selected like gm, oz, lbs
-            IF p_cup_equivalent_unit = 'g' THEN
-                SET v_cup_weight = p_cup_equivalent_weight/1000;
-            ELSEIF p_cup_equivalent_unit = 'oz' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight * 0.0283495;
-            ELSEIF p_cup_equivalent_unit = 'lbs' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight * 0.453592;
-            ELSEIF p_cup_equivalent_unit = 'kg' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight;
-            END IF;
-        
-            SET v_tbsp_weight = ROUND(v_cup_weight/16,6);
-            SET v_tsp_weight = ROUND(v_tbsp_weight/3,6);
-            SET v_per_ml_weight = ROUND(v_cup_weight/240,6);
-            SET v_litre_weight = ROUND(v_per_ml_weight * 1000,6);
-
-            -- update/insert into table units for kg
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'kg';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET  conversion_factor = 1.000000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'kg', 1.000000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for g
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'g';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET  conversion_factor = 0.001000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'g', 0.001000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for oz
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'oz';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.0283495, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'oz', 0.0283495, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for lbs
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'lbs';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.453592, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'lbs', 0.453592, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for cup, tbsp, tsp, ml and l 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'cup';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_cup_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'cup', v_cup_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update into table units for tbsp if available 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tbsp';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_tbsp_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'tbsp', v_tbsp_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update into table units for tsp if available 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tsp';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_tsp_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'tsp', v_tsp_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update into table units for ml if available 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'ml';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_per_ml_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'ml', v_per_ml_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update into table units for l if available 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'l';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_litre_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'l', v_litre_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-        -- IF reference unit in litre       
-        ELSEIF v_reference_unit = 'l' THEN
-            -- convert cup unit to kg if other than gm selected like gm, oz, lbs
-            IF p_cup_equivalent_unit = 'g' THEN
-                SET v_cup_weight = p_cup_equivalent_weight/1000;
-            ELSEIF p_cup_equivalent_unit = 'oz' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight * 0.0283495;
-            ELSEIF p_cup_equivalent_unit = 'lbs' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight * 0.453592;
-            ELSEIF p_cup_equivalent_unit = 'kg' THEN 
-                SET v_cup_weight = p_cup_equivalent_weight;
-            END IF;
-        
-            SET v_kg_weight = ROUND(1000 * v_cup_weight/240,6);
-            SET v_gm_weight = ROUND(v_kg_weight / 1000,6);
-
-            -- update/insert into table units for l
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'l';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 1.000000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'l', 1.000000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for ml
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'ml';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.001000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'ml', 0.001000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for cup
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'cup';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.240000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'cup', 0.240000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for tbsp
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tbsp';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.015000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'tbsp', 0.015000, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update/insert into table units for tsp
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'tsp';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = 0.005000, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'tsp', 0.005000, CURRENT_TIMESTAMP);
-            END IF;
-            -- update/insert into table units for kg
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'kg';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_kg_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'kg', v_kg_weight, CURRENT_TIMESTAMP);
-            END IF;
-
-            -- update into table units for g if available 
-            SELECT unit_id 
-            INTO v_temp_unit_id
-            FROM units 
-            WHERE ingredient_id = p_ingredient_id AND is_active = 0 AND unit_name = 'g';
-
-            IF v_temp_unit_id IS NOT NULL THEN 
-                UPDATE units
-                SET conversion_factor = v_gm_weight, created_at = CURRENT_TIMESTAMP, is_active = 1, end_date = NULL
-                WHERE unit_id = v_temp_unit_id;
-            ELSE
-                INSERT INTO units (ingredient_id, unit_name, conversion_factor, created_at)
-                VALUES (v_ingredient_id, 'g', v_gm_weight, CURRENT_TIMESTAMP);
-            END IF;
-        END IF;   
     END IF;
 END //
 DELIMITER ;

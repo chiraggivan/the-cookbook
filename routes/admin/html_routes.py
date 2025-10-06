@@ -6,7 +6,7 @@ admin_html_bp = Blueprint("admin_html", __name__, url_prefix="/admin")
 @admin_html_bp.route('/ingredients', methods=['GET'])
 # @jwt_required()
 def all_ingredients_page():
-    print("within all_ingredients_page for html_routes")
+    # print("within all_ingredients_page for html_routes")
     # claims = get_jwt()    
     # if claims.get("role") != "admin":
     #     return abort(403, description="Admin privileges required")
@@ -15,7 +15,7 @@ def all_ingredients_page():
 @admin_html_bp.route('/ingredient/details/<int:ingredient_id>', methods=['GET'])
 # @jwt_required()
 def ingredient_details_page(ingredient_id):
-    print("within all_ingredients_page for html_routes")
+    # print("within all_ingredients_page for html_routes")
     # claims = get_jwt()    
     # if claims.get("role") != "admin":
     #     return abort(403, description="Admin privileges required")
