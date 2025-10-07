@@ -62,6 +62,7 @@ def get_recipe_details_for_update(recipe_id):
         # Get recipe ingredients and its price
         cursor.execute("""
             SELECT 
+                ri.display_order,
                 i.ingredient_id,
                 i.name,
                 ri.recipe_ingredient_id,
@@ -79,6 +80,7 @@ def get_recipe_details_for_update(recipe_id):
                 AND up.is_active = TRUE
             WHERE ri.recipe_id = %s
             AND ri.is_active = TRUE
+            ORDER BY display_order
             """,(s_user_id, recipe_id))
         ingredients = [normalize_row(r) for r in cursor.fetchall()]
         
@@ -178,6 +180,66 @@ def update_privacy(recipe_id):
             conn.rollback()
             cursor.close()
             conn.close()
+        return jsonify({'error': str(err)}), 500
+
+# reorder the ingredient list for display_order
+@recipes_api_bp.route('/ingredient-order/<int:recipe_ingredient_id>', methods=['PATCH'])
+@jwt_required()
+def update_ingredient_order(recipe_ingredient_id):
+    user_id = get_jwt_identity()
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor()
+        
+        # Step 1: Verify the ingredient belongs to a recipe owned by the user
+        cursor.execute("""
+            SELECT ri.recipe_id 
+            FROM recipe_ingredients ri 
+            JOIN recipes r ON ri.recipe_id = r.recipe_id 
+            WHERE ri.recipe_ingredient_id = %s 
+            AND ri.is_active = TRUE 
+            AND r.user_id = %s 
+            AND r.is_active = TRUE
+        """, (recipe_ingredient_id, user_id))
+        ingredient_check = cursor.fetchone()
+        if not ingredient_check:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Ingredient not found or you do not own this recipe.'}), 403
+        
+        # Step 2: Get the new display_order from request body
+        new_order = request.json.get('display_order')
+        if not new_order or not isinstance(new_order, int) or new_order < 1:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Valid display_order (positive integer) is required.'}), 400
+        
+        # Step 3: Update the display_order
+        cursor.execute("""
+            UPDATE recipe_ingredients 
+            SET display_order = %s 
+            WHERE recipe_ingredient_id = %s 
+            AND is_active = TRUE
+        """, (new_order, recipe_ingredient_id))
+        
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Failed to update ingredient order.'}), 404
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({'message': 'Ingredient order updated successfully.'}), 200
+        
+    except Error as err:
+        # Rollback on error (if needed)
+        if conn:
+            conn.rollback()
         return jsonify({'error': str(err)}), 500
 
 # Update recipe (PATCH)
@@ -573,7 +635,7 @@ def update_recipe(recipe_id):
         for ing in data.get('remove_ingredients', []):
             cursor.execute("""
                 UPDATE recipe_ingredients 
-                SET is_active = FALSE, end_date = CURRENT_TIMESTAMP 
+                SET is_active = FALSE, end_date = CURRENT_TIMESTAMP, display_order = -1
                 WHERE recipe_id = %s AND recipe_ingredient_id = %s AND is_active = TRUE
             """, (recipe_id, ing['recipe_ingredient_id']))
         

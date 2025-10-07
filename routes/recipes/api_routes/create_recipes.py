@@ -378,11 +378,13 @@ def create_recipe():
         recipe_id = cursor.lastrowid
 
         # Insert into recipe_ingredients
+        display_order = 0
         for ing in ingredients:
+            display_order += 1
             cursor.execute("""
-                INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active)
-                VALUES (%s, %s, %s, %s, TRUE)
-            """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id']))
+                INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order)
+                VALUES (%s, %s, %s, %s, TRUE, %s)
+            """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], display_order))
 
             # Update user_prices if base_unit/base_price/base_quantity is provided and different
             if ing.get('base_unit'):

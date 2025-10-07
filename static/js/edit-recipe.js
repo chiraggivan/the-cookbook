@@ -249,6 +249,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const tr = document.createElement("tr");
                 tr.classList.add("ingredient-row");
                 tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
+                tr.dataset.originalOrder = i.display_order || 0;
                 tr.innerHTML = `
                     <td>
                         <input type="text" class="ingredient-name" value="${i.name}">
@@ -258,7 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <td>
                     <select class="unit-select">
                         <option value="${i.unit_id}" selected>${i.unit_name}</option>
-                        <!-- You can add other options later -->
+                    
                     </select>
                     </td>
                     <td class="cost-input" style="text-align: center;"></td>
@@ -318,6 +319,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         } catch (err) {
             console.error("Error loading recipe for edit:", err);
         }
+    }
+
+    // Calculate new display_order for rows and detect changes for PATCH
+    function calculateNewOrders() {
+        const rows = document.querySelectorAll("#ingredients-tbody tr");
+        const orderUpdates = []; 
+
+        rows.forEach((row, index) => {
+            // Skip removed rows
+            if (row.dataset.removed === "true") return;
+
+            const newOrder = index + 1; 
+            const recipeIngredientId = row.dataset.recipeIngredientId;
+
+            // Only check existing rows (with ID) for order changes
+            if (recipeIngredientId) {
+                const originalOrder = parseInt(row.dataset.originalOrder) || 0;
+                if (newOrder !== originalOrder) {
+                    orderUpdates.push({
+                        recipe_ingredient_id: parseInt(recipeIngredientId),
+                        display_order: newOrder
+                    });
+                }
+            }
+        });
+
+        return orderUpdates;
     }
 
     // Initialize autocomplete for an ingredient
@@ -523,10 +551,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             return {filledRows: null, remove_ingredients: null, errorMessage: errorMessage} ;
         }
 
-        return { filledRows, add_ingredients, update_ingredients, remove_ingredients, errorMessage: null };
+        // NEW: Calculate order changes for PATCH
+        const orderUpdates = calculateNewOrders();
+        return { filledRows, add_ingredients, update_ingredients, remove_ingredients, orderUpdates, errorMessage: null };
     }
 
-    //compare the original recipe ingredientsand new. Only attach those that are not same - i.e. updated.
+    // window.validateIngredientRows = validateIngredientRows; -------------------> FOR TESTING
+    //compare the original recipe ingredients and new. Only attach those that are not same - i.e. updated.
     function getRecipePayload(originalRecipeData, completeRecipeData) {
         const payload = {};
 
@@ -725,7 +756,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const completeRecipeData = data;
         
         //console.log("originalRecipeData : ", originalRecipeData);
-        const { filledRows, add_ingredients, update_ingredients, remove_ingredients, errorMessage}  = validateIngredientRows();
+        const { filledRows, add_ingredients, update_ingredients, remove_ingredients, orderUpdates, errorMessage}  = validateIngredientRows();
         if (errorMessage) {
             console.log("error from ingredients table:", errorMessage);
             return;
@@ -763,6 +794,29 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         };
 
+        // NEW: After main update succeeds, PATCH any changed orders
+        for (const update of orderUpdates) {
+            try {
+                const orderResponse = await fetch(`/recipes/api/ingredient-order/${update.recipe_ingredient_id}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ display_order: update.display_order })
+                });
+                const orderData = await orderResponse.json();
+                if (!orderResponse.ok) {
+                    console.warn("Order update failed for ID", update.recipe_ingredient_id, ":", orderData.error);
+                    // Don't block success—log and continue
+                } else {
+                    console.log("Order updated successfully for ID", update.recipe_ingredient_id);
+                }
+            } catch (orderErr) {
+                console.error("Error updating order for ID", update.recipe_ingredient_id, ":", orderErr);
+            }
+        }
+        
         // Display success message and redirect
         showAlert(data.message || "Recipe updated successfully!");
         setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 1000);
@@ -773,3 +827,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     
 });
+

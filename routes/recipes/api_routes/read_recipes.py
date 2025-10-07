@@ -159,6 +159,7 @@ def get_recipe_details(recipe_id):
                 AND up.is_active = TRUE
             WHERE ri.recipe_id = %s
             AND ri.is_active = TRUE
+            ORDER BY ri.display_order
             """,(s_user_id, recipe_id))
         ingredients = cursor.fetchall()
 
