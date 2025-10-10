@@ -57,36 +57,6 @@ function validateRecipeForm() {
   return { name, portion_size: portionSize, description, privacy };
 }
 
-// Populate units dropdown for a selected ingredient
-function populateUnits(row, ingredientId) {
-  // Get the units dropdown element
-  const unitSelect = row.querySelector(".unit-select");
-  // Reset dropdown to default option
-  unitSelect.innerHTML = '<option value="">-- Select unit --</option>';
-  // Exit if no ingredient ID provided
-  if (!ingredientId) return;
-
-  // Fetch available units for the ingredient from API
-  fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    }
-  })
-    .then(res => res.json())
-    .then(data => {
-      // Add each unit as an option in the dropdown
-      data.forEach(unit => {
-        const option = document.createElement("option");
-        option.value = unit.unit_id;
-        option.textContent = unit.unit_name;
-        unitSelect.appendChild(option);
-      });
-    })
-    .catch(err => console.error("Failed to fetch units:", err));
-}
-
 // Validate ingredient table rows
 function validateIngredientsForm() {
   // Get all ingredient table rows
@@ -163,6 +133,62 @@ function validateIngredientsForm() {
   return ingredientsData;
 }
 
+// Validate and collect recipe steps
+function validateStepsForm() {
+  // Get all step rows
+  const stepsTbody = document.getElementById("steps-tbody");
+  const rows = Array.from(stepsTbody.querySelectorAll("tr"));
+  const steps = [];
+  let error = "";
+
+  // Collect non-empty step descriptions
+  rows.forEach((row, i) => {
+    const input = row.querySelector(".step-input");
+    const value = input.value.trim().replace(/\s{2,}/g, " ");
+    if (value !== "") steps.push(value);
+  });
+
+  // Display error if validation fails
+  if (error) {
+    document.getElementById("error").textContent = error;
+    return false;
+  }
+
+  // Clear error and return steps
+  document.getElementById("error").textContent = "";
+  return steps;
+}
+
+// Populate units dropdown for a selected ingredient
+function populateUnits(row, ingredientId) {
+  // Get the units dropdown element
+  const unitSelect = row.querySelector(".unit-select");
+  // Reset dropdown to default option
+  unitSelect.innerHTML = '<option value="">-- Select unit --</option>';
+  // Exit if no ingredient ID provided
+  if (!ingredientId) return;
+
+  // Fetch available units for the ingredient from API
+  fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    }
+  })
+    .then(res => res.json())
+    .then(data => {
+      // Add each unit as an option in the dropdown
+      data.forEach(unit => {
+        const option = document.createElement("option");
+        option.value = unit.unit_id;
+        option.textContent = unit.unit_name;
+        unitSelect.appendChild(option);
+      });
+    })
+    .catch(err => console.error("Failed to fetch units:", err));
+}
+
 // Initialize autocomplete and event listeners for an ingredient input row
 function initializeIngredientInput(row, index) {
   // Get input and suggestion box elements
@@ -181,7 +207,7 @@ function initializeIngredientInput(row, index) {
     suggestionBox.style.display = "none";
     // Reset units dropdown
     const unitSelect = row.querySelector(`select[name="unit_${index}"]`);
-    unitSelect.innerHTML = "<option value=''>-- Select unit --</option>";
+    unitSelect.innerHTML = "<option value=''> Select unit </option>";
 
     // Clear fields if input is empty
     if (query.length < 1) {
@@ -334,32 +360,6 @@ function attachNumberValidation(input) {
       }
     }
   });
-}
-
-// Validate and collect recipe steps
-function validateStepsForm() {
-  // Get all step rows
-  const stepsTbody = document.getElementById("steps-tbody");
-  const rows = Array.from(stepsTbody.querySelectorAll("tr"));
-  const steps = [];
-  let error = "";
-
-  // Collect non-empty step descriptions
-  rows.forEach((row, i) => {
-    const input = row.querySelector(".step-input");
-    const value = input.value.trim().replace(/\s{2,}/g, " ");
-    if (value !== "") steps.push(value);
-  });
-
-  // Display error if validation fails
-  if (error) {
-    document.getElementById("error").textContent = error;
-    return false;
-  }
-
-  // Clear error and return steps
-  document.getElementById("error").textContent = "";
-  return steps;
 }
 
 // alert block function
