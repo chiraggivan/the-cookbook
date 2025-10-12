@@ -31,7 +31,7 @@ function initializeIngredientInput(row, index) {
   const input = row.querySelector(".ingredient-input");
   const suggestionBox = row.querySelector(`#suggestions_${index}`);
   // let fetchedIngredients = [];
-  // let ingredientData = [];
+  let ingredientData = [];
   // let activeIndex = -1;
 
   // Handle input changes for autocomplete
@@ -44,7 +44,7 @@ function initializeIngredientInput(row, index) {
     suggestionBox.style.display = "none";
 
     // Fetch ingredient suggestions from API
-    let ingredientData =[];
+    
     try {
       const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
         method: "GET",
@@ -83,25 +83,29 @@ function initializeIngredientInput(row, index) {
     if (items.length > 0) {
       highlightItem(items, activeIndex);
     }
+  });
 
-    // Highlight selected suggestion item
-    function highlightItem(items, idx) {
-      items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
-      // if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+  // Highlight selected suggestion item
+  function highlightItem(items, idx) {
+    items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
+    // if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 
-    // Handle keyboard navigation for suggestions
-    input.addEventListener("keydown", function (e) {
-      const items = suggestionBox.querySelectorAll(".suggestion-item");
-      if (items.length === 0) return;
-      console.log("active index is: ",  activeIndex)
+  // Handle keyboard navigation for suggestions
+  input.addEventListener("keydown", function (e) {
+    const items = suggestionBox.querySelectorAll(".suggestion-item");
+    if (items.length === 0) return;
+    
 
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeIndex = (activeIndex + 1) % items.length;
-        highlightItem(items, activeIndex);
-      } 
-    });
+    if (e.key === "ArrowDown") {
+      e.preventDefault();      
+      activeIndex = (activeIndex + 1) % items.length ;
+      highlightItem(items, activeIndex);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();      
+      activeIndex = (activeIndex - 1 + items.length) % items.length ;
+      highlightItem(items, activeIndex);
+    } 
   });
 }
 
@@ -122,3 +126,12 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
 });
+
+
+
+
+
+
+
+
+
