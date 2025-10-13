@@ -301,7 +301,7 @@ function initializeIngredientInput(row, index) {
         row.querySelector(`input[name="base_quantity_${index}"]`).value = "";
         row.querySelector(`input[name="base_unit_${index}"]`).value = "";
         row.querySelector(`input[name="base_price_${index}"]`).value = "";
-        row.querySelector(`select[name="unit_${index}"]`).innerHTML = "<option value=''>-- Select unit --</option>";
+        row.querySelector(`select[name="unit_${index}"]`).innerHTML = "<option value=''> Select unit </option>";
       }
       suggestionBox.style.display = "none";
       activeIndex = -1;
