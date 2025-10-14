@@ -193,12 +193,16 @@ def create_recipe():
                 return "Recipe must have at least 2 ingredients"
 
             # Normalize ingredients (list of dicts)
-            ing_fields = ["ingredient_id", "quantity", "unit_id", "base_unit", "base_price"]
+            ing_fields = ["ingredient_id", "quantity", "unit_id", "base_unit", "base_price", "display_order"]
             ing_base_fields =["custom_price", "unit_supplied", "custom_quantity", "location"]
             
             for ing in ingredients:
                 
                 try:
+                    disp_order = to_int(ing.get("display_order"), "display_order")
+                    if not isinstance(disp_order, (int)) or disp_order <= 0 or disp_order >= 10**4:
+                        return f"Invalid display order: must be numeric > 0  and < 10000"
+
                     ing_id = to_int(ing.get("ingredient_id"), "ingredient_id")
                     if not isinstance(ing_id, (int, float)) or ing_id <= 0 or ing_id >= 10**6:
                         return f"Invalid ingredient id: must be numeric > 0  and < 1000000"
@@ -378,13 +382,13 @@ def create_recipe():
         recipe_id = cursor.lastrowid
 
         # Insert into recipe_ingredients
-        display_order = 0
+        # display_order = 0
         for ing in ingredients:
-            display_order += 1
+            # display_order += 1 removed it as its now coming from front end.
             cursor.execute("""
                 INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order)
                 VALUES (%s, %s, %s, %s, TRUE, %s)
-            """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], display_order))
+            """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['display_order']))
 
             # Update user_prices if base_unit/base_price/base_quantity is provided and different
             if ing.get('base_unit'):

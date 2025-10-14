@@ -62,6 +62,7 @@ function validateIngredientsForm() {
   // Get all ingredient table rows
   const rows = document.querySelectorAll("#ingredients-table tbody tr");
   let filledRowsCount = 0;
+  let displayOrder = 0;
   let errorMessage = "";
   const ingredientsData = [];
 
@@ -98,7 +99,9 @@ function validateIngredientsForm() {
     // Process fully filled rows
     if (isAllFieldsFilled) {
       filledRowsCount++;
+      displayOrder++;
       const ingredientObj = {
+        display_order : parseInt(displayOrder),
         ingredient_id: parseInt(row.dataset.ingredientId),
         quantity: parseFloat(quantityInput.value),
         unit_id: parseInt(unitSelect.value)
@@ -164,7 +167,7 @@ function populateUnits(row, ingredientId) {
   // Get the units dropdown element
   const unitSelect = row.querySelector(".unit-select");
   // Reset dropdown to default option
-  unitSelect.innerHTML = '<option value="">-- Select unit --</option>';
+  unitSelect.innerHTML = '<option value=""> Select unit </option>';
   // Exit if no ingredient ID provided
   if (!ingredientId) return;
 
@@ -501,7 +504,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Submit recipe to backend API
-    console.log("data sent:", completeRecipe)
+    console.log("data sent:", completeRecipe);
     const errorBox = document.getElementById("error");
     try {
       const response = await fetch("/recipes/api/new-recipe", {
