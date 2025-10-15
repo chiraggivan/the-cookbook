@@ -36,6 +36,7 @@
 
   <!-- Ingredients info-->
   <h2>Ingredients</h2>
+  <button id="add-first-component-btn" type="button">+ Add subheading at start</button>
   <table id="ingredients-table">
     <thead>
       <tr>
@@ -48,7 +49,7 @@
       </tr>
     </thead>
     <tbody id="ingredients-tbody">
-      <tr>
+      <tr class="ingredient-row">
         <td style="position: relative;">
           <input type="text" name="ingredient_name_0" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
           <div class="suggestions" id="suggestions_0"></div>
@@ -73,7 +74,7 @@
             <div class="error-create-recipe" id="errorBasePrice_0"></div>
         </td>
       </tr>
-      <tr>
+      <tr class="ingredient-row">
         <td style="position: relative;">
           <input type="text" name="ingredient_name_1" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
           <div class="suggestions" id="suggestions_1"></div>
@@ -100,6 +101,7 @@
       </tr>
     </tbody>
   </table>
+  <button id="add-component-btn" type="button">Add subheading</button>
 
   <!-- Steps info-->
   <h2>Steps</h2>

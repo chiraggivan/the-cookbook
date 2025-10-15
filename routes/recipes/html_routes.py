@@ -45,7 +45,7 @@ def recipe_detail_page(recipe_id):
 
 @recipes_html_bp.route('/create_recipe', methods=['GET'])
 def create_recipe_page():
-    return render_template("recipes/create_recipe.html")
+    return render_template("recipes/create_recipe_test.html")
 
 @recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
 def edit_recipe_page(recipe_id):
