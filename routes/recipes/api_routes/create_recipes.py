@@ -129,7 +129,6 @@ def create_recipe():
                     #return jsonify({"error": f"Expected string in {field} but recieved non string value", "submitted_data": request.get_json()}), 400
             
             # Handle ingredients (list of dicts)
-            
             ingredients = recipe_dict.get("ingredients", [])
             if isinstance(ingredients, list):
                 normalized_ingredients = []
@@ -145,8 +144,8 @@ def create_recipe():
                 cleaned["ingredients"] = normalized_ingredients
             else:
                 cleaned["ingredients"] = []
-            # Handle procedures(list of steps)
-            
+
+            # Handle procedures(list of steps)            
             steps = recipe_dict.get("steps",[])
             if isinstance(steps, list):
                 normalized_steps = []
@@ -166,7 +165,7 @@ def create_recipe():
         def validate_ingredient(data):
             
             #print(data)
-            recipe_dict  = data
+            recipe_dict = data
             # --- name ---
             name = recipe_dict.get("name")
             if not name or not isinstance(name, str) or len(name) > 50:
@@ -199,9 +198,17 @@ def create_recipe():
             for ing in ingredients:
                 
                 try:
-                    disp_order = to_int(ing.get("display_order"), "display_order")
+                    comp_disp_order = to_int(ing.get("comp_display_order"), "comp_display_order")
                     if not isinstance(disp_order, (int)) or disp_order <= 0 or disp_order >= 10**4:
-                        return f"Invalid display order: must be numeric > 0  and < 10000"
+                        return f"Invalid component display order: must be numeric > 0  and < 10000"
+
+                    ing_disp_order = to_int(ing.get("ing_display_order"), "ing_display_order")
+                    if not isinstance(disp_order, (int)) or disp_order <= 0 or disp_order >= 10**4:
+                        return f"Invalid ingredient display order: must be numeric > 0  and < 10000"
+
+                    component_input_text = ing.get("component_input_text")
+                    if not isinstance(component_input_text, str) or len(component_input_text) > 50:
+                        return f"Invalid component_input_text: must be a string ≤ 50 chars"
 
                     ing_id = to_int(ing.get("ingredient_id"), "ingredient_id")
                     if not isinstance(ing_id, (int, float)) or ing_id <= 0 or ing_id >= 10**6:
@@ -370,7 +377,7 @@ def create_recipe():
 
         # validate steps for recipe_procedures
         
-        # return jsonify({'message': "Every thing accepted and ready to insert recipe", 'submitted_data': data}), 200
+        return jsonify({'message': "Every thing accepted and ready to insert recipe"}), 200
 
 
         # ---------------- Data checked and ready to be inserted. About to actually insert data in db ---------------------------

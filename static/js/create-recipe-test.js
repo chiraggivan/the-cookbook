@@ -62,6 +62,7 @@ function validateIngredientsForm() {
   // const rows = Array.from(tbody.querySelectorAll("tr"));
   // Get all ingredient table rows
   const rows = document.querySelectorAll("#ingredients-table tbody tr");
+  const totalRows = rows.length;
   let filledRowsCount = 0;
   let compDisplayOrder = 0;
   let ingDisplayOrder = 0;
@@ -70,14 +71,14 @@ function validateIngredientsForm() {
   const errorBoxes = {};
   const errorCompBox ={};
   let componentInputText ="";
+  let componentIndex = -1;
 
   // Iterate through each row
   rows.forEach((row, index) => {
     const isThisRowComponent = row.classList.contains("component-row");
     const isThisRowIngredient = row.classList.contains("ingredient-row");
     
-    if(isThisRowComponent){
-      //console.log("component name is:");
+    if (isThisRowComponent) {
       const compText = row.querySelector(`input[name^="component_text_"]`);
       
       // extract the index number attached to value fields like errorName_${index}
@@ -96,22 +97,37 @@ function validateIngredientsForm() {
         compText.value.trim()
       ];
 
-      // //console.log("Quantity Input: ", quan)
-      // Check if any field is filled
-      const isAnyFieldFilled = values.some(v => v !== "");
       // Check if all fields are filled
       const isAllFieldsFilled = values.every(v => v !== "");
 
       // Validate that partially filled rows are not allowed
-      if (isAnyFieldFilled && !isAllFieldsFilled) {
-        if(compText.value.trim() == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Name required" };
-        errorMessage = `Check all the field. One or more errors found.`;
+      if (!isAllFieldsFilled) {
+        if(compText.value.trim() == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
+        errorMessage = `Check all the fields. One or more errors found.`;
       }
-
+      
+      //check if previous component has any ingredient. Cant be empty rows for ingredient
+      if (componentIndex != -1){
+        // console.log(ingredientsData[componentIndex].ingredients);
+        if(ingredientsData[componentIndex].ingredients.length === 0){
+          heading = ingredientsData[componentIndex].component_input_text;
+          errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+        };
+      };
+      
       // Process filled component
-      if (isAllFieldsFilled) {
+      if (isAllFieldsFilled && errorMessage == "") {
         compDisplayOrder++;
+        componentIndex++;
         componentInputText = compText.value;
+        const componentObj = {
+          comp_display_order : parseInt(compDisplayOrder),
+          component_input_text : componentInputText
+        };
+        // Create empty list for ingredients
+        componentObj.ingredients = [];
+
+        ingredientsData.push(componentObj);
         
       };
     };
@@ -171,7 +187,7 @@ function validateIngredientsForm() {
         if(baseQtyInput.value.trim() == ""){errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "Base quantity required" };
         if(baseUnitInput.value.trim() == ""){errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "Base Unit required" };
         if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
-        errorMessage = `Check all the field. One or more errors found.`;
+        errorMessage = `Check all the fields. One or more errors found.`;
       }
 
       // Process fully filled rows
@@ -182,9 +198,7 @@ function validateIngredientsForm() {
           ingredient_id: parseInt(row.dataset.ingredientId),
           quantity: parseFloat(quantityInput.value),
           unit_id: parseInt(unitSelect.value),
-          ing_display_order : ingDisplayOrder,
-          comp_display_order : compDisplayOrder,
-          component_input_text : componentInputText
+          ing_display_order : ingDisplayOrder
         };
 
         // Include base fields only if they differ from original values
@@ -195,11 +209,28 @@ function validateIngredientsForm() {
           ingredientObj.base_unit = baseUnitInput.value;
           ingredientObj.base_price = parseFloat(basePriceInput.value);
         }
-
-        ingredientsData.push(ingredientObj);
+        
+        if(componentIndex == -1){
+          componentIndex++;
+          ingredientsData[componentIndex] = {};
+          ingredientsData[componentIndex].comp_display_order = 0;
+          ingredientsData[componentIndex].component_input_text = "";
+          ingredientsData[componentIndex].ingredients = [];
+        } else {        };
+        // console.log("componentIndex :", componentIndex);
+        ingredientsData[componentIndex].ingredients.push(ingredientObj);
       }
     };
   });
+
+  //check if previous component has any ingredient. Cant be empty rows for ingredient
+  if (componentIndex != -1){
+    // console.log(ingredientsData[componentIndex].ingredients);
+    if(ingredientsData[componentIndex].ingredients.length === 0){
+      heading = ingredientsData[componentIndex].component_input_text;
+      errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+    };
+  }
 
   // Ensure at least two rows are fully filled
   if (!errorMessage && filledRowsCount < 2) {
@@ -455,41 +486,32 @@ document.addEventListener("DOMContentLoaded", function () {
     initializeIngredientInput(row, index);
   });
 
-  // component Button to add the first heading at the top of he ingredient list
-  addFirstComponentBtn.addEventListener("click", function () {
-    // Create the component row
-    const tr = document.createElement("tr");
-    tr.classList.add("component-row");
-    tr.innerHTML = `
-      <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
-        <input type="text" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-      </td>
-    `;
-    // Insert at the end of tbody
-    tbody.prepend(tr);
-    addFirstComponentBtn.style.display ='none';
-
-    attachRowListeners(tr);
-    //initializeIngredientInput(row, index);
-  });
-
-  // component Button to add the heading row at the bottom of the ingredient list
-  addComponentBtn.addEventListener("click", function () {
-    // Create the component row
-    const tr = document.createElement("tr");
-    tr.classList.add("component-row");
-    tr.innerHTML = `
-      <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
-        <input type="text" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-      </td>
-    `;
-    // Insert at the end of tbody
-    tbody.appendChild(tr);
-
-    attachRowListeners(tr);
-    //initializeIngredientInput(tr, index);
-
-  });
+  // component buttons to add the heading for the ingredient list
+  [addFirstComponentBtn, addComponentBtn].forEach( button => 
+    button.addEventListener("click", function () {
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const index = rows.length;
+      // Create the component row
+      const tr = document.createElement("tr");
+      tr.classList.add("component-row");
+      tr.innerHTML = `
+        <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
+          <input type="text" name="component_text_${index}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+          <div class="error-create-recipe" id="errorCompText_${index}"></div>
+        </td>
+      `;
+      // Depending on the button, place it on the top or at the bottom
+      if(button == addFirstComponentBtn){
+        tbody.prepend(tr);
+        addFirstComponentBtn.style.display ='none';
+      } else if(button == addComponentBtn){
+        tbody.appendChild(tr);
+        addComponentBtn.style.display ='none';
+      };
+    
+      attachRowListeners(tr);
+    })
+  );
 
   // Attach input listeners to a row
   function attachRowListeners(row) {
@@ -558,8 +580,64 @@ document.addEventListener("DOMContentLoaded", function () {
       // Attach listeners and initialize autocomplete for new row
       attachRowListeners(newRow);
       initializeIngredientInput(newRow, index);
+      const addComponentBtn = document.getElementById("add-component-btn");
+      if(addComponentBtn.style.display ==='none'){
+        addComponentBtn.style.display = 'block';
+      }
+      
     }
   }
+
+  // Handle recipe submission
+  document.getElementById("submit-recipe-btn").addEventListener("click", async () => {
+    // Validate all form sections
+    const completeRecipe = [];
+    const recipeData = validateRecipeForm();
+    if (!recipeData) return;
+    const ingredientsData = validateIngredientsForm();
+    if (!ingredientsData) return;
+    const stepsData = validateStepsForm();
+    if (!stepsData) return;
+
+    // Combine validated data
+    completeRecipe.push({
+      name: recipeData["name"],
+      portion_size: recipeData["portion_size"],
+      privacy: recipeData["privacy"],
+      description: recipeData["description"],
+      components: ingredientsData,
+      steps: stepsData
+    });
+
+    // Submit recipe to backend API
+    console.log("data sent:", completeRecipe);
+    const errorBox = document.getElementById("error");
+    // try {
+    //   const response = await fetch("/recipes/api/new-recipe", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //       "Authorization": `Bearer ${token}`
+    //     },
+    //     body: JSON.stringify(completeRecipe)
+    //   });
+
+    //   const data = await response.json();
+    //   if (!response.ok) {
+    //     errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
+    //     console.log("Submitted data (for debug):", data.submitted_data);
+    //     return;
+    //   }
+
+    //   // Display success message and redirect
+    //   showAlert(data.message || "Recipe created successfully!");
+    //   console.log("submitted data: ", data)
+    //   //errorBox.textContent = data.message || "Recipe created successfully!";
+    //   setTimeout(() => { window.location.href = "/recipes/"; }, 2000);
+    // } catch (err) {
+    //   errorBox.textContent = err.message;
+    // }
+  });
 });
 
 

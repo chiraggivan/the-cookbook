@@ -1,4 +1,3 @@
-
 const token = localStorage.getItem("access_token");
 
 // Validate recipe form inputs (name, portion size, description, privacy)
@@ -59,65 +58,150 @@ function validateRecipeForm() {
 
 // Validate ingredient table rows
 function validateIngredientsForm() {
+  // const tbody = document.getElementById("ingredients-tbody");
+  // const rows = Array.from(tbody.querySelectorAll("tr"));
   // Get all ingredient table rows
   const rows = document.querySelectorAll("#ingredients-table tbody tr");
   let filledRowsCount = 0;
-  let displayOrder = 0;
+  let componentDisplayOrder = 0;
+  let ingDisplayOrder = 0;
   let errorMessage = "";
   const ingredientsData = [];
+  const errorBoxes = {};
+  const errorCompBox ={};
+  let componentInputText ="";
 
   // Iterate through each row
   rows.forEach((row, index) => {
-    // Get input and select elements for the row
-    const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
-    const quantityInput = row.querySelector(`input[name^="quantity_"]`);
-    const unitSelect = row.querySelector(`select[name^="unit_"]`);
-    const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
-    const baseUnitInput = row.querySelector(`input[name^="base_unit_"]`);
-    const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
+    const isThisRowComponent = row.classList.contains("component-row");
+    const isThisRowIngredient = row.classList.contains("ingredient-row");
+    
+    if(isThisRowComponent){
+      //console.log("component name is:");
+      const compText = row.querySelector(`input[name^="component_text_"]`);
+      
+      // extract the index number attached to value fields like errorName_${index}
+      const match = compText.name.match(/_(\d+)$/);
+      const realIndex = match ? match[1] : null;
+      if (!realIndex) return;
 
-    // Collect values from all fields
-    const values = [
-      nameInput.value.trim(),
-      quantityInput.value.trim(),
-      unitSelect.value.trim(),
-      baseQtyInput.value.trim(),
-      baseUnitInput.value.trim(),
-      basePriceInput.value.trim()
-    ];
+      // Get error display elements
+      errorCompBox[`errorCompText_${realIndex}`] = document.getElementById(`errorCompText_${realIndex}`);
 
-    // Check if any field is filled
-    const isAnyFieldFilled = values.some(v => v !== "");
-    // Check if all fields are filled
-    const isAllFieldsFilled = values.every(v => v !== "");
+      // Reset Error messages
+      errorCompBox[`errorCompText_${realIndex}`].textContent = "";
 
-    // Validate that partially filled rows are not allowed
-    if (isAnyFieldFilled && !isAllFieldsFilled) {
-      errorMessage = `Row ${index + 1}: All fields must be filled if any field is entered.`;
-    }
+      // Collect values from all fields of component rows
+      const values = [
+        compText.value.trim()
+      ];
 
-    // Process fully filled rows
-    if (isAllFieldsFilled) {
-      filledRowsCount++;
-      displayOrder++;
-      const ingredientObj = {
-        display_order : parseInt(displayOrder),
-        ingredient_id: parseInt(row.dataset.ingredientId),
-        quantity: parseFloat(quantityInput.value),
-        unit_id: parseInt(unitSelect.value)
-      };
+      // Check if all fields are filled
+      const isAllFieldsFilled = values.every(v => v !== "");
 
-      // Include base fields only if they differ from original values
-      if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
-          baseUnitInput.value != baseUnitInput.dataset.original ||
-          parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
-        ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
-        ingredientObj.base_unit = baseUnitInput.value;
-        ingredientObj.base_price = parseFloat(basePriceInput.value);
+      // Validate that partially filled rows are not allowed
+      if (!isAllFieldsFilled) {
+        if(compText.value.trim() == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
+        errorMessage = `Check all the fields. One or more errors found.`;
       }
 
-      ingredientsData.push(ingredientObj);
-    }
+      // Process filled component
+      if (isAllFieldsFilled) {
+        componentDisplayOrder++;
+        componentInputText = compText.value;
+        const componentObj = {
+          comp_display_order : parseInt(componentDisplayOrder),
+          component_input_text : componentInputText
+        };
+
+        ingredientsData.push(componentObj);
+        
+      };
+    };
+
+    // if row is ingredient row then check and validate its field and reset error message and display if exist
+    if(isThisRowIngredient){
+      // Get input and select elements for the row
+      const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
+      const quantityInput = row.querySelector(`input[name^="quantity_"]`);
+      const unitSelect = row.querySelector(`select[name^="unit_"]`);
+      const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
+      const baseUnitInput = row.querySelector(`input[name^="base_unit_"]`);
+      const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
+
+      // extract the index number attached to value fields like errorName_${index}
+      const match = nameInput.name.match(/_(\d+)$/);
+      const realIndex = match ? match[1] : null;
+      if (!realIndex) return;
+      // Get error display elements
+      errorBoxes[`errorIngName_${realIndex}`] = document.getElementById(`errorIngName_${realIndex}`);
+      errorBoxes[`errorQuantity_${realIndex}`] = document.getElementById(`errorQuantity_${realIndex}`);
+      errorBoxes[`errorUnit_${realIndex}`] = document.getElementById(`errorUnit_${realIndex}`);
+      errorBoxes[`errorBaseQuantity_${realIndex}`] = document.getElementById(`errorBaseQuantity_${realIndex}`);
+      errorBoxes[`errorBaseUnit_${realIndex}`] = document.getElementById(`errorBaseUnit_${realIndex}`);
+      errorBoxes[`errorBasePrice_${realIndex}`] = document.getElementById(`errorBasePrice_${realIndex}`);
+      //const  = document.getElementById(`_${index}`);
+
+      // Reset Error messages
+      errorBoxes[`errorIngName_${realIndex}`].textContent =  "";
+      errorBoxes[`errorQuantity_${realIndex}`].textContent =  "";
+      errorBoxes[`errorUnit_${realIndex}`].textContent =  "";
+      errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "";
+      errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "";
+      errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "";
+
+      // Collect values from all fields
+      const values = [
+        nameInput.value.trim(),
+        quantityInput.value.trim(),
+        unitSelect.value.trim(),
+        baseQtyInput.value.trim(),
+        baseUnitInput.value.trim(),
+        basePriceInput.value.trim()
+      ];
+
+      // //console.log("Quantity Input: ", quan)
+      // Check if any field is filled
+      const isAnyFieldFilled = values.some(v => v !== "");
+      // Check if all fields are filled
+      const isAllFieldsFilled = values.every(v => v !== "");
+
+      // Validate that partially filled rows are not allowed
+      if (isAnyFieldFilled && !isAllFieldsFilled) {
+        if(nameInput.value.trim() == ""){errorBoxes[`errorIngName_${realIndex}`].textContent =  "Name required" };
+        if(quantityInput.value.trim() == ""){errorBoxes[`errorQuantity_${realIndex}`].textContent =  "Quantity required" };
+        if(unitSelect.value.trim() == ""){errorBoxes[`errorUnit_${realIndex}`].textContent =  "Select a Unit" };
+        if(baseQtyInput.value.trim() == ""){errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "Base quantity required" };
+        if(baseUnitInput.value.trim() == ""){errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "Base Unit required" };
+        if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
+        errorMessage = `Check all the fields. One or more errors found.`;
+      }
+
+      // Process fully filled rows
+      if (isAllFieldsFilled) {
+        filledRowsCount++;
+        ingDisplayOrder++;
+        const ingredientObj = {
+          ingredient_id: parseInt(row.dataset.ingredientId),
+          quantity: parseFloat(quantityInput.value),
+          unit_id: parseInt(unitSelect.value),
+          ing_display_order : parseInt(ingDisplayOrder),
+          comp_display_order : parseInt(componentDisplayOrder),
+          component_input_text : componentInputText
+        };
+
+        // Include base fields only if they differ from original values
+        if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
+            baseUnitInput.value != baseUnitInput.dataset.original ||
+            parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
+          ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
+          ingredientObj.base_unit = baseUnitInput.value;
+          ingredientObj.base_price = parseFloat(basePriceInput.value);
+        }
+
+        ingredientsData.push(ingredientObj);
+      }
+    };
   });
 
   // Ensure at least two rows are fully filled
@@ -393,11 +477,39 @@ function showAlert(message, isError = false, autoClose = true) {
 document.addEventListener("DOMContentLoaded", function () {
   // Get ingredients table body
   const tbody = document.getElementById("ingredients-tbody");
+  const addFirstComponentBtn = document.getElementById(`add-first-component-btn`);
+  const addComponentBtn = document.getElementById(`add-component-btn`);
 
   // Apply number validation to initial numeric inputs
   tbody.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
     attachNumberValidation(input);
   });
+
+  // component buttons to add the heading for the ingredient list
+  [addFirstComponentBtn, addComponentBtn].forEach( button => 
+    button.addEventListener("click", function () {
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const index = rows.length;
+      // Create the component row
+      const tr = document.createElement("tr");
+      tr.classList.add("component-row");
+      tr.innerHTML = `
+        <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
+          <input type="text" name="component_text_${index}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+          <div class="error-create-recipe" id="errorCompText_${index}"></div>
+        </td>
+      `;
+      // Depending on the button, place it on the top or at the bottom
+      if(button == addFirstComponentBtn){
+        tbody.prepend(tr);
+        addFirstComponentBtn.style.display ='none';
+      } else if(button == addComponentBtn){
+        tbody.appendChild(tr);
+      };
+    
+      attachRowListeners(tr);
+    })
+  );
 
   // Attach input listeners to a row
   function attachRowListeners(row) {
@@ -407,30 +519,56 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Handle row input changes to add new rows dynamically
-  function handleRowChange() {
+  function handleRowChange(event) {
     const rows = Array.from(tbody.querySelectorAll("tr"));
+    const currentRow = event.target.closest("tr"); // Get the row containing the input
+    const currentRowIndex = rows.indexOf(currentRow); //console.log("current row index:", currentRowIndex);
+    const nextRow = rows[currentRowIndex + 1];
+    const isNextRowComponent = rows[currentRowIndex + 1] && rows[currentRowIndex + 1].classList.contains("component-row");
     const lastRow = rows[rows.length - 1];
-    const values = Array.from(lastRow.querySelectorAll("input, select")).map(i => i.value.trim());
-    // Add new row if last row is fully filled
-    if (values.some(v => v !== "")) {
+    const isCurrentRowLastRow = currentRow === lastRow;
+    const targetRow = (isCurrentRowLastRow || isNextRowComponent) ? currentRow : null;
+    const currentRowInputs = targetRow 
+      ? Array.from(targetRow.querySelectorAll("input, select")).map(i => i.value.trim()) 
+      : [];
+    
+    // Add new row if last non-component row is filled
+    if (targetRow && currentRowInputs.some(v => v !== "")) {
       const index = rows.length;
       const newRow = document.createElement("tr");
+      newRow.classList.add("ingredient-row");
       newRow.innerHTML = `
         <td style="position: relative;">
           <input type="text" name="ingredient_name_${index}" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
           <div class="suggestions" id="suggestions_${index}"></div>
+          <div class="error-create-recipe" id="errorIngName_${index}"></div>
         </td>
-        <td><input type="number" step="any" name="quantity_${index}" placeholder="Qty"></td>
+        <td><input type="number" step="any" name="quantity_${index}" placeholder="Qty">
+          <div class="error-create-recipe" id="errorQuantity_${index}"></div>
+        </td>
         <td>
           <select name="unit_${index}" class="unit-select">
-            <option value="">-- Select unit --</option>
+            <option value=""> Select unit </option>
           </select>
+          <div class="error-create-recipe" id="errorUnit_${index}"></div>
         </td>
-        <td><input type="number" step="any" name="base_quantity_${index}" placeholder="Base Qty"></td>
-        <td><input type="text" name="base_unit_${index}" placeholder="Base Unit"></td>
-        <td><input type="number" step="any" name="base_price_${index}" placeholder="Base Price"></td>
+        <td><input type="number" step="any" name="base_quantity_${index}" placeholder="Base Qty" class="validated-number">
+          <div class="error-create-recipe" id="errorBaseQuantity_${index}"></div>
+        </td>
+        <td><input type="text" name="base_unit_${index}" placeholder="Base Unit">
+          <div class="error-create-recipe" id="errorBaseUnit_${index}"></div>
+        </td>
+        <td><input type="number" step="any" name="base_price_${index}" placeholder="Base Price" class="validated-number">
+          <div class="error-create-recipe" id="errorBasePrice_${index}"></div>
+        </td>
       `;
-      tbody.appendChild(newRow);
+      
+      // Insert before the next component row, or append if none exists or last row is component
+      if (isNextRowComponent) {
+        tbody.insertBefore(newRow, nextRow);
+      } else {
+        tbody.appendChild(newRow);
+      }
 
       // Apply number validation to new numeric inputs
       newRow.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {

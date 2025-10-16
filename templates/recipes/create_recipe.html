@@ -35,6 +35,7 @@
   </section>
   <!-- Ingredients info-->
   <h2>Ingredients</h2>
+  <button id="add-first-component-btn" type="button">+ Add subheading at start</button>
   <table id="ingredients-table">
     <thead>
       <tr>
@@ -47,38 +48,59 @@
       </tr>
     </thead>
     <tbody id="ingredients-tbody">
-      <tr>
+      <tr class="ingredient-row">
         <td style="position: relative;">
-          <input type="text" name="ingredient_name_0" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+          <input type="text" name="ingredient_name_0" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
           <div class="suggestions" id="suggestions_0"></div>
+          <div class="error-create-recipe" id="errorIngName_0"></div>
         </td>
-        <td><input type="number" step="any" name="quantity_0" placeholder="Qty" min="0.01" class="validated-number"></td>
+        <td><input type="number" step="any" name="quantity_0" placeholder="Qty" class="validated-number">
+            <div class="error-create-recipe" id="errorQuantity_0"></div>
+        </td>
         <td>
           <select name="unit_0" class="unit-select">
-            <option value="">-- Select unit --</option>
+            <option value=""> Select unit </option>
           </select>
+          <div class="error-create-recipe" id="errorUnit_0"></div>
         </td>
-        <td><input type="number" step="any" name="base_quantity_0" placeholder="Base Qty" min="0.01" class="validated-number"></td>
-        <td><input type="text" name="base_unit_0" placeholder="Base Unit"></td>
-        <td><input type="number" step="any" name="base_price_0" placeholder="Base Price" min="0.01" class="validated-number"></td>
+        <td><input type="number" step="any" name="base_quantity_0" placeholder="Base Qty" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBaseQuantity_0"></div>
+        </td>
+        <td><input type="text" name="base_unit_0" placeholder="Base Unit">
+            <div class="error-create-recipe" id="errorBaseUnit_0"></div>
+        </td>
+        <td><input type="number" step="any" name="base_price_0" placeholder="Base Price" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBasePrice_0"></div>
+        </td>
       </tr>
-      <tr>
+      <tr class="ingredient-row">
         <td style="position: relative;">
-          <input type="text" name="ingredient_name_1" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+          <input type="text" name="ingredient_name_1" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
           <div class="suggestions" id="suggestions_1"></div>
+          <div class="error-create-recipe" id="errorIngName_1"></div>
         </td>
-        <td><input type="number" step="any" name="quantity_1" placeholder="Qty"></td>
+        <td><input type="number" step="any" name="quantity_1" placeholder="Qty" class="validated-number">
+            <div class="error-create-recipe" id="errorQuantity_1"></div>
+        </td>
         <td>
           <select name="unit_1" class="unit-select">
-            <option value="">-- Select unit --</option>
+            <option value=""> Select unit </option>
           </select>
+          <div class="error-create-recipe" id="errorUnit_1"></div>
         </td>
-        <td><input type="number" step="any" name="base_quantity_1" placeholder="Base Qty"></td>
-        <td><input type="text" name="base_unit_1" placeholder="Base Unit"></td>
-        <td><input type="number" step="any" name="base_price_1" placeholder="Base Price"></td>
+        <td><input type="number" step="any" name="base_quantity_1" placeholder="Base Qty" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBaseQuantity_1"></div>
+        </td>
+        <td><input type="text" name="base_unit_1" placeholder="Base Unit">
+            <div class="error-create-recipe" id="errorBaseUnit_1"></div>
+        </td>
+        <td><input type="number" step="any" name="base_price_1" placeholder="Base Price" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBasePrice_1"></div>
+        </td>
       </tr>
     </tbody>
   </table>
+  <button id="add-component-btn" type="button">Add subheading</button>
 
   <!-- Steps info-->
   <h2>Steps</h2>
