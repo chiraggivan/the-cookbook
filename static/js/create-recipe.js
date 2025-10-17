@@ -62,14 +62,16 @@ function validateIngredientsForm() {
   // const rows = Array.from(tbody.querySelectorAll("tr"));
   // Get all ingredient table rows
   const rows = document.querySelectorAll("#ingredients-table tbody tr");
+  const totalRows = rows.length;
   let filledRowsCount = 0;
-  let componentDisplayOrder = 0;
+  let compDisplayOrder = 0;
   let ingDisplayOrder = 0;
   let errorMessage = "";
   const ingredientsData = [];
   const errorBoxes = {};
   const errorCompBox ={};
   let componentInputText ="";
+  let componentIndex = -1;
 
   // Iterate through each row
   rows.forEach((row, index) => {
@@ -77,7 +79,6 @@ function validateIngredientsForm() {
     const isThisRowIngredient = row.classList.contains("ingredient-row");
     
     if(isThisRowComponent){
-      //console.log("component name is:");
       const compText = row.querySelector(`input[name^="component_text_"]`);
       
       // extract the index number attached to value fields like errorName_${index}
@@ -105,14 +106,26 @@ function validateIngredientsForm() {
         errorMessage = `Check all the fields. One or more errors found.`;
       }
 
+      //check if previous component has any ingredient. Cant be empty rows for ingredient
+      if (componentIndex != -1){
+        // console.log(ingredientsData[componentIndex].ingredients);
+        if(ingredientsData[componentIndex].ingredients.length === 0){
+          heading = ingredientsData[componentIndex].component_input_text;
+          errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+        };
+      };
+
       // Process filled component
-      if (isAllFieldsFilled) {
-        componentDisplayOrder++;
+      if (isAllFieldsFilled && errorMessage == "") {
+        compDisplayOrder++;
+        componentIndex++;
         componentInputText = compText.value;
         const componentObj = {
-          comp_display_order : parseInt(componentDisplayOrder),
+          component_display_order : parseInt(compDisplayOrder),
           component_input_text : componentInputText
         };
+        // Create empty list for ingredients
+        componentObj.ingredients = [];
 
         ingredientsData.push(componentObj);
         
@@ -185,9 +198,7 @@ function validateIngredientsForm() {
           ingredient_id: parseInt(row.dataset.ingredientId),
           quantity: parseFloat(quantityInput.value),
           unit_id: parseInt(unitSelect.value),
-          ing_display_order : parseInt(ingDisplayOrder),
-          comp_display_order : parseInt(componentDisplayOrder),
-          component_input_text : componentInputText
+          ing_display_order : ingDisplayOrder
         };
 
         // Include base fields only if they differ from original values
@@ -199,10 +210,27 @@ function validateIngredientsForm() {
           ingredientObj.base_price = parseFloat(basePriceInput.value);
         }
 
-        ingredientsData.push(ingredientObj);
+        if(componentIndex == -1){
+          componentIndex++;
+          ingredientsData[componentIndex] = {};
+          ingredientsData[componentIndex].component_display_order = 0;
+          ingredientsData[componentIndex].component_input_text = "";
+          ingredientsData[componentIndex].ingredients = [];
+        } else {        };
+        // console.log("componentIndex :", componentIndex);
+        ingredientsData[componentIndex].ingredients.push(ingredientObj);
       }
     };
   });
+
+  //check if previous component has any ingredient. Cant be empty rows for ingredient
+  if (componentIndex != -1){
+    // console.log(ingredientsData[componentIndex].ingredients);
+    if(ingredientsData[componentIndex].ingredients.length === 0){
+      heading = ingredientsData[componentIndex].component_input_text;
+      errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+    };
+  }
 
   // Ensure at least two rows are fully filled
   if (!errorMessage && filledRowsCount < 2) {
@@ -449,30 +477,6 @@ function attachNumberValidation(input) {
   });
 }
 
-// alert block function
-function showAlert(message, isError = false, autoClose = true) {
-  const overlay = document.getElementById("modal-overlay");
-  const alertBox = document.getElementById("alert-box");
-  const alertMessage = document.getElementById("alert-message");
-  const alertActions = document.getElementById("alert-actions");
-
-  alertMessage.textContent = message;
-  alertBox.className = "alert-box" + (isError ? " error" : " success");
-  overlay.style.display = "flex";
-  alertActions.style.display = "none";
-
-  if (autoClose) {
-    setTimeout(() => {
-      overlay.style.display = "none";
-    }, 2000);
-  } else {
-    alertActions.style.display = "block";
-    document.getElementById("alert-ok").onclick = () => {
-      overlay.style.display = "none";
-    };
-  }
-}
-
 // Initialize page functionality on load
 document.addEventListener("DOMContentLoaded", function () {
   // Get ingredients table body
@@ -637,12 +641,11 @@ document.addEventListener("DOMContentLoaded", function () {
       portion_size: recipeData["portion_size"],
       privacy: recipeData["privacy"],
       description: recipeData["description"],
-      ingredients: ingredientsData,
+      components: ingredientsData,
       steps: stepsData
     });
 
-    // Submit recipe to backend API
-    console.log("data sent:", completeRecipe);
+    // Submit recipe to backend API //console.log("data sent:", completeRecipe);
     const errorBox = document.getElementById("error");
     try {
       const response = await fetch("/recipes/api/new-recipe", {
@@ -657,7 +660,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const data = await response.json();
       if (!response.ok) {
         errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
-        console.log("Submitted data (for debug):", data.submitted_data);
+        // console.log("Submitted data (for debug):", data.submitted_data);
         return;
       }
 
@@ -665,7 +668,7 @@ document.addEventListener("DOMContentLoaded", function () {
       showAlert(data.message || "Recipe created successfully!");
       console.log("submitted data: ", data)
       //errorBox.textContent = data.message || "Recipe created successfully!";
-      setTimeout(() => { window.location.href = "/recipes/"; }, 2000);
+      setTimeout(() => { window.location.href = `/recipes/details/${data.recipe_id}`; }, 2000);
     } catch (err) {
       errorBox.textContent = err.message;
     }

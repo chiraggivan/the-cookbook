@@ -121,7 +121,7 @@ function validateIngredientsForm() {
         componentIndex++;
         componentInputText = compText.value;
         const componentObj = {
-          comp_display_order : parseInt(compDisplayOrder),
+          component_display_order : parseInt(compDisplayOrder),
           component_input_text : componentInputText
         };
         // Create empty list for ingredients
@@ -213,7 +213,7 @@ function validateIngredientsForm() {
         if(componentIndex == -1){
           componentIndex++;
           ingredientsData[componentIndex] = {};
-          ingredientsData[componentIndex].comp_display_order = 0;
+          ingredientsData[componentIndex].component_display_order = 0;
           ingredientsData[componentIndex].component_input_text = "";
           ingredientsData[componentIndex].ingredients = [];
         } else {        };
@@ -612,31 +612,32 @@ document.addEventListener("DOMContentLoaded", function () {
     // Submit recipe to backend API
     console.log("data sent:", completeRecipe);
     const errorBox = document.getElementById("error");
-    // try {
-    //   const response = await fetch("/recipes/api/new-recipe", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       "Authorization": `Bearer ${token}`
-    //     },
-    //     body: JSON.stringify(completeRecipe)
-    //   });
+    try {
+      const response = await fetch("/recipes/api/new-recipe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(completeRecipe)
+      });
 
-    //   const data = await response.json();
-    //   if (!response.ok) {
-    //     errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
-    //     console.log("Submitted data (for debug):", data.submitted_data);
-    //     return;
-    //   }
+      const data = await response.json();
+      if (!response.ok) {
+        errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
+        //console.log("Submitted data (for debug):", data.submitted_data);
+        return;
+      }
 
-    //   // Display success message and redirect
-    //   showAlert(data.message || "Recipe created successfully!");
-    //   console.log("submitted data: ", data)
-    //   //errorBox.textContent = data.message || "Recipe created successfully!";
-    //   setTimeout(() => { window.location.href = "/recipes/"; }, 2000);
-    // } catch (err) {
-    //   errorBox.textContent = err.message;
-    // }
+      // Display success message and redirect
+      // console.log("data message from backend: ", data.message);
+      showAlert(data.message || "Recipe created successfully!");
+      // console.log("submitted data: ", data)
+      //errorBox.textContent = data.message || "Recipe created successfully!";
+      setTimeout(() => { window.location.href = `/recipes/details/${data.recipe_id}`; }, 2000);
+    } catch (err) {
+      errorBox.textContent = err.message;
+    }
   });
 });
 

@@ -78,7 +78,7 @@ def get_ingredient_units():
 def create_recipe():
 
     s_user_id = get_jwt_identity()
-    #print("json data : ", request.get_json())
+    # print("json data : ", request.get_json())
     def to_int(value, field_name):
         try:
             return int(value)
@@ -128,22 +128,36 @@ def create_recipe():
                     cleaned[field] = value  # keep as-is if not a string
                     #return jsonify({"error": f"Expected string in {field} but recieved non string value", "submitted_data": request.get_json()}), 400
             
-            # Handle ingredients (list of dicts)
-            ingredients = recipe_dict.get("ingredients", [])
-            if isinstance(ingredients, list):
-                normalized_ingredients = []
-                for ing in ingredients:
-                    if isinstance(ing, dict):
-                        norm_ing = {}
-                        for k, v in ing.items():
+            # Handle components (list of dicts) components
+            components = recipe_dict.get("components", [])
+            if isinstance(components, list):
+                normalized_components = []
+                for component in components:
+                    if isinstance(component, dict):
+                        norm_comp = {}
+                        for k, v in component.items():
                             if isinstance(v, str):
-                                norm_ing[k] = re.sub(r"\s+", " ", v.strip()).lower()
-                            else:
-                                norm_ing[k] = v
-                        normalized_ingredients.append(norm_ing)
-                cleaned["ingredients"] = normalized_ingredients
-            else:
-                cleaned["ingredients"] = []
+                                norm_comp[k] = re.sub(r"\s+", " ", v.strip()).lower()
+                            elif isinstance(v, (int,float)):
+                                norm_comp[k] = v
+                            elif isinstance(v, list):
+                                ingredients = component.get("ingredients", [])
+                                if isinstance(ingredients, list):
+                                    normalized_ingredients = []
+                                    for ing in ingredients:
+                                        if isinstance(ing, dict):
+                                            norm_ing = {}
+                                            for key, value in ing.items():
+                                                if isinstance(value, str):
+                                                    norm_ing[key] = re.sub(r"\s+", " ", value.strip()).lower()
+                                                else:
+                                                    norm_ing[key] = value
+                                            normalized_ingredients.append(norm_ing)
+                                norm_comp[k] = normalized_ingredients
+                        normalized_components.append(norm_comp)
+                cleaned['components'] = normalized_components
+            else: 
+                cleaned['components'] = []
 
             # Handle procedures(list of steps)            
             steps = recipe_dict.get("steps",[])
@@ -163,7 +177,6 @@ def create_recipe():
             return cleaned
             
         def validate_ingredient(data):
-            
             #print(data)
             recipe_dict = data
             # --- name ---
@@ -186,91 +199,78 @@ def create_recipe():
             if not isinstance(description, str) or len(description) > 500:
                 return f"Invalid description: must be a string ≤ 500 chars"
 
-            # min 2 Ingredients validation for a recipe
-            ingredients = recipe_dict.get("ingredients", [])
-            if not isinstance(ingredients, list) or len(ingredients) < 2:
+            # --- Components ----
+            components = recipe_dict.get("components", [])
+            # print("recipe_dict :", recipe_dict)
+            # print("components :", components)
+            # print("components length is :", len(components))
+            if not isinstance(components, list) or len(components) < 1:
                 return "Recipe must have at least 2 ingredients"
+
+            # # min 2 Ingredients validation for a recipe
+            # ingredients = recipe_dict.get("ingredients", [])
+            # if not isinstance(ingredients, list) or len(ingredients) < 2:
+            #     return "Recipe must have at least 2 ingredients"
 
             # Normalize ingredients (list of dicts)
             ing_fields = ["ingredient_id", "quantity", "unit_id", "base_unit", "base_price", "display_order"]
             ing_base_fields =["custom_price", "unit_supplied", "custom_quantity", "location"]
             
-            for ing in ingredients:
+            for component in components:
                 
                 try:
-                    comp_disp_order = to_int(ing.get("comp_display_order"), "comp_display_order")
-                    if not isinstance(disp_order, (int)) or disp_order <= 0 or disp_order >= 10**4:
+                    component_disp_order = to_int(component.get("component_display_order"), "component_disp_order")
+                    if not isinstance(component_disp_order, (int)) or component_disp_order < 0 or component_disp_order >= 10**4:
                         return f"Invalid component display order: must be numeric > 0  and < 10000"
 
-                    ing_disp_order = to_int(ing.get("ing_display_order"), "ing_display_order")
-                    if not isinstance(disp_order, (int)) or disp_order <= 0 or disp_order >= 10**4:
-                        return f"Invalid ingredient display order: must be numeric > 0  and < 10000"
-
-                    component_input_text = ing.get("component_input_text")
+                    component_input_text = component.get("component_input_text")
                     if not isinstance(component_input_text, str) or len(component_input_text) > 50:
                         return f"Invalid component_input_text: must be a string ≤ 50 chars"
 
-                    ing_id = to_int(ing.get("ingredient_id"), "ingredient_id")
-                    if not isinstance(ing_id, (int, float)) or ing_id <= 0 or ing_id >= 10**6:
-                        return f"Invalid ingredient id: must be numeric > 0  and < 1000000"
+                    ingredients = component.get("ingredients",[])
+                    for ing in ingredients:
 
-                    quantity = to_float(ing.get("quantity"), "quantity")
-                    if not isinstance(quantity, (int, float)) or quantity <= 0 or quantity >= 10**6:
-                        return f"Invalid quantity: must be numeric > 0  and < 1000000"
+                        ing_display_order = to_int(ing.get("ing_display_order"), "ing_display_order")
+                        if not isinstance(ing_display_order, (int)) or ing_display_order <= 0 or ing_display_order >= 10**4:
+                            return f"Invalid ingredient display order: must be numeric > 0  and < 10000"
 
-                    unit_id = to_int(ing.get("unit_id"), "unit_id")
-                    if not isinstance(unit_id, (int, float)) or unit_id <= 0 or unit_id >= 10**8:
-                        return f"Invalid unit_id:{unit_id} must be numeric > 0  and < 100000000"
-                       
-                    if ing.get("base_price"):
-                        base_price = to_float(ing.get("base_price"),"base_price")
-                        if not isinstance(base_price, (int, float)) or base_price <= 0 or base_price >= 10**8:
-                            return f"Invalid base_price: must be numeric > 0  and < 100000000"
-                    
-                    if ing.get("base_quantity"):
-                        base_quantity = to_float(ing.get("base_quantity"),"base_quantity")
-                        if not isinstance(base_quantity, (int, float)) or base_quantity <= 0 or base_quantity >= 10**6:
-                            return f"Invalid base_quantity: must be numeric > 0  and < 1000000"
-                    
-                    # --- base_unit ---
-                    if ing.get("base_unit"):
-                        base_unit = ing.get("base_unit")
-                        if not isinstance(base_unit, str) or base_unit not in ['kg', 'l', 'pc', 'bunch']:
-                            return f"Invalid base_unit {base_unit}: must be within ['kg' 'l', 'pc', 'bunch']"    
+                        ingredient_id = to_int(ing.get("ingredient_id"), "ingredient_id")
+                        if not isinstance(ingredient_id, (int, float)) or ingredient_id <= 0 or ingredient_id >= 10**6:
+                            return f"Invalid ingredient id: must be numeric > 0  and < 1000000"
 
-                    # --- Location ---
-                    if ing.get("location"):
-                        location = ing.get("location")
-                        if not isinstance(location, str) or len(location) > 50:
-                            return f"Invalid location: must be a string ≤ 50 chars"
+                        quantity = to_float(ing.get("quantity"), "quantity")
+                        if not isinstance(quantity, (int, float)) or quantity <= 0 or quantity >= 10**6:
+                            return f"Invalid quantity: must be numeric > 0  and < 1000000"
+
+                        unit_id = to_int(ing.get("unit_id"), "unit_id")
+                        if not isinstance(unit_id, (int, float)) or unit_id <= 0 or unit_id >= 10**8:
+                            return f"Invalid unit_id:{unit_id} must be numeric > 0  and < 100000000"
+                        
+                        if ing.get("base_price"):
+                            base_price = to_float(ing.get("base_price"),"base_price")
+                            if not isinstance(base_price, (int, float)) or base_price <= 0 or base_price >= 10**8:
+                                return f"Invalid base_price: must be numeric > 0  and < 100000000"
+                        
+                        if ing.get("base_quantity"):
+                            base_quantity = to_float(ing.get("base_quantity"),"base_quantity")
+                            if not isinstance(base_quantity, (int, float)) or base_quantity <= 0 or base_quantity >= 10**6:
+                                return f"Invalid base_quantity: must be numeric > 0  and < 1000000"
+                        
+                        # --- base_unit ---
+                        if ing.get("base_unit"):
+                            base_unit = ing.get("base_unit")
+                            if not isinstance(base_unit, str) or base_unit not in ['kg', 'l', 'pc', 'bunch']:
+                                return f"Invalid base_unit {base_unit}: must be within ['kg' 'l', 'pc', 'bunch']"    
+
+                        # --- Location ---
+                        if ing.get("location"):
+                            location = ing.get("location")
+                            if not isinstance(location, str) or len(location) > 50:
+                                return f"Invalid location: must be a string ≤ 50 chars"
 
                     #print("no error found will loop again ")                
                 except ValueError as e:
                     return str(e) 
-
-                # # --- custom_quantity ---
-                # custom_quantity = ing.get("custom_quantity")
-                # if custom_quantity:
-                #     if not isinstance(custom_quantity, (int, float)) or custom_quantity <= 0 or custom_quantity >= 10**6:
-                #         return f"Invalid custom price: must be numeric > 0  and < 1000000"
-            
-                # # --- unit_supplied ---
-                # unit_supplied = ing.get("unit_supplied")
-                # if base_unit in ['kg', 'g', 'oz', 'lbs', ]:
-                #     if unit_supplied not in ['kg', 'g', 'oz', 'lbs']:
-                #         return f"Invalid unit supplied for ingredient : must be a in ['kg', 'g', 'oz', 'lbs']"
-                
-                # if base_unit in ['l', 'ml', 'pint', 'fl.oz']:
-                #     if unit_supplied not in ['l', 'ml', 'pint', 'fl.oz']:
-                #         return f"Invalid unit supplied for ingredient : must be a in [ 'l', 'ml', 'pint', 'fl.oz']"
-                
-                # if base_unit in ['pc']:
-                #     if unit_supplied not in ['pc']:
-                #         return f"Invalid unit supplied for ingredient : must be a in [ 'pc']"
-                
-                # if base_unit in ['bunch']:
-                #     if unit_supplied not in ['bunch']:
-                #         return f"Invalid unit supplied for ingredient : must be a in ['bunch']"
 
             # validate steps data
             steps = recipe_dict.get("steps")
@@ -287,13 +287,13 @@ def create_recipe():
         
         error = validate_ingredient(data)
         if error:
-            return jsonify({"error": error, "submitted_data": data}), 400  
-        
+            return jsonify({"error": error}), 400  
+        print("data after validation :", data)
         name = data['name']
         portion_size = data['portion_size']
         privacy = data['privacy']
         description = data['description']
-        ingredients = data['ingredients']
+        components = data['components']
         steps = data['steps']
         # ------------------validation of every field of data done, now connect with db -------------------------------
         
@@ -324,96 +324,107 @@ def create_recipe():
                 }), 409
         
         # Validate ingredients(base unit and base price coming from body is correct)
-        for ing in ingredients:
-            # Validate unit refers the ingredient                
-            cursor.execute("SELECT 1 FROM units WHERE unit_id = %s AND ingredient_id = %s", (ing['unit_id'], ing['ingredient_id']))
-            if not cursor.fetchone():
-                cursor.close()
-                conn.close()
-                return jsonify({'error': f"Unit ID {ing['unit_id']} not valid for ingredient ID {ing['ingredient_id']}"}), 400   
-            print(f"ingredients with id {ing['ingredient_id']} and unit id match with units table")
-            # check if json has any one of -- base_unit, base_price or base_quantity then validate if new base new unit provided is compatible with old one.
-            # eg: old base unit in kg. so new base unit has to be in [kg, g, oz, lbs] as finally it will be storted as kg by applying conversion later while inserting
-            if ing.get('base_unit'):
-                
-                cursor.execute("""
-                    SELECT i.ingredient_id, COALESCE(up.custom_price, i.default_price) AS price, i.base_unit as base_unit
-                    FROM ingredients i  LEFT JOIN user_prices up
-                    ON i.ingredient_id = up.ingredient_id AND up.user_id = %s AND up.is_active = 1
-                    WHERE i.ingredient_id = %s
-                    AND i.is_active = 1
-                """, (s_user_id, ing['ingredient_id']))
-
-                ing_data = cursor.fetchone()
-                if not ing_data:
+        for component in components:
+            ingredients = component.get('ingredients')
+            for ing in ingredients:
+                # Validate unit refers the ingredient                
+                cursor.execute("SELECT 1 FROM units WHERE unit_id = %s AND ingredient_id = %s", (ing['unit_id'], ing['ingredient_id']))
+                if not cursor.fetchone():
                     cursor.close()
                     conn.close()
-                    return jsonify({'error': f"Ingredient details for id {ing['ingredient_id']} not found in db"}), 404
+                    return jsonify({'error': f"Unit ID {ing['unit_id']} not valid for ingredient ID {ing['ingredient_id']}"}), 400   
+                # print(f"ingredients with id {ing['ingredient_id']} and unit id match with units table")
+                # check if json has any one of -- base_unit, base_price or base_quantity then validate if new base new unit provided is compatible with old one.
+                # eg: old base unit in kg. so new base unit has to be in [kg, g, oz, lbs] as finally it will be storted as kg by applying conversion later while inserting
+                if ing.get('base_unit'):
+                    
+                    cursor.execute("""
+                        SELECT i.ingredient_id, COALESCE(up.custom_price, i.default_price) AS price, i.base_unit as base_unit
+                        FROM ingredients i  LEFT JOIN user_prices up
+                        ON i.ingredient_id = up.ingredient_id AND up.user_id = %s AND up.is_active = 1
+                        WHERE i.ingredient_id = %s
+                        AND i.is_active = 1
+                    """, (s_user_id, ing['ingredient_id']))
 
-                groups = {
-                    "kg": ["kg", "g", "oz", "lbs"],
-                    "g": ["kg", "g", "oz", "lbs"],
-                    "oz": ["kg", "g", "oz", "lbs"],
-                    "lbs": ["kg", "g", "oz", "lbs"],
-                    "l": ["l", "ml", "fl.oz", "pint"],
-                    "ml": ["l", "ml", "fl.oz", "pint"],
-                    "fl.oz": ["l", "ml", "fl.oz", "pint"],
-                    "pint": ["l", "ml", "fl.oz", "pint"],
-                    "pc": ["pc"],
-                    "bunch": ["bunch"]
-                }
+                    ing_data = cursor.fetchone()
+                    if not ing_data:
+                        cursor.close()
+                        conn.close()
+                        return jsonify({'error': f"Ingredient details for id {ing['ingredient_id']} not found in db"}), 404
 
-                if ing['base_unit'] not in groups.get(ing_data['base_unit'], []):
-                    return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
+                    groups = {
+                        "kg": ["kg", "g", "oz", "lbs"],
+                        "g": ["kg", "g", "oz", "lbs"],
+                        "oz": ["kg", "g", "oz", "lbs"],
+                        "lbs": ["kg", "g", "oz", "lbs"],
+                        "l": ["l", "ml", "fl.oz", "pint"],
+                        "ml": ["l", "ml", "fl.oz", "pint"],
+                        "fl.oz": ["l", "ml", "fl.oz", "pint"],
+                        "pint": ["l", "ml", "fl.oz", "pint"],
+                        "pc": ["pc"],
+                        "bunch": ["bunch"]
+                    }
 
-                
-                # base_unit = ing_data['base_unit']
-                # price = ing_data['price']
-                # f_base_price = ing['base_price']    
-                # if round(float(price),6) != round(float(ing['base_price']),6):
-                #     cursor.close()
-                #     conn.close()
-                #     return jsonify({'error': f"base price : price = {round(price,6)} ing['base_price'] = {round(f_base_price,6)} of ingredient {ing['ingredient_id']} not matched with stored data"}), 400    
+                    if ing['base_unit'] not in groups.get(ing_data['base_unit'], []):
+                        return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
+
+                    
+                    # base_unit = ing_data['base_unit']
+                    # price = ing_data['price']
+                    # f_base_price = ing['base_price']    
+                    # if round(float(price),6) != round(float(ing['base_price']),6):
+                    #     cursor.close()
+                    #     conn.close()
+                    #     return jsonify({'error': f"base price : price = {round(price,6)} ing['base_price'] = {round(f_base_price,6)} of ingredient {ing['ingredient_id']} not matched with stored data"}), 400    
 
         # validate steps for recipe_procedures
         
-        return jsonify({'message': "Every thing accepted and ready to insert recipe"}), 200
+        # return jsonify({'message': "Every thing accepted and ready to insert recipe"}), 200
 
 
         # ---------------- Data checked and ready to be inserted. About to actually insert data in db ---------------------------
         # Insert into recipes
+        print("About to insert in recipes table....")
         cursor.execute("""
             INSERT INTO recipes (name, portion_size, user_id, privacy, description, is_active, created_at)
             VALUES (%s, %s, %s, %s, %s, TRUE, CURRENT_TIMESTAMP)
             """, (name, portion_size, s_user_id, privacy, description))
         recipe_id = cursor.lastrowid
+        print("Inserted in recipes table and generated recipe_id. About to insert in components table....")
 
-        # Insert into recipe_ingredients
-        # display_order = 0
-        for ing in ingredients:
-            # display_order += 1 removed it as its now coming from front end.
+        # Insert data in recipe components and get the recipe_component_id
+        for component in components:
             cursor.execute("""
-                INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order)
-                VALUES (%s, %s, %s, %s, TRUE, %s)
-            """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['display_order']))
+                INSERT INTO recipe_components (recipe_id, component_text, display_order)
+                VALUES (%s,%s,%s)
+            """,(recipe_id, component['component_input_text'], component['component_display_order']))
+            component_id = cursor.lastrowid
+            print("Inserted in components table and generated component_id. about to insert in recipe ingredients table")
+            print("ingredients in components are :", component["ingredients"])
+            # Insert into recipe_ingredients
+            for ing in component['ingredients']:
+                cursor.execute("""
+                    INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order, component_id)
+                    VALUES (%s, %s, %s, %s, TRUE, %s,%s)
+                """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ing_display_order'],component_id))
 
-            # Update user_prices if base_unit/base_price/base_quantity is provided and different
-            if ing.get('base_unit'):
-                base_price, base_quantity, base_unit = normalize_unit(ing['base_price'],ing['base_quantity'],ing['base_unit'])
-            
-                cursor.callproc('update_insert_user_price', (
-                    s_user_id, 
-                    ing['ingredient_id'], 
-                    base_price, 
-                    base_quantity,
-                    base_unit, 
-                    ing['location'] 
-                ))
+                # Update user_prices if base_unit/base_price/base_quantity is provided and different
+                if ing.get('base_unit'):
+                    base_price, base_quantity, base_unit = normalize_unit(ing['base_price'],ing['base_quantity'],ing['base_unit'])
+                
+                    cursor.callproc('update_insert_user_price', (
+                        s_user_id, 
+                        ing['ingredient_id'], 
+                        base_price, 
+                        base_quantity,
+                        base_unit, 
+                        ing['location'] 
+                    ))
 
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'message': f'{name} : Recipe created successfully', 'recipe_id': recipe_id}), 201
+        return jsonify({'message': f'{name} : Recipe created successfully!!!!!', 'recipe_id': recipe_id}), 201
 
     except Exception as e:
         print("Error while trying to create recipe:", e)
@@ -421,5 +432,5 @@ def create_recipe():
             conn.rollback()
             cursor.close()
             conn.close()
-        return jsonify([])
+        return jsonify({"message": f'Error while trying to create recipe: {e}'}), 409
         
