@@ -118,6 +118,9 @@ def get_recipe_details(recipe_id):
 
     s_user_id = get_jwt_identity()
     #print("logged in user id : ",s_user_id)
+    if (recipe_id <= 0):
+        return jsonify({'error':'Recipe ID is negative.'}), 404
+        
     try:
         conn = get_db_connection()
         if conn is None:
@@ -142,6 +145,9 @@ def get_recipe_details(recipe_id):
         # Get recipe ingredients and its price
         cursor.execute("""
             SELECT 
+                rc.display_order as component_display_order,
+                rc.component_text,
+                ri.display_order as ingredient_display_order,
                 i.ingredient_id,
                 i.name,
                 ri.recipe_ingredient_id,
@@ -152,6 +158,7 @@ def get_recipe_details(recipe_id):
                 COALESCE(up.custom_price, i.default_price) AS cost,
                 COALESCE(up.base_unit, i.base_unit) AS unit
             FROM recipe_ingredients ri 
+            LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
             JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
             JOIN units u ON ri.unit_id = u.unit_id
             LEFT JOIN user_prices up ON up.user_id = %s 
@@ -159,10 +166,14 @@ def get_recipe_details(recipe_id):
                 AND up.is_active = TRUE
             WHERE ri.recipe_id = %s
             AND ri.is_active = TRUE
-            ORDER BY ri.display_order
+            ORDER BY rc.display_order, ri.display_order
             """,(s_user_id, recipe_id))
         ingredients = cursor.fetchall()
-
+        if not ingredients:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': f'ingredients not found for the {recipe_id}.'}), 404
+        
         # Get recipe steps
         cursor.execute("""
             SELECT step_order, step_text, estimated_time

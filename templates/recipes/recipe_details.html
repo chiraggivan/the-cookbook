@@ -100,7 +100,7 @@
           <strong>Description:</strong> ${recipe.description}
         `;
         
-        // check logged in user and recipe owner same or not and show buttons accordingly (toggle switch + buttons)
+        // Show Buttons - check logged in user and recipe owner same or not and show BUTTONS accordingly (toggle switch + buttons)
         const actionsEl = document.getElementById("recipe-actions");
         if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
           document.getElementById('recipe-buttons').style.display = 'block';
@@ -143,7 +143,8 @@
               showAlert("Something went really wrong.", true);
             }
           });
-        } else { //console.log("Rendering 'By' section for viewer...");
+        } 
+        else { //console.log("Rendering 'By' section for viewer...");
           document.getElementById('recipe-buttons').style.display = 'none';
           actionsEl.innerHTML = `
             <span><strong>By:</strong> ${recipe.username}</span>
@@ -153,18 +154,46 @@
         // Ingredients Table
         const tbody = document.querySelector("#ingredients-table tbody");
         tbody.innerHTML = "";
-        ingredients.forEach(i => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${i.name}</td>
-            <td>${i.quantity}</td>
-            <td>${i.unit_name}</td>
-            <td class="ingredient-price">${Number(i.price).toFixed(4)}</td>
-            <td>${Number(1)}</td>
-            <td>${i.unit}</td>
-            <td>${Number(i.cost).toFixed(2)}</td>
-          `;
-          tbody.appendChild(tr);
+
+        // Get unique component_display_order values
+        const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
+
+        // Iterate through each component_display_order
+        uniqueComponents.forEach(order => {
+          // Get the component_text for the first item of this component_display_order
+          const component = ingredients.find(item => item.component_display_order === order);
+          const componentText = component.component_text ? component.component_text.trim() : "";
+          // Only create a component row if component_text is non-empty
+          if (componentText) {
+            const componentRow = document.createElement("tr");
+            componentRow.classList.add("component-row");
+            componentRow.innerHTML = `
+              <td colspan="7" style="background-color:#f2f2f2; font-weight:bold;">
+                ${componentText}
+              </td>
+            `;
+            tbody.appendChild(componentRow);
+          }
+
+          // Filter and sort ingredients for this component_display_order
+          const componentIngredients = ingredients
+            .filter(item => item.component_display_order === order)
+            .sort((a, b) => a.ingredient_display_order - b.ingredient_display_order);
+
+          // Create ingredient rows for this component
+          componentIngredients.forEach(i => {
+            const ingredientRow = document.createElement("tr");
+            ingredientRow.innerHTML = `
+              <td>${i.name}</td>
+              <td>${i.quantity}</td>
+              <td>${i.unit_name}</td>
+              <td class="ingredient-price">${Number(i.price).toFixed(4)}</td>
+              <td>${Number(1)}</td>
+              <td>${i.unit}</td>
+              <td>${Number(i.cost).toFixed(2)}</td>
+            `;
+            tbody.appendChild(ingredientRow);
+          });
         });
 
         updateTotalRecipeCost(); // get total cost of recipe.

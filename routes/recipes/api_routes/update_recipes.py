@@ -62,7 +62,9 @@ def get_recipe_details_for_update(recipe_id):
         # Get recipe ingredients and its price
         cursor.execute("""
             SELECT 
-                ri.display_order,
+                rc.display_order as component_display_order,
+                rc.component_text,
+                ri.display_order as ingredient_display_order,
                 i.ingredient_id,
                 i.name,
                 ri.recipe_ingredient_id,
@@ -73,6 +75,7 @@ def get_recipe_details_for_update(recipe_id):
                 COALESCE(up.custom_price, i.default_price) AS base_price,
                 COALESCE(up.base_unit, i.base_unit) AS unit
             FROM recipe_ingredients ri 
+            LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
             JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
             JOIN units u ON ri.unit_id = u.unit_id
             LEFT JOIN user_prices up ON up.user_id = %s 
@@ -80,7 +83,7 @@ def get_recipe_details_for_update(recipe_id):
                 AND up.is_active = TRUE
             WHERE ri.recipe_id = %s
             AND ri.is_active = TRUE
-            ORDER BY display_order
+            ORDER BY rc.display_order, ri.display_order
             """,(s_user_id, recipe_id))
         ingredients = [normalize_row(r) for r in cursor.fetchall()]
         
