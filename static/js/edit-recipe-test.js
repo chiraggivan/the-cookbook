@@ -39,86 +39,84 @@ async function loadRecipeForEdit(recipeId, token) {
         // Get unique component_display_order values
         const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
 
+        let rowIndex = 0;
         // Iterate through each component_display_order
         uniqueComponents.forEach(order => {
-          // Get the component_text for the first item of this component_display_order
-          const component = ingredients.find(item => item.component_display_order === order);
-          const componentText = component.component_text ? component.component_text.trim() : "";
+            // Get the component_text for the first item of this component_display_order
+            const component = ingredients.find(item => item.component_display_order === order);
+            const componentText = component.component_text ? component.component_text.trim() : "";
 
-          // Only create a component row if component_text is non-empty
-          if (componentText) {
-            const componentRow = document.createElement("tr");
-            componentRow.classList.add("component-row");
-            componentRow.innerHTML = `
-                <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
-                <input type="text" name="component_text_${index}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-                <div class="error-create-recipe" id="errorCompText_${index}"></div>
-                </td>
-            `;
-            tbody.appendChild(componentRow);
-          }
+            // Only create a component row if component_text is non-empty
+            if (componentText) {
+                const componentRow = document.createElement("tr");
+                componentRow.classList.add("component-row");
+                componentRow.innerHTML = `
+                    <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
+                    <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+                    <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
+                    </td>
+                `;
+                tbody.appendChild(componentRow);
+                rowIndex++
+            }
 
+            igredients = component.ingredients;        
+            ingredients.forEach(async (i) => {
+                const tr = document.createElement("tr");
+                tr.classList.add("ingredient-row");
+                tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
+                tr.dataset.originalOrder = i.display_order || 0;
+                tr.innerHTML = `
+                    <td style="position: relative;">
+                        <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
+                        <div class="suggestions" id="suggestions_${rowIndex}"></div>
+                        <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
+                    </td>
+                    
+                    <td><input type="number" class="quantity" value="${i.quantity}" step="any"></td>
+                    <td>
+                    <select class="unit-select">
+                        <option value="${i.unit_id}" selected>${i.unit_name}</option>
+                    
+                    </select>
+                    </td>
+                    <td class="cost-input" style="text-align: center;"></td>
+                    <td><input type="number" class="base-quantity" value="${Number(1)}" step="any"></td>
+                    <td>
+                    <select class="base-unit-select">
+                        <option value="${i.base_unit}" selected>${i.unit}</option>
+                    </select>
+                    </td>
+                    <td><input type="number" class="base-price" value="${Number(i.base_price).toFixed(2)}" step="any"></td>
+                    <td><button class="remove-ingredient-btn">Remove</button></td>
+                `;
+                tbody.appendChild(tr);
+                rowIndex++
+                //const costCell = row.querySelector(".cost-input"); 
+                //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
 
+                // initializeIngredientInput(tr, token);
 
+                // await populateUnits(tr, i.ingredient_id, i.unit_id, token);
 
+                // populateBaseUnits(tr, i.unit)
 
+                // attachCostEvents(tr);
 
+                // recalcCost(tr);
 
+                // // For normal quantity (can be blank if user deletes it)
+                // enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
 
-        
-        ingredients.forEach(async (i) => {
-            const tr = document.createElement("tr");
-            tr.classList.add("ingredient-row");
-            tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
-            tr.dataset.originalOrder = i.display_order || 0;
-            tr.innerHTML = `
-                <td>
-                    <input type="text" class="ingredient-name" value="${i.name}">
-                    <div class="suggestions-box" style="display:none; position:absolute; background:white; border:1px solid #ccc; z-index:1000;"></div>
-                </td>
-                <td><input type="number" class="quantity" value="${i.quantity}" step="any"></td>
-                <td>
-                <select class="unit-select">
-                    <option value="${i.unit_id}" selected>${i.unit_name}</option>
+                // // For base quantity (cannot be blank, defaults to 1)
+                // enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
+
+                // // For base quantity (cannot be blank, defaults to 1)
+                // enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
+
                 
-                </select>
-                </td>
-                <td class="cost-input" style="text-align: center;"></td>
-                <td><input type="number" class="base-quantity" value="${Number(1)}" step="any"></td>
-                <td>
-                <select class="base-unit-select">
-                    <option value="${i.base_unit}" selected>${i.unit}</option>
-                </select>
-                </td>
-                <td><input type="number" class="base-price" value="${Number(i.base_price).toFixed(2)}" step="any"></td>
-                <td><button class="remove-ingredient-btn">Remove</button></td>
-            `;
-            tbody.appendChild(tr);
-            //const costCell = row.querySelector(".cost-input"); 
-            //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
-
-            initializeIngredientInput(tr, token);
-
-            await populateUnits(tr, i.ingredient_id, i.unit_id, token);
-
-            populateBaseUnits(tr, i.unit)
-
-            attachCostEvents(tr);
-
-            recalcCost(tr);
-
-            // For normal quantity (can be blank if user deletes it)
-            enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
-
-            // For base quantity (cannot be blank, defaults to 1)
-            enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
-
-            // For base quantity (cannot be blank, defaults to 1)
-            enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
-
-            
+            });
         });
-
         // update total cost
         //updateTotalRecipeCost();
 
