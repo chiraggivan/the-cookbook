@@ -60,8 +60,8 @@ async function loadRecipeForEdit(recipeId, token) {
                 rowIndex++
             }
 
-            igredients = component.ingredients;        
-            ingredients.forEach(async (i) => {
+            componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order);        
+            componentIngredients.forEach(async (i) => {
                 const tr = document.createElement("tr");
                 tr.classList.add("ingredient-row");
                 tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
@@ -72,22 +72,31 @@ async function loadRecipeForEdit(recipeId, token) {
                         <div class="suggestions" id="suggestions_${rowIndex}"></div>
                         <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
                     </td>
-                    
-                    <td><input type="number" class="quantity" value="${i.quantity}" step="any"></td>
                     <td>
-                    <select class="unit-select">
-                        <option value="${i.unit_id}" selected>${i.unit_name}</option>
-                    
-                    </select>
+                        <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number" value="${i.quantity}">
+                        <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <select name="unit_${rowIndex}" class="unit-select">
+                            <option value="${i.unit_id}"> ${i.unit_name} </option>
+                        </select>
+                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
                     </td>
                     <td class="cost-input" style="text-align: center;"></td>
-                    <td><input type="number" class="base-quantity" value="${Number(1)}" step="any"></td>
                     <td>
-                    <select class="base-unit-select">
-                        <option value="${i.base_unit}" selected>${i.unit}</option>
-                    </select>
+                        <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${Number(1)}">
+                        <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
                     </td>
-                    <td><input type="number" class="base-price" value="${Number(i.base_price).toFixed(2)}" step="any"></td>
+                    <td>
+                        <select name="base_unit_${rowIndex}" class="unit-select">
+                            <option value="${i.base_unit}"> ${i.unit} </option>
+                        </select>
+                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
+                        <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
+                    </td>
                     <td><button class="remove-ingredient-btn">Remove</button></td>
                 `;
                 tbody.appendChild(tr);
