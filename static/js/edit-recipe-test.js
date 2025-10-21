@@ -8,6 +8,235 @@ if (!token) {
 let originalRecipeData = null; // global variable to compare the change in recipe
 recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
 
+// load all the details of recipe in the page
+async function loadRecipeForEdit(recipeId, token) {
+    
+    try {
+        const res = await fetch(`/recipes/api/recipe/edit/${recipeId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        //console.log("response is: ", await res)
+        if (res.status === 403) {
+            alert("You don’t have permission to edit this recipe.");
+            window.location.href = `/recipes/details/${recipeId}`; // redirect to view
+            return;
+        }
+        const data = await res.json();
+        // console.log("data is: ", data)
+        originalRecipeData = structuredClone(data); // deep copy to preserve original
+        
+        // populate form fields with data.recipe, ingredients, steps...
+        document.getElementById("recipe-name-input").value = data.recipe.name;
+        document.getElementById("portion-size-input").value = data.recipe.portion_size;
+        document.getElementById("description-input").value = data.recipe.description;
+
+        // Populate ingredients table
+        ingredients = data.ingredients;// console.log("ingredients:", ingredients);
+        const tbody = document.getElementById("ingredients-tbody");
+        tbody.innerHTML = ""; // clear existing rows
+
+        // Get unique component_display_order values
+        const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
+
+        let rowIndex = 0;
+        // Iterate through each component_display_order
+        for (const order of uniqueComponents) {
+            // Get the component_text for the first item of this component_display_order
+            const component = ingredients.find(item => item.component_display_order === order);
+            const componentText = component.component_text ? component.component_text.trim() : "";
+
+            // Only create a component row if component_text is non-empty
+            if (componentText) {
+                const componentRow = document.createElement("tr");
+                componentRow.classList.add("component-row");
+                // tr.dataset.originalOrder = rowIndex || 0;
+                componentRow.innerHTML = `
+                    <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
+                    <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+                    <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
+                    </td>
+                `;
+                tbody.appendChild(componentRow);
+                rowIndex++
+            }
+
+            componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order);        
+            for (const i of componentIngredients) {
+                const tr = document.createElement("tr");
+                tr.classList.add("ingredient-row");
+                tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
+                tr.dataset.ingredientId = i.ingredient_id || "";
+                tr.dataset.originalOrder = rowIndex || 0;
+                tr.innerHTML = `
+                    <td style="position: relative;">
+                        <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
+                        <div class="suggestions" id="suggestions_${rowIndex}"></div>
+                        <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number" value="${i.quantity}">
+                        <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <select name="unit_${rowIndex}" class="unit-select">
+                            <option value="${i.unit_id}"> ${i.unit_name} </option>
+                        </select>
+                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+                    </td>
+                    <td class="cost-input" style="text-align: center;"></td>
+                    <td>
+                        <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${Number(1)}">
+                        <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <select name="base_unit_${rowIndex}" class="base-unit-select">
+                            <option value="${i.unit}"> ${i.unit} </option>
+                        </select>
+                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
+                        <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
+                    </td>
+                    <td><button class="remove-ingredient-btn">Remove</button></td>
+                `;
+                tbody.appendChild(tr);
+                rowIndex++
+                // //const costCell = row.querySelector(".cost-input"); 
+                // //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
+                
+                await populateUnits(tr, token);
+
+                populateBaseUnits(tr);
+
+                recalcCost(tr);
+
+                // initializeIngredientInput(tr, token);
+
+                // attachCostEvents(tr);
+
+                
+
+                // // For normal quantity (can be blank if user deletes it)
+                // enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
+
+                // // For base quantity (cannot be blank, defaults to 1)
+                // enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
+
+                // // For base quantity (cannot be blank, defaults to 1)
+                // enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
+
+                
+            };
+        };
+        // update total cost
+        updateTotalRecipeCost();
+
+        // Populate steps
+        steps = data.steps;
+        const stepsContainer = document.getElementById("steps-container");
+        stepsContainer.innerHTML = "";
+        steps.forEach(s => {
+        const div = document.createElement("div");
+        div.classList.add("step-row");
+        div.innerHTML = `
+            <textarea class="step-text">${s.step_text}</textarea>
+            <button class="remove-step-btn">Remove</button>
+        `;
+        stepsContainer.appendChild(div);
+        });
+
+        //console.log("Recipe loaded successfully");
+    } catch (err) {
+        console.error("Error loading recipe for edit:", err);
+    }
+}
+
+// Populate units dropdown for a selected ingredient
+async function populateUnits(row, token) {
+    // get the ingredient id from row
+    const ingredientId = row.dataset.ingredientId;
+    // get the unit id from row
+    const unitSelect = row.querySelector(".unit-select");
+    const selectedUnitId = unitSelect?.value;
+
+    unitSelect.innerHTML = ""; // clear old options
+    //console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
+
+    // Add the default "Select" option first
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select";
+    unitSelect.appendChild(defaultOption);
+
+    try {
+        const res = await fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error("Failed to load units for ingredient " + ingredientId);
+
+        const units = await res.json();// console.log("units of ", ingredientId," :", units)
+        // store units with conversion factors in row for later use
+        row.dataset.units = JSON.stringify(units);
+
+        units.forEach(u => {
+        const option = document.createElement("option");
+        option.value = u.unit_id;
+        option.textContent = u.unit_name;
+        option.dataset.conversionFactor = u.conversion_factor; 
+        if (parseInt(u.unit_id) === parseInt(selectedUnitId)) option.selected = true; // keep current unit selected
+        unitSelect.appendChild(option);
+        });
+    } catch (err) {
+        console.error("Error loading units for ingredient", ingredientId, err);
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No units found";
+        unitSelect.appendChild(option);
+    }
+}
+
+// populate base units acceptable for the ingredient
+function populateBaseUnits(row) {
+    baseUnit = row.querySelector('select[name^="base_unit_"');
+    currentUnit = baseUnit.value;
+    const unitGroups = {
+        weight: ["kg", "g", "oz", "lbs"],
+        volume: ["l", "ml", "fl.oz", "pint"],
+        bunch: ["bunch"],
+        pc: ["pc"]
+    };
+
+    let group = null;
+    for (const values of Object.values(unitGroups)) {
+        if (values.includes(currentUnit)) {
+            group = values;
+            break;
+        }
+    }
+
+    const baseUnitSelect = row.querySelector(".base-unit-select");
+    baseUnitSelect.innerHTML = "";
+
+    if (group) {
+        group.forEach(u => {
+            const option = document.createElement("option");
+            option.value = u;
+            option.textContent = u;
+            if (u === currentUnit) option.selected = true;
+            baseUnitSelect.appendChild(option);
+        });
+    } else {
+        const option = document.createElement("option");
+        option.value = currentUnit;
+        option.textContent = currentUnit;
+        option.selected = true;
+        baseUnitSelect.appendChild(option);
+    }
+}
+
 // recalculate the cost of ingredient as per the unit selected
 function recalcCost(row) {
 
@@ -34,7 +263,7 @@ function recalcCost(row) {
         costCell.textContent = "";
         return;
     }
-    console.log("unit is :", unitSelect.value, " base unit is :", baseUnit);
+    //console.log("unit is :", unitSelect.value, " base unit is :", baseUnit);
     // figure out which group the base unit belongs to
     let group = null;
     for (const [key, def] of Object.entries(unitGroups)) {
@@ -43,24 +272,42 @@ function recalcCost(row) {
             break;
         }
     }
-    console.log(" hello1");
+    
     if (!group) {
         costCell.textContent = "";
         return;
     }
-    console.log(" hello2");
+    
     // price per 1 "canonical unit" (kg or l)
     const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
 
     const selectedOption = unitSelect.options[unitSelect.selectedIndex];
     const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor);
-
     const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
     costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
-    console.log("cost of ingredient :", cost);
+    
     //updateTotalRecipeCost();
 }
 
+// update total cost of recipe
+function updateTotalRecipeCost() {
+    //console.log("within update recipe cost");
+    const costCells = document.querySelectorAll(".cost-input");
+    let total = 0;
+
+    costCells.forEach(cell => {
+        const row = cell.closest("tr");
+        // Skip removed rows
+        if (row.dataset.removed === "true") return;
+        const value = parseFloat(cell.textContent.replace(/,/g, '')) || 0;
+        total += value;
+    });
+   
+    const totalCostEl = document.getElementById("recipe-total-cost");
+    if (totalCostEl) {
+        totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
+    }
+}
 
 // Initialize autocomplete for an ingredient
 function initializeIngredientInput(row, token) {
@@ -195,230 +442,17 @@ function initializeIngredientInput(row, token) {
     }
 }
 
-// load all the details of recipe in the page
-async function loadRecipeForEdit(recipeId, token) {
-    
-    try {
-        const res = await fetch(`/recipes/api/recipe/edit/${recipeId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-        });
 
-        //console.log("response is: ", await res)
-        if (res.status === 403) {
-            alert("You don’t have permission to edit this recipe.");
-            window.location.href = `/recipes/details/${recipeId}`; // redirect to view
-            return;
-        }
-        const data = await res.json();
-        console.log("data is: ", data)
-        originalRecipeData = structuredClone(data); // deep copy to preserve original
-        
-        // populate form fields with data.recipe, ingredients, steps...
-        document.getElementById("recipe-name-input").value = data.recipe.name;
-        document.getElementById("portion-size-input").value = data.recipe.portion_size;
-        document.getElementById("description-input").value = data.recipe.description;
 
-        // Populate ingredients table
-        ingredients = data.ingredients;// console.log("ingredients:", ingredients);
-        const tbody = document.getElementById("ingredients-tbody");
-        tbody.innerHTML = ""; // clear existing rows
 
-        // Get unique component_display_order values
-        const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
 
-        let rowIndex = 0;
-        // Iterate through each component_display_order
-        uniqueComponents.forEach(order => {
-            // Get the component_text for the first item of this component_display_order
-            const component = ingredients.find(item => item.component_display_order === order);
-            const componentText = component.component_text ? component.component_text.trim() : "";
 
-            // Only create a component row if component_text is non-empty
-            if (componentText) {
-                const componentRow = document.createElement("tr");
-                componentRow.classList.add("component-row");
-                // tr.dataset.originalOrder = rowIndex || 0;
-                componentRow.innerHTML = `
-                    <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
-                    <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-                    <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
-                    </td>
-                `;
-                tbody.appendChild(componentRow);
-                rowIndex++
-            }
-
-            componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order);        
-            componentIngredients.forEach(async (i) => {
-                const tr = document.createElement("tr");
-                tr.classList.add("ingredient-row");
-                tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
-                tr.dataset.originalOrder = rowIndex || 0;
-                tr.innerHTML = `
-                    <td style="position: relative;">
-                        <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
-                        <div class="suggestions" id="suggestions_${rowIndex}"></div>
-                        <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
-                    </td>
-                    <td>
-                        <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number" value="${i.quantity}">
-                        <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
-                    </td>
-                    <td>
-                        <select name="unit_${rowIndex}" class="unit-select">
-                            <option value="${i.unit_id}"> ${i.unit_name} </option>
-                        </select>
-                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
-                    </td>
-                    <td class="cost-input" style="text-align: center;"></td>
-                    <td>
-                        <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${Number(1)}">
-                        <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
-                    </td>
-                    <td>
-                        <select name="base_unit_${rowIndex}" class="unit-select">
-                            <option value="${i.unit}"> ${i.unit} </option>
-                        </select>
-                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
-                    </td>
-                    <td>
-                        <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
-                        <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
-                    </td>
-                    <td><button class="remove-ingredient-btn">Remove</button></td>
-                `;
-                tbody.appendChild(tr);
-                rowIndex++
-                // //const costCell = row.querySelector(".cost-input"); 
-                // //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
-
-                recalcCost(tr);
-                // initializeIngredientInput(tr, token);
-
-                // await populateUnits(tr, i.ingredient_id, i.unit_id, token);
-
-                // populateBaseUnits(tr, i.unit)
-
-                // attachCostEvents(tr);
-
-                
-
-                // // For normal quantity (can be blank if user deletes it)
-                // enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
-
-                // // For base quantity (cannot be blank, defaults to 1)
-                // enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
-
-                // // For base quantity (cannot be blank, defaults to 1)
-                // enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
-
-                
-            });
-        });
-        // update total cost
-        //updateTotalRecipeCost();
-
-        // Populate steps
-        steps = data.steps;
-        const stepsContainer = document.getElementById("steps-container");
-        stepsContainer.innerHTML = "";
-        steps.forEach(s => {
-        const div = document.createElement("div");
-        div.classList.add("step-row");
-        div.innerHTML = `
-            <textarea class="step-text">${s.step_text}</textarea>
-            <button class="remove-step-btn">Remove</button>
-        `;
-        stepsContainer.appendChild(div);
-        });
-
-        //console.log("Recipe loaded successfully");
-    } catch (err) {
-        console.error("Error loading recipe for edit:", err);
-    }
-}
-
-// Populate units dropdown for a selected ingredient
-async function populateUnits(row, ingredientId, selectedUnitId, token) {
-    const unitSelect = row.querySelector(".unit-select");
-    unitSelect.innerHTML = ""; // clear old options
-    //console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
-
-    // Add the default "Select" option first
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = "Select";
-    unitSelect.appendChild(defaultOption);
-
-    try {
-        const res = await fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (!res.ok) throw new Error("Failed to load units for ingredient " + ingredientId);
-
-        const units = await res.json();// console.log("units of ", ingredientId," :", units)
-        // store units with conversion factors in row for later use
-        row.dataset.units = JSON.stringify(units);
-
-        units.forEach(u => {
-        const option = document.createElement("option");
-        option.value = u.unit_id;
-        option.textContent = u.unit_name;
-        option.dataset.conversionFactor = u.conversion_factor; 
-        if (u.unit_id === selectedUnitId) option.selected = true; // keep current unit selected
-        unitSelect.appendChild(option);
-        });
-    } catch (err) {
-        console.error("Error loading units for ingredient", ingredientId, err);
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "No units found";
-        unitSelect.appendChild(option);
-    }
-}
 
 document.addEventListener("DOMContentLoaded", async () => {
 
 
     
 
-    // populate base units acceptable for the ingredient
-    function populateBaseUnits(row, currentUnit) {
-        const unitGroups = {
-            weight: ["kg", "g", "oz", "lbs"],
-            volume: ["l", "ml", "fl.oz", "pint"],
-            bunch: ["bunch"],
-            pc: ["pc"]
-        };
-
-        let group = null;
-        for (const values of Object.values(unitGroups)) {
-            if (values.includes(currentUnit)) {
-                group = values;
-                break;
-            }
-        }
-
-        const baseUnitSelect = row.querySelector(".base-unit-select");
-        baseUnitSelect.innerHTML = "";
-
-        if (group) {
-            group.forEach(u => {
-                const option = document.createElement("option");
-                option.value = u;
-                option.textContent = u;
-                if (u === currentUnit) option.selected = true;
-                baseUnitSelect.appendChild(option);
-            });
-        } else {
-            const option = document.createElement("option");
-            option.value = currentUnit;
-            option.textContent = currentUnit;
-            option.selected = true;
-            baseUnitSelect.appendChild(option);
-        }
-    }
 
     const unitGroups = {
     weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
@@ -427,25 +461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pc: {base: "pc", factors: {pc :1}}
     };
 
-    // update total cost of recipe
-    function updateTotalRecipeCost() {
-        //console.log("within update recipe cost");
-        const costCells = document.querySelectorAll(".cost-input");
-        let total = 0;
-
-        costCells.forEach(cell => {
-            const row = cell.closest("tr");
-            // Skip removed rows
-            if (row.dataset.removed === "true") return;
-            const value = parseFloat(cell.textContent.replace(/,/g, '')) || 0;
-            total += value;
-        });
-        //console.log("total price is : ", total);
-        const totalCostEl = document.getElementById("recipe-total-cost");
-        if (totalCostEl) {
-            totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
-        }
-    }
+    
 
     // attach cost events
     function attachCostEvents(row) {
