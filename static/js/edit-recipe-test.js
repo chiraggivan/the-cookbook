@@ -8,6 +8,193 @@ if (!token) {
 let originalRecipeData = null; // global variable to compare the change in recipe
 recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
 
+// recalculate the cost of ingredient as per the unit selected
+function recalcCost(row) {
+
+    const unitGroups = {
+        weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
+        volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
+        bunch: {base: "bunch", factors: {bunch :1}},
+        pc: {base: "pc", factors: {pc :1}}
+    };
+
+    const quantityInput = row.querySelector('input[name^="quantity_"]');
+    const unitSelect = row.querySelector('select[name^="unit_"]');
+    const baseQuantityInput = row.querySelector('input[name^="base_quantity_"]');
+    const baseUnitSelect = row.querySelector('select[name^="base_unit_"]');
+    const basePriceInput = row.querySelector('input[name^="base_price_"]');
+    const costCell = row.querySelector(".cost-input");
+
+    const quantity = parseFloat(quantityInput.value) || "";
+    const baseQuantity = parseFloat(baseQuantityInput.value) ||"";
+    const baseUnit = baseUnitSelect.value;
+    const basePrice = parseFloat(basePriceInput.value) || "";
+    
+    if (!quantity || !baseQuantity || !baseUnit || !basePrice) {
+        costCell.textContent = "";
+        return;
+    }
+    console.log("unit is :", unitSelect.value, " base unit is :", baseUnit);
+    // figure out which group the base unit belongs to
+    let group = null;
+    for (const [key, def] of Object.entries(unitGroups)) {
+        if (def.factors[baseUnit] !== undefined) {
+            group = def;
+            break;
+        }
+    }
+    console.log(" hello1");
+    if (!group) {
+        costCell.textContent = "";
+        return;
+    }
+    console.log(" hello2");
+    // price per 1 "canonical unit" (kg or l)
+    const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
+
+    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+    const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor);
+
+    const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
+    costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
+    console.log("cost of ingredient :", cost);
+    //updateTotalRecipeCost();
+}
+
+
+// Initialize autocomplete for an ingredient
+function initializeIngredientInput(row, token) {
+    const input = row.querySelector(".ingredient-name");
+    const suggestionBox = row.querySelector(".suggestions-box");
+    let fetchedIngredients = [];
+    let ingredientData = [];
+    let activeIndex = -1;
+    let initialValue = ""; // Track initial input value on focus
+
+    // Store initial value when the input is focused
+    input.addEventListener("focus", function () {
+        initialValue = this.value.trim().toLowerCase();
+    });
+
+    // Fetching list for ingredients by text in input and click the ingredient
+    input.addEventListener("input", async function () {
+        const query = this.value.trim().toLowerCase();
+        activeIndex = -1;
+        suggestionBox.innerHTML = "";
+        suggestionBox.style.display = "none";
+
+        if (query.length < 1) return;
+
+        try {
+            const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("Failed to fetch ingredients");
+
+            const data = await res.json();
+            ingredientData = data;
+            fetchedIngredients = data.map(item => item.name.toLowerCase());
+
+            if (data.length === 0) return;
+
+            data.forEach(item => {
+                const div = document.createElement("div");
+                div.dataset.id = item.ingredient_id;
+                div.textContent = item.name;
+                div.classList.add("suggestion-item");
+                div.addEventListener("click", async () => await selectIngredient(item, row));
+                suggestionBox.appendChild(div);
+            });
+
+            suggestionBox.style.display = "block";
+
+            // Highlight first suggestion by default
+            const items = suggestionBox.querySelectorAll(".suggestion-item");
+            if (items.length > 0) {
+                activeIndex = 0;
+                highlightItem(items, activeIndex);
+            }
+
+        } catch (err) {
+            console.error("Error fetching ingredients:", err);
+        }
+    });
+
+    // Handle keyboard navigation for selecting ingredient with (Tab or Enter) as selected ingredient
+    input.addEventListener("keydown", function (e) {
+        const items = suggestionBox.querySelectorAll(".suggestion-item");
+        if (!items.length) 
+            return;
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = (activeIndex + 1) % items.length;
+            highlightItem(items, activeIndex);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = (activeIndex - 1 + items.length) % items.length;
+            highlightItem(items, activeIndex);
+        } else if (e.key === "Enter" || e.key === "Tab") {
+            e.preventDefault();
+            if (activeIndex >= 0) {
+                const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
+                selectIngredient(selectedItem, row);
+
+                // Move focus to the next input (quantity)
+                const nextInput = row.querySelector(".quantity");
+                if (nextInput) nextInput.focus();
+            }
+            suggestionBox.style.display = "none";
+        }
+    });
+
+    // Handle blur to clear row only if user typed an invalid value or input is empty
+    input.addEventListener("blur", function () {
+        setTimeout(() => {
+            const currentValue = this.value.trim().toLowerCase();
+            // Clear row if input is empty or user typed an invalid value
+            if (!currentValue || (currentValue !== initialValue && !fetchedIngredients.includes(currentValue))) {
+                this.value = "";
+                delete row.dataset.ingredientId;
+                row.querySelector(".quantity").value = "";
+                row.querySelector(".base-quantity").value = "";
+                row.querySelector(".base-unit-select").innerHTML = "<option>Select unit</option>";
+                row.querySelector(".base-price").value = "";
+                row.querySelector(".unit-select").innerHTML = "<option value=''>Select unit</option>";
+                recalcCost(row);
+            }
+            suggestionBox.style.display = "none";
+            activeIndex = -1;
+        }, 150);
+    });
+
+    // Highlight suggestion item
+    function highlightItem(items, idx) {
+        items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
+        if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    // Select an ingredient (new or existing) and populate fields
+    async function selectIngredient(item, row) {
+        input.value = item.name;
+        row.dataset.ingredientId = item.ingredient_id;
+
+        row.querySelector(".base-quantity").value = 1;
+        row.querySelector(".base-price").value = item.price ? Number(item.price).toFixed(2) : "";
+        row.querySelector(".base-unit-select").innerHTML = `<option selected>${item.base_unit || ""}</option>`;
+
+        // Store defaults for payload comparison
+        row._default_base_quantity = 1;
+        row._default_base_price = item.price ? Number(item.price).toFixed(2) : 0;
+        row._default_base_unit = item.base_unit || "";
+
+        // Populate the units dropdown using the correct 4 params
+        await populateUnits(row, item.ingredient_id, null, token);
+        populateBaseUnits(row, item.base_unit); 
+
+        suggestionBox.style.display = "none";
+    }
+}
+
 // load all the details of recipe in the page
 async function loadRecipeForEdit(recipeId, token) {
     
@@ -50,6 +237,7 @@ async function loadRecipeForEdit(recipeId, token) {
             if (componentText) {
                 const componentRow = document.createElement("tr");
                 componentRow.classList.add("component-row");
+                // tr.dataset.originalOrder = rowIndex || 0;
                 componentRow.innerHTML = `
                     <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
                     <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
@@ -65,7 +253,7 @@ async function loadRecipeForEdit(recipeId, token) {
                 const tr = document.createElement("tr");
                 tr.classList.add("ingredient-row");
                 tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
-                tr.dataset.originalOrder = i.display_order || 0;
+                tr.dataset.originalOrder = rowIndex || 0;
                 tr.innerHTML = `
                     <td style="position: relative;">
                         <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
@@ -89,7 +277,7 @@ async function loadRecipeForEdit(recipeId, token) {
                     </td>
                     <td>
                         <select name="base_unit_${rowIndex}" class="unit-select">
-                            <option value="${i.base_unit}"> ${i.unit} </option>
+                            <option value="${i.unit}"> ${i.unit} </option>
                         </select>
                         <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
                     </td>
@@ -101,9 +289,10 @@ async function loadRecipeForEdit(recipeId, token) {
                 `;
                 tbody.appendChild(tr);
                 rowIndex++
-                //const costCell = row.querySelector(".cost-input"); 
-                //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
+                // //const costCell = row.querySelector(".cost-input"); 
+                // //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
 
+                recalcCost(tr);
                 // initializeIngredientInput(tr, token);
 
                 // await populateUnits(tr, i.ingredient_id, i.unit_id, token);
@@ -112,7 +301,7 @@ async function loadRecipeForEdit(recipeId, token) {
 
                 // attachCostEvents(tr);
 
-                // recalcCost(tr);
+                
 
                 // // For normal quantity (can be blank if user deletes it)
                 // enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
@@ -236,52 +425,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
     bunch: {base: "bunch", factors: {bunch :1}},
     pc: {base: "pc", factors: {pc :1}}
-};
-
-    // recalculate the cost of ingredient as per the unit selected
-    function recalcCost(row) {
-        const quantityInput = row.querySelector(".quantity");
-        const unitSelect = row.querySelector(".unit-select");
-        const baseQuantityInput = row.querySelector(".base-quantity");
-        const baseUnitSelect = row.querySelector(".base-unit-select");
-        const basePriceInput = row.querySelector(".base-price");
-        const costCell = row.querySelector(".cost-input");
-
-        const quantity = parseFloat(quantityInput.value) || "";
-        const baseQuantity = parseFloat(baseQuantityInput.value) ||"";
-        const baseUnit = baseUnitSelect.value;
-        const basePrice = parseFloat(basePriceInput.value) || "";
-        
-        if (!quantity || !baseQuantity || !baseUnit || !basePrice) {
-            costCell.textContent = "";
-            return;
-        }
-
-        // figure out which group the base unit belongs to
-        let group = null;
-        for (const [key, def] of Object.entries(unitGroups)) {
-            if (def.factors[baseUnit] !== undefined) {
-                group = def;
-                break;
-            }
-        }
-
-        if (!group) {
-            costCell.textContent = "";
-            return;
-        }
-
-        // price per 1 "canonical unit" (kg or l)
-        const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
-
-        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
-        const conversionFactor = parseFloat(selectedOption?.dataset.conversionFactor);
-
-        const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
-        costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
-
-        updateTotalRecipeCost();
-    }
+    };
 
     // update total cost of recipe
     function updateTotalRecipeCost() {
@@ -387,139 +531,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 
         return orderUpdates;
-    }
-
-    // Initialize autocomplete for an ingredient
-    function initializeIngredientInput(row, token) {
-        const input = row.querySelector(".ingredient-name");
-        const suggestionBox = row.querySelector(".suggestions-box");
-        let fetchedIngredients = [];
-        let ingredientData = [];
-        let activeIndex = -1;
-        let initialValue = ""; // Track initial input value on focus
-
-        // Store initial value when the input is focused
-        input.addEventListener("focus", function () {
-            initialValue = this.value.trim().toLowerCase();
-        });
-
-        // Fetching list for ingredients by text in input and click the ingredient
-        input.addEventListener("input", async function () {
-            const query = this.value.trim().toLowerCase();
-            activeIndex = -1;
-            suggestionBox.innerHTML = "";
-            suggestionBox.style.display = "none";
-
-            if (query.length < 1) return;
-
-            try {
-                const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error("Failed to fetch ingredients");
-
-                const data = await res.json();
-                ingredientData = data;
-                fetchedIngredients = data.map(item => item.name.toLowerCase());
-
-                if (data.length === 0) return;
-
-                data.forEach(item => {
-                    const div = document.createElement("div");
-                    div.dataset.id = item.ingredient_id;
-                    div.textContent = item.name;
-                    div.classList.add("suggestion-item");
-                    div.addEventListener("click", async () => await selectIngredient(item, row));
-                    suggestionBox.appendChild(div);
-                });
-
-                suggestionBox.style.display = "block";
-
-                // Highlight first suggestion by default
-                const items = suggestionBox.querySelectorAll(".suggestion-item");
-                if (items.length > 0) {
-                    activeIndex = 0;
-                    highlightItem(items, activeIndex);
-                }
-
-            } catch (err) {
-                console.error("Error fetching ingredients:", err);
-            }
-        });
-
-        // Handle keyboard navigation for selecting ingredient with (Tab or Enter) as selected ingredient
-        input.addEventListener("keydown", function (e) {
-            const items = suggestionBox.querySelectorAll(".suggestion-item");
-            if (!items.length) 
-                return;
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                activeIndex = (activeIndex + 1) % items.length;
-                highlightItem(items, activeIndex);
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                activeIndex = (activeIndex - 1 + items.length) % items.length;
-                highlightItem(items, activeIndex);
-            } else if (e.key === "Enter" || e.key === "Tab") {
-                e.preventDefault();
-                if (activeIndex >= 0) {
-                    const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
-                    selectIngredient(selectedItem, row);
-
-                    // Move focus to the next input (quantity)
-                    const nextInput = row.querySelector(".quantity");
-                    if (nextInput) nextInput.focus();
-                }
-                suggestionBox.style.display = "none";
-            }
-        });
-
-        // Handle blur to clear row only if user typed an invalid value or input is empty
-        input.addEventListener("blur", function () {
-            setTimeout(() => {
-                const currentValue = this.value.trim().toLowerCase();
-                // Clear row if input is empty or user typed an invalid value
-                if (!currentValue || (currentValue !== initialValue && !fetchedIngredients.includes(currentValue))) {
-                    this.value = "";
-                    delete row.dataset.ingredientId;
-                    row.querySelector(".quantity").value = "";
-                    row.querySelector(".base-quantity").value = "";
-                    row.querySelector(".base-unit-select").innerHTML = "<option>Select unit</option>";
-                    row.querySelector(".base-price").value = "";
-                    row.querySelector(".unit-select").innerHTML = "<option value=''>Select unit</option>";
-                    recalcCost(row);
-                }
-                suggestionBox.style.display = "none";
-                activeIndex = -1;
-            }, 150);
-        });
-
-        // Highlight suggestion item
-        function highlightItem(items, idx) {
-            items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
-            if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-
-        // Select an ingredient (new or existing) and populate fields
-        async function selectIngredient(item, row) {
-            input.value = item.name;
-            row.dataset.ingredientId = item.ingredient_id;
-
-            row.querySelector(".base-quantity").value = 1;
-            row.querySelector(".base-price").value = item.price ? Number(item.price).toFixed(2) : "";
-            row.querySelector(".base-unit-select").innerHTML = `<option selected>${item.base_unit || ""}</option>`;
-
-            // Store defaults for payload comparison
-            row._default_base_quantity = 1;
-            row._default_base_price = item.price ? Number(item.price).toFixed(2) : 0;
-            row._default_base_unit = item.base_unit || "";
-
-            // Populate the units dropdown using the correct 4 params
-            await populateUnits(row, item.ingredient_id, null, token);
-            populateBaseUnits(row, item.base_unit); 
-
-            suggestionBox.style.display = "none";
-        }
     }
 
     // validation of ingredient data
