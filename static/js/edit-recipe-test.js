@@ -36,7 +36,7 @@ async function loadRecipeForEdit(recipeId, token) {
         const tbody = document.getElementById("ingredients-tbody");
         tbody.innerHTML = ""; // clear existing rows
 
-        // Get unique component_display_order values
+        // Get unique component_display_order values in ascending order
         const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
 
         let rowIndex = 0;
@@ -52,7 +52,7 @@ async function loadRecipeForEdit(recipeId, token) {
                 componentRow.classList.add("component-row");
                 // tr.dataset.originalOrder = rowIndex || 0;
                 componentRow.innerHTML = `
-                    <td colspan="6" style="background-color:#f2f2f2; font-weight:bold;">
+                    <td colspan="8" style="background-color:#f2f2f2; font-weight:bold;">
                     <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
                     <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
                     </td>
@@ -61,7 +61,8 @@ async function loadRecipeForEdit(recipeId, token) {
                 rowIndex++
             }
 
-            componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order);        
+            // create rows for ingredient for the component above in ascending order
+            componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order).sort((a,b) => a.ingredient_display_order - b.ingredient_display_order);        
             for (const i of componentIngredients) {
                 const tr = document.createElement("tr");
                 tr.classList.add("ingredient-row");
@@ -112,20 +113,22 @@ async function loadRecipeForEdit(recipeId, token) {
 
                 recalcCost(tr);
 
-                // initializeIngredientInput(tr, token);
+                attachCostEvents(tr);
 
-                // attachCostEvents(tr);
+                initializeIngredientInput(tr, token);
 
-                
+                restrictNumberInput(tr.querySelector('input[name^="quantity_"]'),6,3);
+                restrictNumberInput(tr.querySelector('input[name^="base_quantity_"]'),6,3);
+                restrictNumberInput(tr.querySelector('input[name^="base_price_"]'),6,2);
 
-                // // For normal quantity (can be blank if user deletes it)
-                // enforceQuantityValidation(tr.querySelector(".quantity"), { allowEmpty: false, defaultValue: 1 });
+                // For normal quantity (only number without -/+ signs and no e. Also 3 decimal places)
+                // enforceQuantityValidation(tr.querySelector('input[name^="quantity_"]'),{allowDecimal : 3});
 
-                // // For base quantity (cannot be blank, defaults to 1)
-                // enforceQuantityValidation(tr.querySelector(".base-quantity"), { allowEmpty: false, defaultValue: 1 });
+                // // For base quantity (only number without -/+ signs and no e. Also 3 decimal places)
+                // enforceQuantityValidation(tr.querySelector('input[name^="base_quantity_"]'), {allowDecimal : 3});
 
-                // // For base quantity (cannot be blank, defaults to 1)
-                // enforceQuantityValidation(tr.querySelector(".base-price"), { allowEmpty: false, defaultValue: 1 });
+                // // For base price (only number without -/+ signs and no e. Also 2 decimal places)
+                // enforceQuantityValidation(tr.querySelector('input[name^="base_price_"]'), {allowDecimal : 3});
 
                 
             };
@@ -217,8 +220,9 @@ function populateBaseUnits(row) {
         }
     }
 
-    const baseUnitSelect = row.querySelector(".base-unit-select");
-    baseUnitSelect.innerHTML = "";
+    // const baseUnitSelect = row.querySelector(".base-unit-select");
+    // baseUnitSelect.innerHTML = "";
+    baseUnit.innerHTML = "";
 
     if (group) {
         group.forEach(u => {
@@ -226,26 +230,19 @@ function populateBaseUnits(row) {
             option.value = u;
             option.textContent = u;
             if (u === currentUnit) option.selected = true;
-            baseUnitSelect.appendChild(option);
+            baseUnit.appendChild(option);
         });
-    } else {
+    } else { // if somehow original value not in group then show that original value only
         const option = document.createElement("option");
         option.value = currentUnit;
         option.textContent = currentUnit;
         option.selected = true;
-        baseUnitSelect.appendChild(option);
+        baseUnit.appendChild(option);
     }
 }
 
 // recalculate the cost of ingredient as per the unit selected
 function recalcCost(row) {
-
-    const unitGroups = {
-        weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
-        volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
-        bunch: {base: "bunch", factors: {bunch :1}},
-        pc: {base: "pc", factors: {pc :1}}
-    };
 
     const quantityInput = row.querySelector('input[name^="quantity_"]');
     const unitSelect = row.querySelector('select[name^="unit_"]');
@@ -265,10 +262,26 @@ function recalcCost(row) {
     }
     //console.log("unit is :", unitSelect.value, " base unit is :", baseUnit);
     // figure out which group the base unit belongs to
+    const unitGroups = {
+        weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
+        volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
+        bunch: {base: "bunch", factors: {bunch :1}},
+        pc: {base: "pc", factors: {pc :1}}
+    };
+
     let group = null;
-    for (const [key, def] of Object.entries(unitGroups)) {
-        if (def.factors[baseUnit] !== undefined) {
-            group = def;
+    // // the below version is kept for future if we need to use 'key' data as well.
+    // // currently we dont use key data, so we use values directly
+    // for (const [key, def] of Object.entries(unitGroups)) {
+    //     if (def.factors[baseUnit] !== undefined) {
+    //         group = def;
+    //         break;
+    //     }
+    // }
+
+    for (const values of Object.values(unitGroups)) {
+        if(values.factors[baseUnit] !== undefined) {
+            group = values;
             break;
         }
     }
@@ -276,7 +289,7 @@ function recalcCost(row) {
     if (!group) {
         costCell.textContent = "";
         return;
-    }
+    }    
     
     // price per 1 "canonical unit" (kg or l)
     const normalizedPrice = (basePrice / baseQuantity) / group.factors[baseUnit];
@@ -286,7 +299,7 @@ function recalcCost(row) {
     const cost = quantity * conversionFactor * normalizedPrice;// console.log("cost of ingredient :", cost);
     costCell.textContent = cost > 0 ? parseFloat(cost.toFixed(4)) : "";
     
-    //updateTotalRecipeCost();
+    updateTotalRecipeCost();
 }
 
 // update total cost of recipe
@@ -309,10 +322,172 @@ function updateTotalRecipeCost() {
     }
 }
 
+// attach cost events
+function attachCostEvents(row) {
+    const quantityInput = row.querySelector('input[name^="quantity_"]');
+    const baseQuantityInput = row.querySelector('input[name^="base_quantity_"]');
+    const basePriceInput = row.querySelector('input[name^="base_price_"]');
+    const unitSelect = row.querySelector('select[name^="unit_"]');
+    const baseUnitSelect = row.querySelector('select[name^="base_unit_"]');
+
+    quantityInput.addEventListener("input", () => recalcCost(row));
+    baseQuantityInput.addEventListener("input", () => recalcCost(row));
+    basePriceInput.addEventListener("input", () => recalcCost(row));
+    unitSelect.addEventListener("change", () => recalcCost(row));
+    baseUnitSelect.addEventListener("change", () => recalcCost(row));
+}
+
+// enforce quantities to be positive and more than zero and not more  than 1000000
+// function enforceQuantityValidation(input,{allowDecimal = 2} ={}) {
+//     const row = input.closest("tr");
+
+//     input.addEventListener("keydown", (event) => {
+//         const val = input.value;
+//         const key = event.key;
+//         const cursorPos = input.selectionStart;
+//         const dotIndex = val.indexOf(".");
+        
+//         // Allow control keys (Backspace, Delete, Arrow keys, Tab)
+//         if (["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(key)) {
+//             return;
+//         }
+
+//         // Block +, -, e, E
+//         if (["+", "-", "e", "E"].includes(key)) {
+//             event.preventDefault();
+//             return;
+//         }
+
+//         // // Case 1: No decimal yet
+//         // console.log("cursorPos is : ", cursorPos);
+//         // console.log("dotIndex is : ", dotIndex);
+//         // if (dotIndex === -1) {
+//         //     // Block if already 6 whole digits and typing a number
+//         //     if (val.length >= 6) {
+//         //         if (key !== "."){
+//         //             event.preventDefault();
+//         //         }            
+//         //     }
+//         //     return;
+//         // }
+
+//         // // Case 2: Decimal exists
+//         // const [whole, dec] = val.split(".");
+//         // console.log("dotIndex is : ", dotIndex);
+//         // if (cursorPos <= dotIndex) {
+//         //     // Typing before the dot (whole part)
+//         //     if (whole.length >= allowedWholePlaces && /[0-9]/.test(event.key)) {
+//         //     event.preventDefault();
+//         //     }
+//         // } else {
+//         //     // Typing after the dot (decimal part)
+//         //     if (dec.length >= allowedDecimalPlaces && /[0-9]/.test(event.key)) {
+//         //     event.preventDefault();
+//         //     }
+//         // }
+
+//         // // Allow only one decimal point
+//         // if (key === ".") {
+//         //     if (val.includes(".")) {
+//         //         event.preventDefault();
+//         //         return;
+//         //     }
+//         //     return;
+//         // }
+
+//         // // Allow digits only (0–9)
+//         // if (!/^\d$/.test(key) &&  !val.includes(".") && whole.length >= 6 ) {
+//         //     event.preventDefault();
+//         //     return;
+//         // }
+//         if (val.includes(".")){
+//             const [whole, dec] = val.split(".");
+//             console.log("total length of val is : ", dec.length);
+//             if(whole.length >= 6 && input.selectionStart <= whole.length ) {
+//                 event.preventDefault();
+//             }
+//             if (dec.length >= allowDecimal){
+//                 event.preventDefault();   
+//             }
+//         } else {
+//             const whole = val;
+//             if(whole.length >= 6) {
+//                 if (key === "."){
+//                     return;
+//                 }
+//                 event.preventDefault();
+//             }
+//         }
+//         // Prevent typing more than 6 digits before decimal
+//         // const [whole, decimal] = val.split(".");
+//         // if (whole.length >= 6 && 
+//         //     // Only block if cursor is on the whole number side (before the dot)
+//         //     input.selectionStart <= whole.length &&  event.key !== ".") {
+//         // event.preventDefault();
+//         // return;
+//         // }
+
+//         // Prevent typing more than allowed decimals
+//         // if (val.includes(".") && decimal && decimal.length >= allowDecimal) {
+//         // event.preventDefault();
+//         // return;
+//         // }
+//     });
+
+//     input.addEventListener("blur", () => {
+//         let val = input.value.trim();
+
+//         // Empty case → force 0
+//         if (val === "") {
+//             input.value = "";
+//             recalcCost(row);
+//             return;
+//         }
+
+//         let num = parseFloat(val);
+
+//         // Invalid → set to ""
+//         if (isNaN(num)) {
+//             input.value = "";
+//             recalcCost(row);
+//             return;
+//         }
+
+//         // Negative → set to 0
+//         if (num < 0) num = 0;
+
+//         // Limit to 1,000,000
+//         if (num > 999999.99) num = 999999.99;
+
+//         // Fix to max 2 decimals
+//         input.value = num.toFixed(2).replace(/\.00$/, ""); // remove trailing .00
+//         recalcCost(row);
+//     });
+// }
+
+// enforce quantities to be positive and more than zero and not more  than 1000000
+function restrictNumberInput(el, maxInt, maxDec) {
+  el.addEventListener("keydown", e => {
+    if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+  });
+
+  el.addEventListener("input", function() {
+    let value = this.value;
+    if (value.includes(".")) {
+      let [intPart, decPart] = value.split(".");
+      if (intPart.length > maxInt) intPart = intPart.slice(0, maxInt);
+      if (decPart.length > maxDec) decPart = decPart.slice(0, maxDec);
+      this.value = intPart + "." + decPart;
+    } else if (value.length > maxInt) {
+      this.value = value.slice(0, maxInt);
+    }
+  });
+}
+
 // Initialize autocomplete for an ingredient
 function initializeIngredientInput(row, token) {
-    const input = row.querySelector(".ingredient-name");
-    const suggestionBox = row.querySelector(".suggestions-box");
+    const input = row.querySelector('input[name^="ingredient_name_"]');
+    const suggestionBox = row.querySelector(".suggestions");
     let fetchedIngredients = [];
     let ingredientData = [];
     let activeIndex = -1;
@@ -387,7 +562,7 @@ function initializeIngredientInput(row, token) {
                 selectIngredient(selectedItem, row);
 
                 // Move focus to the next input (quantity)
-                const nextInput = row.querySelector(".quantity");
+                const nextInput = row.querySelector('input[name^="quantity_"]');
                 if (nextInput) nextInput.focus();
             }
             suggestionBox.style.display = "none";
@@ -402,16 +577,17 @@ function initializeIngredientInput(row, token) {
             if (!currentValue || (currentValue !== initialValue && !fetchedIngredients.includes(currentValue))) {
                 this.value = "";
                 delete row.dataset.ingredientId;
-                row.querySelector(".quantity").value = "";
-                row.querySelector(".base-quantity").value = "";
-                row.querySelector(".base-unit-select").innerHTML = "<option>Select unit</option>";
-                row.querySelector(".base-price").value = "";
-                row.querySelector(".unit-select").innerHTML = "<option value=''>Select unit</option>";
+                row.querySelector('input[name^="quantity_"]').value = "";
+                row.querySelector('input[name^="base_quantity_"]').value = "";
+                row.querySelector('select[name^="base_unit_"]').innerHTML = "<option>Select unit</option>";
+                row.querySelector('input[name^="base_price_"]').value = "";
+                row.querySelector('select[name^="unit_"]').innerHTML = "<option value=''>Select unit</option>";
                 recalcCost(row);
             }
             suggestionBox.style.display = "none";
             activeIndex = -1;
         }, 150);
+        setTimeout(() => {updateTotalRecipeCost()},200); // using setTimeout as it should run after the above code.
     });
 
     // Highlight suggestion item
@@ -425,9 +601,9 @@ function initializeIngredientInput(row, token) {
         input.value = item.name;
         row.dataset.ingredientId = item.ingredient_id;
 
-        row.querySelector(".base-quantity").value = 1;
-        row.querySelector(".base-price").value = item.price ? Number(item.price).toFixed(2) : "";
-        row.querySelector(".base-unit-select").innerHTML = `<option selected>${item.base_unit || ""}</option>`;
+        row.querySelector('input[name^="base_quantity_"]').value = 1;
+        row.querySelector('input[name^="base_price_"]').value = item.price ? Number(item.price).toFixed(2) : "";
+        row.querySelector('select[name^="base_unit_"]').innerHTML = `<option selected>${item.base_unit || ""}</option>`;
 
         // Store defaults for payload comparison
         row._default_base_quantity = 1;
@@ -435,8 +611,8 @@ function initializeIngredientInput(row, token) {
         row._default_base_unit = item.base_unit || "";
 
         // Populate the units dropdown using the correct 4 params
-        await populateUnits(row, item.ingredient_id, null, token);
-        populateBaseUnits(row, item.base_unit); 
+        await populateUnits(row, token);
+        populateBaseUnits(row); 
 
         suggestionBox.style.display = "none";
     }
@@ -460,67 +636,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     bunch: {base: "bunch", factors: {bunch :1}},
     pc: {base: "pc", factors: {pc :1}}
     };
-
-    
-
-    // attach cost events
-    function attachCostEvents(row) {
-        const quantityInput = row.querySelector(".quantity");
-        const baseQuantityInput = row.querySelector(".base-quantity");
-        const basePriceInput = row.querySelector(".base-price");
-        const unitSelect = row.querySelector(".unit-select");
-        const baseUnitSelect = row.querySelector(".base-unit-select");
-
-        quantityInput.addEventListener("input", () => recalcCost(row));
-        baseQuantityInput.addEventListener("input", () => recalcCost(row));
-        basePriceInput.addEventListener("input", () => recalcCost(row));
-        unitSelect.addEventListener("change", () => recalcCost(row));
-        baseUnitSelect.addEventListener("change", () => recalcCost(row));
-    }
-
-    // enforce quantities to be positive and more than zero and not more  than 1000000
-    function enforceQuantityValidation(input, { allowEmpty = false, defaultValue = 1 } = {}) {
-        const row = input.closest("tr");
-
-        input.addEventListener("input", () => {
-            let val = input.value;
-
-            // Allow only numbers with up to 2 decimals
-            if (!/^\d*\.?\d{0,2}$/.test(val)) {
-                input.value = val.slice(0, -1); // remove last invalid char
-            }
-        });
-
-        input.addEventListener("blur", () => {
-            let val = input.value.trim();
-
-            // Empty case → force 0
-            if (val === "") {
-                input.value = "";
-                recalcCost(row);
-                return;
-            }
-
-            let num = parseFloat(val);
-
-            // Invalid → set to 0
-            if (isNaN(num)) {
-                input.value = "0";
-                recalcCost(row);
-                return;
-            }
-
-            // Negative → set to 0
-            if (num < 0) num = 0;
-
-            // Limit to 1,000,000
-            if (num > 1000000) num = 1000000;
-
-            // Fix to max 2 decimals
-            input.value = num.toFixed(2).replace(/\.00$/, ""); // remove trailing .00
-            recalcCost(row);
-        });
-    }
 
     // Calculate new display_order for rows and detect changes for PATCH
     function calculateNewOrders() {
