@@ -6,24 +6,61 @@ if (!token) {
     loadRecipeForEdit(window.recipeId,token);
 }
 let originalRecipeData = null; // global variable to compare the change in recipe
-recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
+const recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
 
+// function to create empty ingredient row (any changes can be made here and get applied everywhere)
+function getEmptyIngredientRow(rowIndex) {
+  return `
+    <td style="position: relative;">
+        <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
+        <div class="suggestions" id="suggestions_${rowIndex}"></div>
+        <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
+    </td>
+    <td>
+        <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number">
+        <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
+    </td>
+    <td>
+        <select name="unit_${rowIndex}" class="unit-select">
+            <option value="">Select Unit</option>
+        </select>
+        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+    </td>
+    <td class="cost-input" style="text-align: center;"></td>
+    <td>
+        <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number">
+        <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
+    </td>
+    <td>
+        <select name="base_unit_${rowIndex}" class="base-unit-select">
+            <option value="">Select Unit</option>
+        </select>
+        <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
+    </td>
+    <td>
+        <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number">
+        <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
+    </td>
+    <td><button class="remove-ingredient-btn" style="display:none">Remove</button></td>
+  `;
+}
+
+        
 // load all the details of recipe in the page
 async function loadRecipeForEdit(recipeId, token) {
     
     try {
         const res = await fetch(`/recipes/api/recipe/edit/${recipeId}`, {
         headers: { "Authorization": `Bearer ${token}` }
-        });
+        });//console.log("response is: ", await res)
 
-        //console.log("response is: ", await res)
         if (res.status === 403) {
             alert("You don’t have permission to edit this recipe.");
             window.location.href = `/recipes/details/${recipeId}`; // redirect to view
             return;
         }
-        const data = await res.json();
-        // console.log("data is: ", data)
+        const data = await res.json();  // console.log("data is: ", data)
+
         originalRecipeData = structuredClone(data); // deep copy to preserve original
         
         // populate form fields with data.recipe, ingredients, steps...
@@ -32,20 +69,39 @@ async function loadRecipeForEdit(recipeId, token) {
         document.getElementById("description-input").value = data.recipe.description;
 
         // Populate ingredients table
-        ingredients = data.ingredients;// console.log("ingredients:", ingredients);
+        const ingredients = data.ingredients;// console.log("ingredients:", ingredients);
+        const totalIngredientRows = ingredients.length; // console.log("total rows from db are :", totalIngredientRows);
         const tbody = document.getElementById("ingredients-tbody");
         tbody.innerHTML = ""; // clear existing rows
 
         // Get unique component_display_order values in ascending order
         const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
-
+        
         let rowIndex = 0;
         // Iterate through each component_display_order
         for (const order of uniqueComponents) {
             // Get the component_text for the first item of this component_display_order
             const component = ingredients.find(item => item.component_display_order === order);
             const componentText = component.component_text ? component.component_text.trim() : "";
-
+            
+            // Before create component row, check if the rowIndex is more than 0 to add empty ingredient row
+            if (rowIndex !== 0){
+                const tr = document.createElement("tr");
+                tr.classList.add("ingredient-row");
+                tr.innerHTML = getEmptyIngredientRow(rowIndex);
+                tbody.appendChild(tr);
+                rowIndex++                
+                // await populateUnits(tr, token);
+                // populateBaseUnits(tr);
+                // recalcCost(tr);
+                attachCostEvents(tr);
+                attachRowListeners(tr);
+                initializeIngredientInput(tr, token);
+                restrictNumberInput(tr.querySelector('input[name^="quantity_"]'),6,3);
+                restrictNumberInput(tr.querySelector('input[name^="base_quantity_"]'),6,3);
+                restrictNumberInput(tr.querySelector('input[name^="base_price_"]'),6,2);
+                
+            }
             // Only create a component row if component_text is non-empty
             if (componentText) {
                 const componentRow = document.createElement("tr");
@@ -114,9 +170,8 @@ async function loadRecipeForEdit(recipeId, token) {
                 recalcCost(tr);
 
                 attachCostEvents(tr);
-
                 initializeIngredientInput(tr, token);
-
+                attachRowListeners(tr);
                 restrictNumberInput(tr.querySelector('input[name^="quantity_"]'),6,3);
                 restrictNumberInput(tr.querySelector('input[name^="base_quantity_"]'),6,3);
                 restrictNumberInput(tr.querySelector('input[name^="base_price_"]'),6,2);
@@ -132,6 +187,24 @@ async function loadRecipeForEdit(recipeId, token) {
 
                 
             };
+        };
+        // add an empty ingredientrow at the end of table. (kept in 'if' for easy understanding)
+        if (true) {
+            const tr = document.createElement("tr");
+            tr.classList.add("ingredient-row");
+            tr.innerHTML = getEmptyIngredientRow(rowIndex);
+            tbody.appendChild(tr);
+            rowIndex++                
+            // await populateUnits(tr, token);
+            // populateBaseUnits(tr);
+            // recalcCost(tr);
+            attachCostEvents(tr);
+            initializeIngredientInput(tr, token);
+            attachRowListeners(tr);
+            restrictNumberInput(tr.querySelector('input[name^="quantity_"]'),6,3);
+            restrictNumberInput(tr.querySelector('input[name^="base_quantity_"]'),6,3);
+            restrictNumberInput(tr.querySelector('input[name^="base_price_"]'),6,2);
+            
         };
         // update total cost
         updateTotalRecipeCost();
@@ -618,7 +691,58 @@ function initializeIngredientInput(row, token) {
     }
 }
 
+// Attach input listeners to a row
+  function attachRowListeners(row) {
+    row.querySelectorAll("input, select").forEach(input => {
+      input.addEventListener("input", (event) => handleRowChange(row, event));
+      //row.querySelector(".remove-ingredient-btn").style.display="block";
+    });
+  }
 
+// Handle row input changes to add new rows dynamically
+  function handleRowChange(row, event) {
+    row.querySelector(".remove-ingredient-btn").style.display="block";
+    const tbody = document.getElementById("ingredients-tbody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const currentRow = event.target.closest("tr"); // Get the row containing the input
+    const currentRowIndex = rows.indexOf(currentRow); //console.log("current row index:", currentRowIndex);
+    const nextRow = rows[currentRowIndex + 1];
+    const isNextRowComponent = rows[currentRowIndex + 1] && rows[currentRowIndex + 1].classList.contains("component-row");
+    const lastRow = rows[rows.length - 1];
+    const isCurrentRowLastRow = currentRow === lastRow;
+    const targetRow = (isCurrentRowLastRow || isNextRowComponent) ? currentRow : null;
+    const currentRowInputs = targetRow 
+      ? Array.from(targetRow.querySelectorAll("input, select")).map(i => i.value.trim()) 
+      : [];
+    
+    // Add new row if last non-component row is filled
+    if (targetRow && currentRowInputs.some(v => v !== "")) {
+        const index = rows.length;
+        const newRow = document.createElement("tr");
+        newRow.classList.add("ingredient-row");
+        newRow.innerHTML = getEmptyIngredientRow(index);
+        
+        // Insert before the next component row, or append if none exists or last row is component
+        if (isNextRowComponent) {
+            tbody.insertBefore(newRow, nextRow);
+        } else {
+            tbody.appendChild(newRow);
+        }
+
+        // // Apply number validation to new numeric inputs
+        // newRow.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
+        //     attachNumberValidation(input);
+        // });
+
+        // Attach listeners and initialize autocomplete for new row
+        attachRowListeners(newRow);
+        attachCostEvents(newRow);
+        initializeIngredientInput(newRow, index);
+        restrictNumberInput(newRow.querySelector('input[name^="quantity_"]'),6,3);
+        restrictNumberInput(newRow.querySelector('input[name^="base_quantity_"]'),6,3);
+        restrictNumberInput(newRow.querySelector('input[name^="base_price_"]'),6,2);
+    }
+  }
 
 
 
@@ -888,12 +1012,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (e.target.classList.contains("remove-ingredient-btn")) {
             const row = e.target.closest("tr");
             const recipeIngredientId = row.dataset.recipeIngredientId;
-            const ingredientName = row.querySelector(".ingredient-name").value;
+            const ingredientName = row.querySelector('input[name^="ingredient_name_"]').value;
 
             // If ingredient is empty, remove row immediately
             if (!ingredientName) {
                 row.remove();
-                updateTotalRecipeCost();
+                //updateTotalRecipeCost();
                 return;
             }
 
