@@ -58,6 +58,44 @@ function showConfirm(message) {
   });
 }
 
+// Show a multi-option confirm modal
+function showMultiConfirm(message, componentName) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("multi-modal-overlay");
+    const alertBox = document.querySelector(".multi-alert-box");
+    const alertMessage = document.getElementById("multi-alert-message");
+    const alertActions = document.getElementById("multi-alert-actions");
+
+    alertMessage.textContent = message;
+    alertBox.className = "multi-alert-box";
+    overlay.style.display = "flex";
+
+    // Replace actions with three options
+    alertActions.innerHTML = `
+      <button id="confirm-delete-component" class="select-btn">Remove ${componentName} Only</button>
+      <button id="confirm-delete-with-ingredients" class="select-btn">Remove ${componentName} + Ingredients</button>
+      <button id="confirm-cancel" style="background:#f44336;">Cancel</button>
+    `;
+    alertActions.style.display = "block";
+
+    // Button events
+    document.getElementById("confirm-delete-component").onclick = () => {
+      overlay.style.display = "none";
+      resolve("component");
+    };
+
+    document.getElementById("confirm-delete-with-ingredients").onclick = () => {
+      overlay.style.display = "none";
+      resolve("with-ingredients");
+    };
+
+    document.getElementById("confirm-cancel").onclick = () => {
+      overlay.style.display = "none";
+      resolve("cancel");
+    };
+  });
+}
+
 // validate recipe table data for create and update recipe
 function validateRecipeForm({ name, portion_size, description, privacy }) {
   let errors = {};

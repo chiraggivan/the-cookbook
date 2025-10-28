@@ -339,7 +339,7 @@ body {
 }
 
 .edit-btn:hover {
-  background-color: #45a049;
+  background-color: #38873c;
 }
 
 .delete-btn {
@@ -348,7 +348,7 @@ body {
 }
 
 .delete-btn:hover {
-  background-color: #da190b;
+  background-color: #791008;
 }
 .modal-overlay {
   position: fixed;
@@ -359,6 +359,60 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 2000;
+}
+
+/* Reuse same overlay style to dim background */
+#multi-modal-overlay.modal-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Box styling for multi-choice modal */
+.multi-alert-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 350px;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Vertical button layout */
+#multi-alert-actions {
+  display: flex;
+  flex-direction: column;    /* ⬅️ stack vertically */
+  gap: 10px;                 /* space between buttons */
+  margin-top: 15px;
+}
+
+#multi-alert-actions button {
+  width: 100%;          /* make button stretch full width */
+  box-sizing: border-box; /* include padding in width */
+}
+
+.select-btn {
+  background-color: #4CAF50 !important; /* green */
+  color: white;
+}
+
+.select-btn:hover {
+  background-color: #38873c !important;
+}
+
+/* Button styling */
+.multi-alert-actions button {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Optional hover effect */
+.multi-alert-actions button:hover {
+  opacity: 0.8;
 }
 
 .alert-box {
