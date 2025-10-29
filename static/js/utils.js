@@ -2,6 +2,7 @@
 
 // * Normalize user input: Trim leading/trailing spaces - Collapse multiple spaces into one
 function normalizeInput(str) {
+  if (typeof str !== "string") return "";
   return str.replace(/\s+/g, " ").trim();
 }
 
@@ -97,25 +98,25 @@ function showMultiConfirm(message, componentName) {
 }
 
 // validate recipe table data for create and update recipe
-function validateRecipeForm({ name, portion_size, description, privacy }) {
+function validateRecipeForm({rName, portion_size, rDescription } ={}) {
   let errors = {};
 
   // Normalize inputs
-  name = normalizeInput(name);
-  portion_size = normalizeInput(portion_size);
-  description = normalizeInput(description);
+  const recipeName = normalizeInput(rName);
+  const portionSize = normalizeInput(portion_size);
+  const  description = normalizeInput(rDescription);
 
   // Recipe name
-  if (!name) {
+  if (!recipeName) {
     errors.name = "Recipe name is required.";
-  } else if (name.length > 50) {
+  } else if (recipeName.length > 50) {
     errors.name = "Recipe name must be less than 50 characters.";
   }
 
   // Portion size
-  if (!portion_size) {
+  if (!portionSize) {
     errors.portion_size = "Portion size is required.";
-  } else if (portion_size.length < 1 || portion_size.length > 20) {
+  } else if (portionSize.length < 1 || portionSize.length > 20) {
     errors.portion_size = "Portion size must not be empty and be less than 20 characters.";
   }
 
@@ -129,7 +130,7 @@ function validateRecipeForm({ name, portion_size, description, privacy }) {
   //  errors.privacy = "Privacy must be public or private.";
   //}
   
-  return {errors, data: { name, portion_size, description } };
+  return {errors, data: { recipeName, portionSize, description} };
 }
 
 

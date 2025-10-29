@@ -25,17 +25,20 @@
   <div id="recipe-form">
     <div class="form-field">
       <label>Recipe Name:</label>
-      <input type="text" id="recipe-name-input" />
+      <input type="text" id="recipe-name-input" name="recipe-name" placeholder="Eg. Aglio Olio, Red Sauce Pasta, etc...."/>
+      <div class="error-create-recipe" id="errorName"></div>
     </div>
 
     <div class="form-field">
       <label>Portion Size:</label>
-      <input type="text" id="portion-size-input" />
+      <input type="text" id="portion-size-input" name="portion-size" placeholder="e.g., 2 portion or 3 people or 1.5 kg, etc."/>
+      <div class="error-create-recipe" id="errorPS"></div>
     </div>
 
     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
       <label for="description-input" style="margin-right: 0.5rem;">Description:</label>
-      <textarea id="description-input" rows="4" style="width: 250px;"></textarea>
+      <textarea id="description-input" rows="4" style="width: 250px;" placeholder="Describe your dish here..."></textarea>
+      <div class="error-create-recipe" id="errorDesc"></div>
     </div>
 
     <!-- Total cost display -->
@@ -66,12 +69,14 @@
     <div id="steps-container"></div>
     <button id="add-step-btn" class="action-btn">Add Step</button>
 
-    <div id="error" class="error"></div>
+    <div id="error" class="error-message"></div>
+    
     <div style="margin-top:1rem;">
       <button id="save-recipe-btn" class="action-btn">Save Recipe</button>
       <button id="cancel-edit-btn" class="action-btn">Cancel</button>
     </div>
   </div>
+  
 
   <!-- Hidden templates for JS cloning -->
   <table style="display:none;">
