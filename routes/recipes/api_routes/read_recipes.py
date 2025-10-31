@@ -145,6 +145,7 @@ def get_recipe_details(recipe_id):
         # Get recipe ingredients and its price
         cursor.execute("""
             SELECT 
+                rc.recipe_component_id,
                 rc.display_order as component_display_order,
                 rc.component_text,
                 ri.display_order as ingredient_display_order,

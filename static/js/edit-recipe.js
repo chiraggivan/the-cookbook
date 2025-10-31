@@ -495,7 +495,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const recipe_ingredient_id = row.dataset.recipeIngredientId; // may be undefined
             // Check if row is marked as removed
             if (row.dataset.removed === "true" && recipe_ingredient_id) {
-                remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id) });
+                remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id)});
                 return; // skip validation for removed row
             }
             const ingredient_id = row.dataset.ingredientId || null;
@@ -537,7 +537,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                     add_ingredients.push(ingredientObj);
                 }
                 filledRows.push(ingredientObj);
-            } else if (recipe_ingredient_id && !isAnyFilled) {
+                // below checking if user has clear all values from the old row having recipe_ingredient_id
+            } else if (recipe_ingredient_id && !isAnyFilled) { 
             remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id) });
             }
         });
@@ -656,7 +657,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
 
                 return Object.keys(changes).length > 1 ? changes : null;
-            })
+            }) // below code remove null values if attached by above code
             .filter(Boolean);
 
         return payload;

@@ -72,7 +72,7 @@ async function loadRecipeForEdit(recipeId, token) {
         const data = await res.json();  // console.log("data is: ", data)
 
         originalRecipeData = structuredClone(data); // deep copy to preserve original
-        // console.log("original recipe data : ", originalRecipeData);
+        console.log("original recipe data : ", originalRecipeData);
         // populate form fields with data.recipe, ingredients, steps...
         document.getElementById("recipe-name-input").value = data.recipe.name;
         document.getElementById("portion-size-input").value = data.recipe.portion_size;
@@ -104,21 +104,24 @@ async function loadRecipeForEdit(recipeId, token) {
                 initializeIngredientRow(tr, token);
                 
             }
+            
+            const componentRow = document.createElement("tr");
+            componentRow.classList.add("component-row");
+            componentRow.dataset.recipeComponentId = component.recipe_component_id || 0;
+            componentRow.innerHTML = `
+                <td colspan="7" style="background-color:#f2f2f2; font-weight:bold;">
+                <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+                <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
+                </td>
+                <td><button class="remove-component-btn">Remove</button></td>
+            `;
+            
             // Only create a component row if component_text is non-empty
-            if (componentText) {
-                const componentRow = document.createElement("tr");
-                componentRow.classList.add("component-row");
-                // tr.dataset.originalOrder = rowIndex || 0;
-                componentRow.innerHTML = `
-                    <td colspan="7" style="background-color:#f2f2f2; font-weight:bold;">
-                    <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-                    <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
-                    </td>
-                    <td><button class="remove-component-btn">Remove</button></td>
-                `;
-                tbody.appendChild(componentRow);
-                rowIndex++
+            if (componentText == "" && rowIndex == 0) {
+                componentRow.style.display="none";
             }
+            tbody.appendChild(componentRow);
+            rowIndex++
 
             // create rows for ingredient for the component above in ascending order
             componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order).sort((a,b) => a.ingredient_display_order - b.ingredient_display_order);        
@@ -153,7 +156,7 @@ async function loadRecipeForEdit(recipeId, token) {
                         <select name="base_unit_${rowIndex}" class="base-unit-select">
                             <option value="${i.unit}"> ${i.unit} </option>
                         </select>
-                        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+                        <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
                     </td>
                     <td>
                         <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
@@ -163,15 +166,10 @@ async function loadRecipeForEdit(recipeId, token) {
                 `;
                 tbody.appendChild(tr);
                 rowIndex++
-                // //const costCell = row.querySelector(".cost-input"); 
-                // //costCell.textContent = i.price > 0 ? i.price.toFixed(4) : "";
                 
                 await populateUnits(tr, token);
-
                 populateBaseUnits(tr);
-
                 recalcCost(tr);
-
                 initializeIngredientRow(tr, token);
 
                 // For normal quantity (only number without -/+ signs and no e. Also 3 decimal places)
@@ -215,8 +213,6 @@ async function loadRecipeForEdit(recipeId, token) {
         `;
         stepsContainer.appendChild(div);
         });
-
-        //console.log("Recipe loaded successfully");
     } catch (err) {
         console.error("Error loading recipe for edit:", err);
     }
@@ -231,7 +227,6 @@ async function populateUnits(row, token) {
     const selectedUnitId = unitSelect?.value;
 
     unitSelect.innerHTML = ""; // clear old options
-    //console.log("Fetching units for ingredient:", ingredientId, typeof ingredientId);
 
     // Add the default "Select" option first
     const defaultOption = document.createElement("option");
@@ -286,8 +281,6 @@ function populateBaseUnits(row) {
         }
     }
 
-    // const baseUnitSelect = row.querySelector(".base-unit-select");
-    // baseUnitSelect.innerHTML = "";
     baseUnit.innerHTML = "";
 
     if (group) {
@@ -326,7 +319,7 @@ function recalcCost(row) {
         costCell.textContent = "";
         return;
     }
-    //console.log("unit is :", unitSelect.value, " base unit is :", baseUnit);
+
     // figure out which group the base unit belongs to
     const unitGroups = {
         weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
@@ -850,196 +843,608 @@ function validateRecipeForm() {
 }
 
 // Validate ingredient table rows
-function validateIngredientsForm() {
-  // const tbody = document.getElementById("ingredients-tbody");
-  // const rows = Array.from(tbody.querySelectorAll("tr"));
-  // Get all ingredient table rows
-  const rows = document.querySelectorAll("#ingredients-table tbody tr");
-  const totalRows = rows.length;
-  let filledRowsCount = 0;
-  let compDisplayOrder = 0;
-  let ingDisplayOrder = 0;
-  let errorMessage = "";
-  const ingredientsData = [];
-  const errorBoxes = {};
-  const errorCompBox ={};
-  let componentInputText ="";
-  let componentIndex = -1;
+// function validateIngredientsForm() {
+//   // const tbody = document.getElementById("ingredients-tbody");
+//   // const rows = Array.from(tbody.querySelectorAll("tr"));
+//   // Get all ingredient table rows
+//   const rows = document.querySelectorAll("#ingredients-table tbody tr");
+//   const totalRows = rows.length;
+//   let filledRowsCount = 0;
+//   let compDisplayOrder = 0;
+//   let ingDisplayOrder = 0;
+//   let errorMessage = "";
+//   const ingredientsData = [];
+//   const errorBoxes = {};
+//   const errorCompBox ={};
+//   let componentInputText ="";
+//   let componentIndex = -1;
 
-  // Iterate through each row
-  rows.forEach((row, index) => {
-    const isThisRowComponent = row.classList.contains("component-row");
-    const isThisRowIngredient = row.classList.contains("ingredient-row");
+//   // Iterate through each row
+//   rows.forEach((row, index) => {
+//     const isThisRowComponent = row.classList.contains("component-row");
+//     const isThisRowIngredient = row.classList.contains("ingredient-row");
     
-    if(isThisRowComponent){
-      const compText = row.querySelector(`input[name^="component_text_"]`);
+//     if(isThisRowComponent){
+//       const compText = row.querySelector(`input[name^="component_text_"]`);
       
-      // extract the index number attached to value fields like errorName_${index}
-      const match = compText.name.match(/_(\d+)$/);
-      const realIndex = match ? match[1] : null;
-      if (!realIndex) return;
+//       // extract the index number attached to value fields like errorName_${index}
+//       const match = compText.name.match(/_(\d+)$/);
+//       const realIndex = match ? match[1] : null;
+//       if (!realIndex) return;
 
-      // Get error display elements
-      errorCompBox[`errorCompText_${realIndex}`] = document.getElementById(`errorCompText_${realIndex}`);
+//       // Get error display elements
+//       errorCompBox[`errorCompText_${realIndex}`] = document.getElementById(`errorCompText_${realIndex}`);
 
-      // Reset Error messages
-      errorCompBox[`errorCompText_${realIndex}`].textContent = "";
+//       // Reset Error messages
+//       errorCompBox[`errorCompText_${realIndex}`].textContent = "";
 
-      // Collect values from all fields of component rows
-      const values = [
-        compText.value.trim()
-      ];
+//       // Collect values from all fields of component rows
+//       const values = [
+//         compText.value.trim()
+//       ];
 
-      // Check if all fields are filled
-      const isAllFieldsFilled = values.every(v => v !== "");
+//       // Check if all fields are filled
+//       const isAllFieldsFilled = values.every(v => v !== "");
 
-      // Validate that partially filled rows are not allowed
-      if (!isAllFieldsFilled) {
-        if(compText.value.trim() == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
-        errorMessage = `Check all the fields. One or more errors found.`;
-      }
+//       // Validate that partially filled rows are not allowed
+//       if (!isAllFieldsFilled) {
+//         if(compText.value.trim() == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
+//         errorMessage = `Check all the fields. One or more errors found.`;
+//       }
 
-      //check if previous component has any ingredient. Cant be empty rows for ingredient
-      if (componentIndex != -1){
-        // console.log(ingredientsData[componentIndex].ingredients);
-        if(ingredientsData[componentIndex].ingredients.length === 0){
-          heading = ingredientsData[componentIndex].component_input_text;
-          errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
-        };
-      };
+//       //check if previous component has any ingredient. Cant be empty rows for ingredient
+//       if (componentIndex != -1){
+//         // console.log(ingredientsData[componentIndex].ingredients);
+//         if(ingredientsData[componentIndex].ingredients.length === 0){
+//           heading = ingredientsData[componentIndex].component_input_text;
+//           errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+//         };
+//       };
 
-      // Process filled component
-      if (isAllFieldsFilled && errorMessage == "") {
-        compDisplayOrder++;
-        componentIndex++;
-        componentInputText = compText.value;
-        const componentObj = {
-          component_display_order : parseInt(compDisplayOrder),
-          component_input_text : componentInputText
-        };
-        // Create empty list for ingredients
-        componentObj.ingredients = [];
+//       // Process filled component
+//       if (isAllFieldsFilled && errorMessage == "") {
+//         compDisplayOrder++;
+//         componentIndex++;
+//         componentInputText = compText.value;
+//         const componentObj = {
+//           component_display_order : parseInt(compDisplayOrder),
+//           component_input_text : componentInputText
+//         };
+//         // Create empty list for ingredients
+//         componentObj.ingredients = [];
 
-        ingredientsData.push(componentObj);
+//         ingredientsData.push(componentObj);
         
-      };
-    };
+//       };
+//     };
 
-    // if row is ingredient row then check and validate its field and reset error message and display if exist
-    if(isThisRowIngredient){
-      // Get input and select elements for the row
-      const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
-      const quantityInput = row.querySelector(`input[name^="quantity_"]`);
-      const unitSelect = row.querySelector(`select[name^="unit_"]`);
-      const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
-      const baseUnitInput = row.querySelector(`input[name^="base_unit_"]`);
-      const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
+//     // if row is ingredient row then check and validate its field and reset error message and display if exist
+//     if(isThisRowIngredient){
+//       // Get input and select elements for the row
+//       const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
+//       const quantityInput = row.querySelector(`input[name^="quantity_"]`);
+//       const unitSelect = row.querySelector(`select[name^="unit_"]`);
+//       const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
+//       const baseUnitInput = row.querySelector(`input[name^="base_unit_"]`);
+//       const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
 
-      // extract the index number attached to value fields like errorName_${index}
-      const match = nameInput.name.match(/_(\d+)$/);
-      const realIndex = match ? match[1] : null;
-      if (!realIndex) return;
-      // Get error display elements
-      errorBoxes[`errorIngName_${realIndex}`] = document.getElementById(`errorIngName_${realIndex}`);
-      errorBoxes[`errorQuantity_${realIndex}`] = document.getElementById(`errorQuantity_${realIndex}`);
-      errorBoxes[`errorUnit_${realIndex}`] = document.getElementById(`errorUnit_${realIndex}`);
-      errorBoxes[`errorBaseQuantity_${realIndex}`] = document.getElementById(`errorBaseQuantity_${realIndex}`);
-      errorBoxes[`errorBaseUnit_${realIndex}`] = document.getElementById(`errorBaseUnit_${realIndex}`);
-      errorBoxes[`errorBasePrice_${realIndex}`] = document.getElementById(`errorBasePrice_${realIndex}`);
-      //const  = document.getElementById(`_${index}`);
+//       // extract the index number attached to value fields like errorName_${index}
+//       const match = nameInput.name.match(/_(\d+)$/);
+//       const realIndex = match ? match[1] : null;
+//       if (!realIndex) return;
+//       // Get error display elements
+//       errorBoxes[`errorIngName_${realIndex}`] = document.getElementById(`errorIngName_${realIndex}`);
+//       errorBoxes[`errorQuantity_${realIndex}`] = document.getElementById(`errorQuantity_${realIndex}`);
+//       errorBoxes[`errorUnit_${realIndex}`] = document.getElementById(`errorUnit_${realIndex}`);
+//       errorBoxes[`errorBaseQuantity_${realIndex}`] = document.getElementById(`errorBaseQuantity_${realIndex}`);
+//       errorBoxes[`errorBaseUnit_${realIndex}`] = document.getElementById(`errorBaseUnit_${realIndex}`);
+//       errorBoxes[`errorBasePrice_${realIndex}`] = document.getElementById(`errorBasePrice_${realIndex}`);
+//       //const  = document.getElementById(`_${index}`);
 
-      // Reset Error messages
-      errorBoxes[`errorIngName_${realIndex}`].textContent =  "";
-      errorBoxes[`errorQuantity_${realIndex}`].textContent =  "";
-      errorBoxes[`errorUnit_${realIndex}`].textContent =  "";
-      errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "";
-      errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "";
-      errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "";
+//       // Reset Error messages
+//       errorBoxes[`errorIngName_${realIndex}`].textContent =  "";
+//       errorBoxes[`errorQuantity_${realIndex}`].textContent =  "";
+//       errorBoxes[`errorUnit_${realIndex}`].textContent =  "";
+//       errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "";
+//       errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "";
+//       errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "";
 
-      // Collect values from all fields
-      const values = [
-        nameInput.value.trim(),
-        quantityInput.value.trim(),
-        unitSelect.value.trim(),
-        baseQtyInput.value.trim(),
-        baseUnitInput.value.trim(),
-        basePriceInput.value.trim()
-      ];
+//       // Collect values from all fields
+//       const values = [
+//         nameInput.value.trim(),
+//         quantityInput.value.trim(),
+//         unitSelect.value.trim(),
+//         baseQtyInput.value.trim(),
+//         baseUnitInput.value.trim(),
+//         basePriceInput.value.trim()
+//       ];
 
-      // //console.log("Quantity Input: ", quan)
-      // Check if any field is filled
-      const isAnyFieldFilled = values.some(v => v !== "");
-      // Check if all fields are filled
-      const isAllFieldsFilled = values.every(v => v !== "");
+//       // //console.log("Quantity Input: ", quan)
+//       // Check if any field is filled
+//       const isAnyFieldFilled = values.some(v => v !== "");
+//       // Check if all fields are filled
+//       const isAllFieldsFilled = values.every(v => v !== "");
 
-      // Validate that partially filled rows are not allowed
-      if (isAnyFieldFilled && !isAllFieldsFilled) {
-        if(nameInput.value.trim() == ""){errorBoxes[`errorIngName_${realIndex}`].textContent =  "Name required" };
-        if(quantityInput.value.trim() == ""){errorBoxes[`errorQuantity_${realIndex}`].textContent =  "Quantity required" };
-        if(unitSelect.value.trim() == ""){errorBoxes[`errorUnit_${realIndex}`].textContent =  "Select a Unit" };
-        if(baseQtyInput.value.trim() == ""){errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "Base quantity required" };
-        if(baseUnitInput.value.trim() == ""){errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "Base Unit required" };
-        if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
-        errorMessage = `Check all the fields. One or more errors found.`;
-      }
+//       // Validate that partially filled rows are not allowed
+//       if (isAnyFieldFilled && !isAllFieldsFilled) {
+//         if(nameInput.value.trim() == ""){errorBoxes[`errorIngName_${realIndex}`].textContent =  "Name required" };
+//         if(quantityInput.value.trim() == ""){errorBoxes[`errorQuantity_${realIndex}`].textContent =  "Quantity required" };
+//         if(unitSelect.value.trim() == ""){errorBoxes[`errorUnit_${realIndex}`].textContent =  "Select a Unit" };
+//         if(baseQtyInput.value.trim() == ""){errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "Base quantity required" };
+//         if(baseUnitInput.value.trim() == ""){errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "Base Unit required" };
+//         if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
+//         errorMessage = `Check all the fields. One or more errors found.`;
+//       }
 
-      // Process fully filled rows
-      if (isAllFieldsFilled) {
-        filledRowsCount++;
-        ingDisplayOrder++;
-        const ingredientObj = {
-          ingredient_id: parseInt(row.dataset.ingredientId),
-          quantity: parseFloat(quantityInput.value),
-          unit_id: parseInt(unitSelect.value),
-          ing_display_order : ingDisplayOrder
+//       // Process fully filled rows
+//       if (isAllFieldsFilled) {
+//         filledRowsCount++;
+//         ingDisplayOrder++;
+//         const ingredientObj = {
+//           ingredient_id: parseInt(row.dataset.ingredientId),
+//           quantity: parseFloat(quantityInput.value),
+//           unit_id: parseInt(unitSelect.value),
+//           ing_display_order : ingDisplayOrder
+//         };
+
+//         // Include base fields only if they differ from original values
+//         if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
+//             baseUnitInput.value != baseUnitInput.dataset.original ||
+//             parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
+//           ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
+//           ingredientObj.base_unit = baseUnitInput.value;
+//           ingredientObj.base_price = parseFloat(basePriceInput.value);
+//         }
+
+//         if(componentIndex == -1){
+//           componentIndex++;
+//           ingredientsData[componentIndex] = {};
+//           ingredientsData[componentIndex].component_display_order = 0;
+//           ingredientsData[componentIndex].component_input_text = "";
+//           ingredientsData[componentIndex].ingredients = [];
+//         } else {        };
+//         // console.log("componentIndex :", componentIndex);
+//         ingredientsData[componentIndex].ingredients.push(ingredientObj);
+//       }
+//     };
+//   });
+
+//   //check if previous component has any ingredient. Cant be empty rows for ingredient
+//   if (componentIndex != -1){
+//     // console.log(ingredientsData[componentIndex].ingredients);
+//     if(ingredientsData[componentIndex].ingredients.length === 0){
+//       heading = ingredientsData[componentIndex].component_input_text;
+//       errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
+//     };
+//   }
+
+//   // Ensure at least two rows are fully filled
+//   if (!errorMessage && filledRowsCount < 2) {
+//     errorMessage = "At least 2 rows of ingredients must be fully filled.";
+//   }
+
+//   // Display error if validation fails
+//   if (errorMessage) {
+//     document.getElementById("error").textContent = errorMessage;
+//     return false;
+//   }
+
+//   // Clear error and return validated ingredient data
+//   document.getElementById("error").textContent = "";
+//   return ingredientsData;
+// }
+
+// validation of ingredient data
+function validateIngredientRows() {
+    const rows = Array.from(document.querySelectorAll("#ingredients-tbody tr"));//.filter(row => row.dataset.removed !== "true");
+    const deletedRows = Array.from(document.querySelectorAll("#ingredients-tbody tr")).filter(row => row.dataset.removed === "true");
+    const filledRows = [];
+    const add_ingredients = [];
+    const add_components = [];
+    const update_ingredients = [];
+    const update_components = [];
+    const remove_ingredients = [];
+    const remove_components = [];
+
+    let filledRowsCount = 0;
+    let compDisplayOrder = 0;
+    let ingDisplayOrder = 0;
+    // let errorMessage = "";
+    const ingredientsData = [];
+    const ingredientsCheckWithOriginalData = [];
+    const errorBoxes = {};
+    const errorCompBox ={};
+    let componentInputText ="";
+    let componentIndex = -1;
+    let recipe_component_id;
+
+    let errorMessage = "";
+
+    rows.forEach((row, index) => {
+        const isThisRowComponent = row.classList.contains("component-row");
+        const isThisRowIngredient = row.classList.contains("ingredient-row");
+    
+        if(isThisRowComponent){
+            // check if the rows is removed
+            recipe_component_id = row.dataset.recipeComponentId; // may be undefined
+
+            if(row.dataset.removed === 'true'){
+                remove_components.push({ recipe_component_id: parseInt(recipe_component_id)});
+                return;
+            };
+
+            const compText = row.querySelector(`input[name^="component_text_"]`).value.trim().replace(/\s+/g, " ");
+            // extract the index number attached to value fields like errorName_${index}
+            const match = compText.name.match(/_(\d+)$/);
+            const realIndex = match ? match[1] : null;
+            if (!realIndex) return;
+
+            // Get error display elements
+            errorCompBox[`errorCompText_${realIndex}`] = document.getElementById(`errorCompText_${realIndex}`);
+
+            // Reset Error messages
+            errorCompBox[`errorCompText_${realIndex}`].textContent = "";
+
+            // Collect values from all fields of component rows
+            const values = [compText];
+
+            // Check if all fields are filled
+            const isAllFieldsFilled = values.every(v => v !== "");
+
+            // Validate that partially filled rows are not allowed
+            if (!isAllFieldsFilled && index !== 0) {
+                if(compText == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
+                errorMessage = `Check all the fields. One or more errors found.`;
+            }
+
+            //check if previous component has any ingredient. Cant be empty rows for ingredient
+            if (componentIndex != -1){
+                if(ingredientsData[componentIndex].ingredients.length === 0){
+                const subheading = ingredientsData[componentIndex].component_input_text;
+                errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
+                };
+            };
+
+            // Process filled component
+            if ((isAllFieldsFilled || index == 0) && errorMessage == "") {
+                componentInputText = compText; // used to add text for different ingredineet
+                componentIndex++; // used to check the previous compoenents have ingredients
+                const componentObj = {
+                    component_display_order: parseInt(compDisplayOrder),
+                    component_text: compText,
+                    ingredients: []
+                };
+                if (recipe_component_id) {
+                    componentObj.recipe_component_id = parseInt(recipe_component_id);
+                    update_components.push(componentObj);
+                } else {
+                    add_components.push(componentObj);
+                }
+
+                // ingredientsCheckWithOriginalData.push(componentObj);
+                ingredientsData.push(componentObj);
+                compDisplayOrder++;
+            };
         };
 
-        // Include base fields only if they differ from original values
-        if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
-            baseUnitInput.value != baseUnitInput.dataset.original ||
-            parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
-          ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
-          ingredientObj.base_unit = baseUnitInput.value;
-          ingredientObj.base_price = parseFloat(basePriceInput.value);
+        if(isThisRowIngredient){
+            // check if the rows is removed
+            const recipe_ingredient_id = row.dataset.recipeIngredientId; // may be undefined
+
+            if(row.dataset.removed === 'true'){
+                remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id)});
+                return;
+            };
+
+            // Get input and select elements for the row
+            const nameInput = row.querySelector(`input[name^="ingredient_name_"]`);
+            const quantityInput = row.querySelector(`input[name^="quantity_"]`);
+            const unitSelect = row.querySelector(`select[name^="unit_"]`);
+            const baseQtyInput = row.querySelector(`input[name^="base_quantity_"]`);
+            const baseUnitInput = row.querySelector(`select[name^="base_unit_"]`);
+            const basePriceInput = row.querySelector(`input[name^="base_price_"]`);
+
+            // extract the index number attached to value fields like errorName_${index}
+            const match = nameInput.name.match(/_(\d+)$/);
+            const realIndex = match ? match[1] : null;
+            if (!realIndex) return;
+            // Get error display elements
+            errorBoxes[`errorIngName_${realIndex}`] = document.getElementById(`errorIngName_${realIndex}`);
+            errorBoxes[`errorQuantity_${realIndex}`] = document.getElementById(`errorQuantity_${realIndex}`);
+            errorBoxes[`errorUnit_${realIndex}`] = document.getElementById(`errorUnit_${realIndex}`);
+            errorBoxes[`errorBaseQuantity_${realIndex}`] = document.getElementById(`errorBaseQuantity_${realIndex}`);
+            errorBoxes[`errorBaseUnit_${realIndex}`] = document.getElementById(`errorBaseUnit_${realIndex}`);
+            errorBoxes[`errorBasePrice_${realIndex}`] = document.getElementById(`errorBasePrice_${realIndex}`);
+            //const  = document.getElementById(`_${index}`);
+
+            // Reset Error messages
+            errorBoxes[`errorIngName_${realIndex}`].textContent =  "";
+            errorBoxes[`errorQuantity_${realIndex}`].textContent =  "";
+            errorBoxes[`errorUnit_${realIndex}`].textContent =  "";
+            errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "";
+            errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "";
+            errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "";
+
+            // Collect values from all fields
+            const values = [
+                nameInput.value.trim(),
+                quantityInput.value.trim(),
+                unitSelect.value.trim(),
+                baseQtyInput.value.trim(),
+                baseUnitInput.value.trim(),
+                basePriceInput.value.trim()
+            ];
+
+            // Check if any field is filled
+            const isAnyFieldFilled = values.some(v => v !== "");
+            // Check if all fields are filled
+            const isAllFieldsFilled = values.every(v => v !== "");
+
+            // Validate that partially filled rows are not allowed
+            if (isAnyFieldFilled && !isAllFieldsFilled) {
+                if(nameInput.value.trim() == ""){errorBoxes[`errorIngName_${realIndex}`].textContent =  "Name required" };
+                if(quantityInput.value.trim() == ""){errorBoxes[`errorQuantity_${realIndex}`].textContent =  "Quantity required" };
+                if(unitSelect.value.trim() == ""){errorBoxes[`errorUnit_${realIndex}`].textContent =  "Select a Unit" };
+                if(baseQtyInput.value.trim() == ""){errorBoxes[`errorBaseQuantity_${realIndex}`].textContent =  "Base quantity required" };
+                if(baseUnitInput.value.trim() == ""){errorBoxes[`errorBaseUnit_${realIndex}`].textContent =  "Select Base Unit" };
+                if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
+                errorMessage = `Check all the fields. One or more errors found.`;
+            }
+
+            // Process fully filled rows
+            if (isAllFieldsFilled) {
+                filledRowsCount++;
+                ingDisplayOrder++;
+                const ingredientObj = {
+                    ingredient_id: parseInt(row.dataset.ingredientId),
+                    quantity: parseFloat(quantityInput.value),
+                    unit_id: parseInt(unitSelect.value),
+                    ing_display_order : ingDisplayOrder
+                };
+
+                ingredientsCheckWithOriginalData[filledRowsCount-1] = {};
+                if (row.dataset.recipeIngredientId !== undefined){
+                        ingredientsCheckWithOriginalData[filledRowsCount-1].recipe_ingredient_id= parseInt(row.dataset.recipeIngredientId);
+                }
+                ingredientsCheckWithOriginalData[filledRowsCount-1].ingredient_id= parseInt(row.dataset.ingredientId);
+                ingredientsCheckWithOriginalData[filledRowsCount-1].quantity= parseFloat(quantityInput.value);
+                ingredientsCheckWithOriginalData[filledRowsCount-1].unit_id= parseInt(unitSelect.value);
+                ingredientsCheckWithOriginalData[filledRowsCount-1].ing_display_order = ingDisplayOrder;
+                ingredientsCheckWithOriginalData[filledRowsCount-1].unit = baseUnitInput.value;
+                ingredientsCheckWithOriginalData[filledRowsCount-1].base_price = parseFloat(basePriceInput.value);
+                ingredientsCheckWithOriginalData[filledRowsCount-1].base_quantity = parseFloat(baseQtyInput.value);
+
+                // Include base fields only if they differ from original values
+                if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
+                    baseUnitInput.value != baseUnitInput.dataset.original ||
+                    parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
+                ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
+                ingredientObj.base_unit = baseUnitInput.value;
+                ingredientObj.base_price = parseFloat(basePriceInput.value);
+                };
+
+                // creating one more variable for complete row obj to check with original data
+                // const rowObj = ingredientObj;
+
+                ingredientsCheckWithOriginalData[filledRowsCount-1].component_display_order = compDisplayOrder-1;
+                ingredientsCheckWithOriginalData[filledRowsCount-1].component_text = "";
+                if (recipe_component_id){
+                    ingredientsCheckWithOriginalData[filledRowsCount-1].recipe_component_id = parseInt(recipe_component_id) ;
+                }
+                
+                
+                // console.log("componentIndex :", componentIndex);
+                ingredientsData[componentIndex].ingredients.push(ingredientObj);
+            };
+        };
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    deletedRows.forEach((deletedRow, index) => {
+        const isThisRowComponent = deletedRow.classList.contains("component-row");
+        const isThisRowIngredient = deletedRow.classList.contains("ingredient-row");
+
+        if(isThisRowComponent){
+            const recipe_component_id = deletedRow.dataset.recipeComponentId; // may be undefined
+            // Check if row is marked as removed
+            if (deletedRow.dataset.removed === "true" && recipe_component_id) {
+                remove_components.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id)});
+            }
+        };
+         
+        if(isThisRowIngredient){
+            const recipe_ingredient_id = deletedRow.dataset.recipeIngredientId;
+            // Check if row is marked as removed
+            if (deletedRow.dataset.removed === "true" && recipe_ingredient_id) {
+                remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id)});
+            }
+        };
+
+
+        // const recipe_ingredient_id = row.dataset.recipeIngredientId; // may be undefined
+        // // Check if row is marked as removed
+        // if (row.dataset.removed === "true" && recipe_ingredient_id) {
+        //     remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id)});
+        //     return; // skip validation for removed row
+        // }
+        // const ingredient_id = row.dataset.ingredientId || null;
+        // const name = row.querySelector(".ingredient-name").value.trim();
+        // const quantity = row.querySelector(".quantity").value.trim();
+        // const unit_id = row.querySelector(".unit-select").value;
+        // const base_quantity = row.querySelector(".base-quantity").value.trim();
+        // const base_unit = row.querySelector(".base-unit-select").value;
+        // const base_price = row.querySelector(".base-price").value.trim();
+
+        // const values = [name, quantity, unit_id, base_quantity, base_unit, base_price];
+        // const isAnyFilled = values.some(v => v !== "" && v !== "0" && v !=="Select unit");
+        // const isAllFilled = values.every(v => v !== "" && v !== "0" && v !=="Select unit");
+
+        // if (isAnyFilled && !isAllFilled) {
+        // errorMessage = `Row ${index + 1}: All fields must be filled if any field is entered.`;
+        // }
+
+        // if (isAllFilled) {
+        //     const ingredientObj = {
+        //         recipe_ingredient_id: recipe_ingredient_id ? parseInt(recipe_ingredient_id) : null,
+        //         name,
+        //         ingredient_id: parseInt(ingredient_id),
+        //         quantity: parseFloat(quantity),
+        //         unit_id: parseInt(unit_id),
+        //         base_quantity: parseFloat(base_quantity),
+        //         base_unit,
+        //         base_price: parseFloat(base_price),
+
+        //             // --- attach defaults ---
+        //         _default_base_quantity: row._default_base_quantity,
+        //         _default_base_unit: row._default_base_unit,
+        //         _default_base_price: row._default_base_price
+        //     };
+        //     // check if its a new row or updating existing row
+        //     if (ingredientObj.recipe_ingredient_id) {
+        //         update_ingredients.push(ingredientObj);
+        //     } else {
+        //         add_ingredients.push(ingredientObj);
+        //     }
+        //     filledRows.push(ingredientObj);
+        //     // below checking if user has clear all values from the old row having recipe_ingredient_id
+        // } else if (recipe_ingredient_id && !isAnyFilled) { 
+        // remove_ingredients.push({ recipe_ingredient_id: parseInt(recipe_ingredient_id) });
+        // }
+    });
+
+    if (!errorMessage && filledRowsCount < 2) {
+        errorMessage = "At least 2 rows of ingredients must be fully filled.";
+    }
+
+    if (errorMessage) {
+        document.getElementById("error").textContent = errorMessage;
+        return false;
+        // return {filledRows: null, remove_ingredients: null, errorMessage: errorMessage} ;
+    }
+
+    // NEW: Calculate order changes for PATCH
+    // const orderUpdates = calculateNewOrders();
+    return ingredientsCheckWithOriginalData;
+    // return { filledRows, add_ingredients, update_ingredients, remove_ingredients, orderUpdates, errorMessage: null };
+}
+
+//compare the original recipe ingredients and new. Only attach those that are not same - i.e. updated.
+function getRecipePayload(originalRecipeData, completeRecipeData) {
+    const payload = {};
+
+    // Compare top-level recipe fields
+    if (completeRecipeData.recipe.name !== originalRecipeData.recipe.name) {
+        payload.name = completeRecipeData.recipe.name;
+    }
+    if (completeRecipeData.recipe.portion_size !== originalRecipeData.recipe.portion_size) {
+        payload.portion_size = completeRecipeData.recipe.portion_size;
+    }
+    if (completeRecipeData.recipe.description !== originalRecipeData.recipe.description) {
+        payload.description = completeRecipeData.recipe.description;
+    }
+
+    // --- Additions (clean + selective base fields) ---
+    payload.add_ingredients = completeRecipeData.add_ingredients.map(newRow => {
+        const cleaned = {
+            ingredient_id: newRow.ingredient_id,
+            quantity: parseFloat(newRow.quantity),
+            unit_id: parseInt(newRow.unit_id)
+        };
+
+        // Compare against defaults
+        const defaultBaseQuantity = parseFloat(newRow._default_base_quantity);
+        const defaultBaseUnit = newRow._default_base_unit;
+        const defaultBasePrice = parseFloat(newRow._default_base_price);
+
+        if (
+            parseFloat(newRow.base_quantity) !== defaultBaseQuantity ||
+            newRow.base_unit !== defaultBaseUnit ||
+            parseFloat(newRow.base_price) !== defaultBasePrice
+        ) {
+            cleaned.base_quantity = parseFloat(newRow.base_quantity);
+            cleaned.base_unit = newRow.base_unit;
+            cleaned.base_price = Number(parseFloat(newRow.base_price).toFixed(2));
         }
 
-        if(componentIndex == -1){
-          componentIndex++;
-          ingredientsData[componentIndex] = {};
-          ingredientsData[componentIndex].component_display_order = 0;
-          ingredientsData[componentIndex].component_input_text = "";
-          ingredientsData[componentIndex].ingredients = [];
-        } else {        };
-        // console.log("componentIndex :", componentIndex);
-        ingredientsData[componentIndex].ingredients.push(ingredientObj);
-      }
-    };
-  });
+        return cleaned;
+    });
 
-  //check if previous component has any ingredient. Cant be empty rows for ingredient
-  if (componentIndex != -1){
-    // console.log(ingredientsData[componentIndex].ingredients);
-    if(ingredientsData[componentIndex].ingredients.length === 0){
-      heading = ingredientsData[componentIndex].component_input_text;
-      errorMessage = `Cant have empty ingredients within sub heading -${heading}-. Either remove it or add ingredients`
-    };
-  }
+    // --- Removals (always include) ---
+    payload.remove_ingredients = completeRecipeData.remove_ingredients;
 
-  // Ensure at least two rows are fully filled
-  if (!errorMessage && filledRowsCount < 2) {
-    errorMessage = "At least 2 rows of ingredients must be fully filled.";
-  }
+    // --- Updates (your existing logic with tweak above) ---
+    payload.update_ingredients = completeRecipeData.update_ingredients
+        .map(updatedRow => {
+            const originalRow = originalRecipeData.ingredients.find(
+                ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
+            );
 
-  // Display error if validation fails
-  if (errorMessage) {
-    document.getElementById("error").textContent = errorMessage;
-    return false;
-  }
+            if (!originalRow) return updatedRow;
 
-  // Clear error and return validated ingredient data
-  document.getElementById("error").textContent = "";
-  return ingredientsData;
+            const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
+
+            // CASE 1: Ingredient changed
+            if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
+                changes.ingredient_id = updatedRow.ingredient_id;
+                changes.quantity = parseFloat(updatedRow.quantity);
+                changes.unit_id = parseInt(updatedRow.unit_id);
+
+                const newDefaults = {
+                    base_quantity: parseFloat(updatedRow._default_base_quantity),
+                    base_unit: updatedRow._default_base_unit,
+                    base_price: parseFloat(updatedRow._default_base_price)
+                };
+
+                if (
+                    parseFloat(updatedRow.base_quantity) !== newDefaults.base_quantity ||
+                    updatedRow.base_unit !== newDefaults.base_unit ||
+                    parseFloat(updatedRow.base_price) !== newDefaults.base_price
+                ) {
+                    changes.base_quantity = parseFloat(updatedRow.base_quantity);
+                    changes.base_unit = updatedRow.base_unit;
+                    changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
+                }
+
+                return changes;
+            }
+
+            // CASE 2: Same ingredient
+            if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
+                changes.quantity = parseFloat(updatedRow.quantity);
+            }
+            if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
+                changes.unit_id = parseInt(updatedRow.unit_id);
+            }
+
+            if (
+                parseFloat(updatedRow.base_quantity) !== parseFloat(originalRow.base_quantity) ||
+                updatedRow.base_unit !== originalRow.unit ||
+                parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
+            ) {
+                changes.base_quantity = parseFloat(updatedRow.base_quantity);
+                changes.base_unit = updatedRow.base_unit;
+                changes.base_price = Number(parseFloat(updatedRow.base_price).toFixed(2));
+            }
+
+            return Object.keys(changes).length > 1 ? changes : null;
+        })
+        .filter(Boolean);
+
+    return payload;
 }
+
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -1051,32 +1456,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     [addFirstComponentBtn, addComponentBtn].forEach( button => 
         button.addEventListener("click", function () {
             const rows = Array.from(tbody.querySelectorAll("tr"));
-            const index = rows.length;
-            // Create the component row
-            const tr = document.createElement("tr");
-            tr.classList.add("component-row");
-            tr.innerHTML = getEmptyComponentRow(index);
             // Depending on the button, place it on the top or at the bottom
             if(button == addFirstComponentBtn){
-                tbody.prepend(tr);
+                // tbody.prepend(tr);
+                const tr = rows[0];
+                tr.style.display = 'table-row';
                 addFirstComponentBtn.style.display ='none';
             } else if(button == addComponentBtn){
+                 const index = rows.length;
+                // Create the component row
+                const tr = document.createElement("tr");
+                tr.classList.add("component-row");
+                tr.innerHTML = getEmptyComponentRow(index);
                 tbody.appendChild(tr);
                 addComponentBtn.style.display ='none';
-            };
-            
-            attachRowListeners(tr);
+                 attachRowListeners(tr);
+            };   
+           
         })
     );
-    
-
-
-    // const unitGroups = {
-    // weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
-    // volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
-    // bunch: {base: "bunch", factors: {bunch :1}},
-    // pc: {base: "pc", factors: {pc :1}}
-    // };
 
     // Calculate new display_order for rows and detect changes for PATCH
     function calculateNewOrders() {
@@ -1107,110 +1505,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // window.validateIngredientRows = validateIngredientRows; -------------------> FOR TESTING
-    //compare the original recipe ingredients and new. Only attach those that are not same - i.e. updated.
-    function getRecipePayload(originalRecipeData, completeRecipeData) {
-        const payload = {};
-
-        // Compare top-level recipe fields
-        if (completeRecipeData.name !== originalRecipeData.recipe.name) {
-            payload.name = completeRecipeData.name;
-        }
-        if (completeRecipeData.portion_size !== originalRecipeData.recipe.portion_size) {
-            payload.portion_size = completeRecipeData.portion_size;
-        }
-        if (completeRecipeData.description !== originalRecipeData.recipe.description) {
-            payload.description = completeRecipeData.description;
-        }
-
-        // --- Additions (clean + selective base fields) ---
-        payload.add_ingredients = completeRecipeData.add_ingredients.map(newRow => {
-            const cleaned = {
-                ingredient_id: newRow.ingredient_id,
-                quantity: parseFloat(newRow.quantity),
-                unit_id: parseInt(newRow.unit_id)
-            };
-
-            // Compare against defaults
-            const defaultBaseQuantity = parseFloat(newRow._default_base_quantity);
-            const defaultBaseUnit = newRow._default_base_unit;
-            const defaultBasePrice = parseFloat(newRow._default_base_price);
-
-            if (
-                parseFloat(newRow.base_quantity) !== defaultBaseQuantity ||
-                newRow.base_unit !== defaultBaseUnit ||
-                parseFloat(newRow.base_price) !== defaultBasePrice
-            ) {
-                cleaned.base_quantity = parseFloat(newRow.base_quantity);
-                cleaned.base_unit = newRow.base_unit;
-                cleaned.base_price = Number(parseFloat(newRow.base_price).toFixed(2));
-            }
-
-            return cleaned;
-        });
-
-        // --- Removals (always include) ---
-        payload.remove_ingredients = completeRecipeData.remove_ingredients;
-
-        // --- Updates (your existing logic with tweak above) ---
-        payload.update_ingredients = completeRecipeData.update_ingredients
-            .map(updatedRow => {
-                const originalRow = originalRecipeData.ingredients.find(
-                    ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
-                );
-
-                if (!originalRow) return updatedRow;
-
-                const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
-
-                // CASE 1: Ingredient changed
-                if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
-                    changes.ingredient_id = updatedRow.ingredient_id;
-                    changes.quantity = parseFloat(updatedRow.quantity);
-                    changes.unit_id = parseInt(updatedRow.unit_id);
-
-                    const newDefaults = {
-                        base_quantity: parseFloat(updatedRow._default_base_quantity),
-                        base_unit: updatedRow._default_base_unit,
-                        base_price: parseFloat(updatedRow._default_base_price)
-                    };
-
-                    if (
-                        parseFloat(updatedRow.base_quantity) !== newDefaults.base_quantity ||
-                        updatedRow.base_unit !== newDefaults.base_unit ||
-                        parseFloat(updatedRow.base_price) !== newDefaults.base_price
-                    ) {
-                        changes.base_quantity = parseFloat(updatedRow.base_quantity);
-                        changes.base_unit = updatedRow.base_unit;
-                        changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
-                    }
-
-                    return changes;
-                }
-
-                // CASE 2: Same ingredient
-                if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
-                    changes.quantity = parseFloat(updatedRow.quantity);
-                }
-                if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
-                    changes.unit_id = parseInt(updatedRow.unit_id);
-                }
-
-                if (
-                    parseFloat(updatedRow.base_quantity) !== parseFloat(originalRow.base_quantity) ||
-                    updatedRow.base_unit !== originalRow.unit ||
-                    parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
-                ) {
-                    changes.base_quantity = parseFloat(updatedRow.base_quantity);
-                    changes.base_unit = updatedRow.base_unit;
-                    changes.base_price = Number(parseFloat(updatedRow.base_price).toFixed(2));
-                }
-
-                return Object.keys(changes).length > 1 ? changes : null;
-            })
-            .filter(Boolean);
-
-        return payload;
-    }
+    
     
     // remove-button logic for ingredients
     document.addEventListener("click", async (e) => {
@@ -1254,54 +1549,81 @@ document.addEventListener("DOMContentLoaded", async () => {
             const componentName = currentRow.querySelector('input[name^="component_text_"]').value;
             const prevRow = rows[currentRowIndex - 1];
 
-            // If ingredient is empty, remove row immediately
-            if (!componentName ) {
-                if (currentRowIndex != 0 && rows[currentRowIndex + 1]) {
+            // If current component index is 0 i.e. very first at the top component then display:none and addFirstComponentBtn display:block
+            if (currentRowIndex == 0){
+                const firstCellInput = rows[0].querySelector('td input');
+                if (firstCellInput) firstCellInput.value = "";
+                rows[0].style.display = 'none';
+                addFirstComponentBtn.style.display="block";
+                return;
+            }
+
+            // component text is empty and if recipeComponentId DOESNT exist then remove tr
+            if (!componentName && !rows[currentRowIndex].dataset.recipeCompnentId) {
+                if (rows[currentRowIndex + 1]) {
                     prevRow.remove();
-                } else if (currentRowIndex == 0){
-                    addFirstComponentBtn.style.display="block";
                 } else {
                     addComponentBtn.style.display="block";
                 }
                 currentRow.remove();
                 return;
             }
-
+            
             // Ask for confirmation using the modal
             const confirmed = await showMultiConfirm(`Remove ${componentName}?`,componentName);
 
-            if (confirmed === "component") {
-                currentRow.dataset.removed = "true";
-                currentRow.style.display = "none";
-                document.getElementById(`add-first-component-btn`).style.display="block";
-                if (currentRowIndex > 0) {
-                    prevRow.remove();
-                }
-                //currentRow.remove();
-            } else if (confirmed === "with-ingredients") {
-                currentRow.dataset.removed = "true";
-                currentRow.style.display = "none";
-                let nextIndex = currentRowIndex + 1;
-                while (rows[nextIndex] && !rows[nextIndex].classList.contains("component-row")) {
-                    const nextRow = rows[nextIndex];
-                    nextRow.dataset.removed = "true";
-                    nextRow.style.display = "none";
-                    nextIndex++;
+            // component text present and if recipeComponentId DOESNT exist
+            if(componentName && !rows[currentRowIndex].dataset.recipeComponentId ){
+                if (confirmed === "component") {
+                    currentRow.remove();
+                    //document.getElementById(`add-first-component-btn`).style.display="block";
+                    if (currentRowIndex > 0) {
+                        prevRow.remove();
+                    }
+                } else if (confirmed === "with-ingredients") {
+                    let nextIndex = currentRowIndex + 1;
+                    while (rows[nextIndex] && !rows[nextIndex].classList.contains("component-row")) {
+                        const nextRow = rows[nextIndex];
+                        nextRow.remove();
+                        nextIndex++;
+                    };
+                    currentRow.remove();
+                } else {
+                    return;
                 };
-            } else {
-                return;
-            }
-            // if (!confirmed) return; // user cancelled
-            // if (recipeIngredientId) {
-            // Mark the row as removed
-            
-            // } //  else {
-            // // New ingredient row → remove from DOM
-            
-            // }
+            };
+           
+            // if row created thru data fetched from db i.e. recipeComponentId exist
+            if(rows[currentRowIndex].dataset.recipeComponentId){
+                if (confirmed === "component") {
+                    currentRow.dataset.removed = 'true';
+                    currentRow.style.display = 'none';
+                    //document.getElementById(`add-first-component-btn`).style.display="block";
+                    if (currentRowIndex > 0) {
+                        prevRow.remove();
+                    }
+                } else if (confirmed === "with-ingredients") {
+                    let nextIndex = currentRowIndex + 1;
+                    while (rows[nextIndex] && !rows[nextIndex].classList.contains("component-row")) {
+                        const nextRow = rows[nextIndex];
+                        if(nextRow.dataset.recipeIngredientId){
+                            nextRow.dataset.removed ='true';
+                            nextRow.style.display = 'none';
+                        }else{
+                            nextRow.remove();
+                        }
+                        nextIndex++;
+                    };
+                    currentRow.dataset.removed = 'true';
+                    currentRow.style.display = 'none';
+                } else {
+                    return;
+                };
+
+            };
 
             // Recalculate total cost if needed
-            // updateTotalRecipeCost();
+            updateTotalRecipeCost();
         }
     });
 
@@ -1315,8 +1637,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("error").textContent = "Errors found";
             return;
         } 
-        // const ingredientsData = validateIngredientsForm();
-        // if (!ingredientsData) return;
+
+        const ingredientsData = validateIngredientRows();
+        if (!ingredientsData) return;
         // const stepsData = validateStepsForm();
         // if (!stepsData) return;
 
@@ -1340,6 +1663,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         //     return;
         // } 
         completeRecipeData.recipe = recipeData;
+        completeRecipeData.ingredients = ingredientsData;
+        completeRecipeData.steps = [];
+        console.log("completeRecipeData is :",completeRecipeData);
+        const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
         console.log("end");
         return;
         //console.log("originalRecipeData : ", originalRecipeData);
@@ -1356,7 +1683,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         //console.log("filled rows:", filledRows.length);
 
         // Usage example
-        const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
+        // const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
 
         // Submit recipe to backend API
         //console.log("Payload for recipe update:", recipePayload);
