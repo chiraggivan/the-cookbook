@@ -1113,16 +1113,17 @@ function validateIngredientRows() {
                 const componentObj = {
                     component_display_order: parseInt(compDisplayOrder),
                     component_text: compText,
-                    ingredients: []
+                    // ingredients: []
                 };
                 if (recipe_component_id) {
                     componentObj.recipe_component_id = parseInt(recipe_component_id);
-                    update_components.push(componentObj);
+                    update_components.push(structuredClone(componentObj));
                 } else {
-                    add_components.push(componentObj);
+                    add_components.push(structuredClone(componentObj));
                 }
 
                 // ingredientsCheckWithOriginalData.push(componentObj);
+                componentObj.ingredients = [];
                 ingredientsData.push(componentObj);
                 compDisplayOrder++;
             };
@@ -1200,7 +1201,7 @@ function validateIngredientRows() {
                     ingredient_id: parseInt(row.dataset.ingredientId),
                     quantity: parseFloat(quantityInput.value),
                     unit_id: parseInt(unitSelect.value),
-                    ing_display_order : ingDisplayOrder,
+                    ingredient_display_order : ingDisplayOrder,
                     component_display_order : compDisplayOrder-1,
                     component_text : componentInputText
                 };
@@ -1283,12 +1284,46 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
         payload.description = completeRecipeData.recipe.description;
     }
 
-    // --- Additions (clean + selective base fields) ---
-    payload.add_ingredients = completeRecipeData.add_ingredients.map(newRow => {
+    // --- Component Removals (always include) ---
+    payload.remove_components = completeRecipeData.ingredients.remove_components;
+
+    // --- Component Additions (always include) ---
+    payload.add_components = completeRecipeData.ingredients.add_components;
+
+    // --- Component Updates (check with original recipe data) ---
+    payload.update_components = completeRecipeData.ingredients.update_components
+        .map(updatedRow => {
+            const originalRow = originalRecipeData.ingredients.find(
+                comp => comp.recipe_component_id === updatedRow.recip_component_id
+            );
+
+            if (!originalRow) return updatedRow;
+
+            const changes = { recipe_component_id: updatedRow.recipe_component_id };
+
+            // CASE 1: Ingredient changed
+            if (updatedRow.component_text !== originalRow.component_text) {
+                changes.compoent_text = updatedRow.component_text;
+            };
+            if (updatedRow.component_display_order !== originalRow.component_display_order){
+                changes.component_display_order = updatedRow.component_display_order;
+            };
+
+            return Object.keys(changes).length > 1 ? changes : null;
+        })
+    .filter(Boolean);
+
+    // --- ingredient Removals (always include) ---
+    payload.remove_ingredients = completeRecipeData.ingredients.remove_ingredients;
+
+    // --- ingredients Additions (clean + selective fields) ---
+    payload.add_ingredients = completeRecipeData.ingredients.add_ingredients.map(newRow => {
         const cleaned = {
             ingredient_id: newRow.ingredient_id,
             quantity: parseFloat(newRow.quantity),
-            unit_id: parseInt(newRow.unit_id)
+            unit_id: parseInt(newRow.unit_id),
+            component_display_order: parseInt(newRow.component_display_order),
+            ingredient_display_order: parseInt(newRow.ingredient_display_order)
         };
 
         // Compare against defaults
@@ -1309,11 +1344,8 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
         return cleaned;
     });
 
-    // --- Removals (always include) ---
-    payload.remove_ingredients = completeRecipeData.remove_ingredients;
-
-    // --- Updates (your existing logic with tweak above) ---
-    payload.update_ingredients = completeRecipeData.update_ingredients
+    // --- ingredient Updates (your existing logic with tweak above) ---
+    payload.update_ingredients = completeRecipeData.ingredients.update_ingredients
         .map(updatedRow => {
             const originalRow = originalRecipeData.ingredients.find(
                 ing => ing.recipe_ingredient_id === updatedRow.recipe_ingredient_id
@@ -1597,16 +1629,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         //     return;
         // } 
         completeRecipeData.recipe = recipeData;
-        completeRecipeData.ingredients = result.ingredientsData;
+        completeRecipeData.ingredients = result;
+        // completeRecipeData.remove_components = result.remove_components;
+        // completeRecipeData.add_components = result.add_components;
+        // comp
+
         completeRecipeData.steps = [];
         console.log("completeRecipeData is :",completeRecipeData);
-        console.log("removed components :", result.remove_components);
-        console.log("new coomponents :",result.add_components);
-        console.log("edit components :",result.update_components);
-        console.log("removed ingredients :", result.remove_ingredients);
-        console.log("new ingredients :", result.add_ingredients);
-        console.log("edit ingredients :",result.update_ingredients);
-        console.log("",);
+        console.log("removed_components :", result.remove_components);
+        console.log("add_components :",result.add_components);
+        console.log("update_components :",result.update_components);
+        console.log("removed_ingredients :", result.remove_ingredients);
+        console.log("add_ingredients :", result.add_ingredients);
+        console.log("update_ingredients :",result.update_ingredients);
+        console.log("compelete recipe data :", completeRecipeData);
         // const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
         console.log("end");
         return;
