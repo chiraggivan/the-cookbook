@@ -1790,84 +1790,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // submitting changes of recipe Save BUTTON
     document.getElementById("save-recipe-btn").addEventListener("click", async () => {
-        // Validate all form sections
+        
         let completeRecipeData = {};
-        document.getElementById("error").textContent = "";
+        const errorBox = document.getElementById(`error`);
+        errorBox.textContent = "";
+        // Validating all sections of the form. First with RECIPE table data
         const recipeData = validateRecipeForm();
         if (!recipeData){
-            document.getElementById("error").textContent = "Errors found";
+            errorBox.textContent = "Check all the fields. One or more errors found.";
             return;
         } 
-
-        // const ingredientsData = validateIngredientRows();
-        // if (!ingredientsData) return;
-
+        // validating Ingredients(table) with the recipe of the form
         const ingredientsData  = validateIngredientRows();
         if (ingredientsData.hasError) {
-            console.log("error from ingredients table:", ingredientsData.errorMessage);
+            // console.log("error from ingredients table:", ingredientsData.errorMessage);
             return;
         }
         // const stepsData = validateStepsForm();
         // if (!stepsData) return;
 
-
-
-
-
-
-        
-        // // validation of recipe data thru utils.js
-        // const name = document.getElementById("recipe-name-input").value;// console.log("recipe name : ", name);
-        // const portionSize = document.getElementById("portion-size-input").value;// console.log("recipe portion size : ", portionSize);
-        // const description = document.getElementById("description-input").value;
-        // //const privacy = document.getElementById("privacy-toggle").checked ? "private" : "public"; // not required as its handled separately
-        // const { errors, data } = validateRecipeForm({ rName: name, portion_size: portionSize, rDescription: description});
-
-        // if (errors.name || errors.portion_size || errors.description) {
-        //     console.log("Validation errors:", errors);
-        //     document.getElementById("error").textContent = [errors.name, errors.portion_size, errors.description].filter(Boolean).join(" | ");
-        //     return;
-        // } 
         completeRecipeData.recipe = recipeData;
         completeRecipeData.ingredients = ingredientsData;
-        // completeRecipeData.remove_components = result.remove_components;
-        // completeRecipeData.add_components = result.add_components;
-        // comp
-
         completeRecipeData.steps = [];
-        // console.log("completeRecipeData is :",completeRecipeData);
-        // console.log("removed_components :", result.remove_components);
-        // console.log("add_components :",result.add_components);
-        // console.log("update_components :",result.update_components);
-        // console.log("removed_ingredients :", result.remove_ingredients);
-        // console.log("add_ingredients :", result.add_ingredients);
-        // console.log("update_ingredients :",result.update_ingredients);
         console.log("compelete recipe data :", completeRecipeData);
 
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
         console.log("recipePayLoad is:", recipePayload);
-        console.log("end");
-        return;
+        // return;
         //console.log("originalRecipeData : ", originalRecipeData);
-        const {hasError, remove_components, add_components, update_components,
-            remove_ingredients, add_ingredients, update_ingredients, errorMessage}  = validateIngredientRows();
-        if (errorMessage) {
-            console.log("error from ingredients table:", errorMessage);
-            return;
-        };
-        
-        completeRecipeData.add_ingredients = add_ingredients;
-        completeRecipeData.update_ingredients = update_ingredients;
-        completeRecipeData.remove_ingredients = remove_ingredients; // 
-        //console.log("completeRecipeData : ", completeRecipeData);
-        //console.log("filled rows:", filledRows.length);
-        // 
 
         // Submit recipe to backend API
-        //console.log("Payload for recipe update:", recipePayload);
-        const errorBox = document.getElementById("error");
-        const recipeId =window.recipeId; //console.log(" recipeId :", recipeId)
-        return;
+        //console.log(" recipeId :", recipeId)
         try {
         const response = await fetch(`/recipes/api/update-recipe/${recipeId}`, {
             method: "PATCH",
@@ -1881,33 +1834,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         //console.log("After fetch command for update-recipe", response)
 
         if (!response.ok) {
-            errorBox.textContent = data.error || "Something went wrong while fetch new-recipe.";
+            errorBox.textContent = data.error || "Something went wrong while doing api fetch for update-recipe.";
             console.log("Submitted data (for debug):", data.submitted_data);
             return;
         };
 
-        // NEW: After main update succeeds, PATCH any changed orders
-        for (const update of orderUpdates) {
-            try {
-                const orderResponse = await fetch(`/recipes/api/ingredient-order/${update.recipe_ingredient_id}`, {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ display_order: update.display_order })
-                });
-                const orderData = await orderResponse.json();
-                if (!orderResponse.ok) {
-                    console.warn("Order update failed for ID", update.recipe_ingredient_id, ":", orderData.error);
-                    // Don't block success—log and continue
-                } else {
-                    console.log("Order updated successfully for ID", update.recipe_ingredient_id);
-                }
-            } catch (orderErr) {
-                console.error("Error updating order for ID", update.recipe_ingredient_id, ":", orderErr);
-            }
-        }
+        // // NEW: After main update succeeds, PATCH any changed orders
+        // for (const update of orderUpdates) {
+        //     try {
+        //         const orderResponse = await fetch(`/recipes/api/ingredient-order/${update.recipe_ingredient_id}`, {
+        //             method: "PATCH",
+        //             headers: {
+        //                 "Content-Type": "application/json",
+        //                 "Authorization": `Bearer ${token}`
+        //             },
+        //             body: JSON.stringify({ display_order: update.display_order })
+        //         });
+        //         const orderData = await orderResponse.json();
+        //         if (!orderResponse.ok) {
+        //             console.warn("Order update failed for ID", update.recipe_ingredient_id, ":", orderData.error);
+        //             // Don't block success—log and continue
+        //         } else {
+        //             console.log("Order updated successfully for ID", update.recipe_ingredient_id);
+        //         }
+        //     } catch (orderErr) {
+        //         console.error("Error updating order for ID", update.recipe_ingredient_id, ":", orderErr);
+        //     }
+        // }
         
         // Display success message and redirect
         showAlert(data.message || "Recipe updated successfully!");
