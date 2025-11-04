@@ -131,6 +131,9 @@ async function loadRecipeForEdit(recipeId, token) {
                 tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
                 tr.dataset.ingredientId = i.ingredient_id || "";
                 tr.dataset.originalOrder = rowIndex || 0;
+                tr.dataset.defaultBaseQuantity = i.base_quantity;
+                tr.dataset.defaultBaseUnit = i.unit;
+                tr.dataset.defaultBasePrice = i.base_price;
                 tr.innerHTML = `
                     <td style="position: relative;">
                         <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
@@ -638,7 +641,7 @@ function initializeIngredientInput(row, token) {
                 delete row.dataset.ingredientId;
                 row.querySelector('input[name^="quantity_"]').value = "";
                 row.querySelector('input[name^="base_quantity_"]').value = "";
-                row.querySelector('select[name^="base_unit_"]').innerHTML = "<option>Select unit</option>";
+                row.querySelector('select[name^="base_unit_"]').innerHTML = "<option value=''>Select unit</option>";
                 row.querySelector('input[name^="base_price_"]').value = "";
                 row.querySelector('select[name^="unit_"]').innerHTML = "<option value=''>Select unit</option>";
                 recalcCost(row);
@@ -665,9 +668,9 @@ function initializeIngredientInput(row, token) {
         row.querySelector('select[name^="base_unit_"]').innerHTML = `<option selected>${item.base_unit || ""}</option>`;
 
         // Store defaults for payload comparison
-        row._default_base_quantity = 1;
-        row._default_base_price = item.price ? Number(item.price).toFixed(2) : 0;
-        row._default_base_unit = item.base_unit || "";
+        row.dataset.defaultBaseQuantity = 1;
+        row.dataset.defaultBasePrice = item.price ? Number(item.price).toFixed(2) : 0;
+        row.dataset.defaultBaseUnit = item.base_unit || "";
 
         // Populate the units dropdown using the correct 4 params
         await populateUnits(row, token);
@@ -1037,8 +1040,8 @@ function validateRecipeForm() {
 // validation of ingredient data
 function validateIngredientRows() {
     const rows = Array.from(document.querySelectorAll("#ingredients-tbody tr"));//.filter(row => row.dataset.removed !== "true");
-    const deletedRows = Array.from(document.querySelectorAll("#ingredients-tbody tr")).filter(row => row.dataset.removed === "true");
-    const filledRows = [];
+    // const deletedRows = Array.from(document.querySelectorAll("#ingredients-tbody tr")).filter(row => row.dataset.removed === "true");
+    // const filledRows = [];
     const add_ingredients = [];
     const add_components = [];
     const update_ingredients = [];
@@ -1068,8 +1071,12 @@ function validateIngredientRows() {
             // check if the rows is removed
             recipe_component_id = row.dataset.recipeComponentId; // may be undefined
 
+            // check if component row is removed and put it in the remove_component Obj
             if(row.dataset.removed === 'true'){
-                remove_components.push({ recipe_component_id: parseInt(recipe_component_id)});
+                remove_components.push({ 
+                    recipe_component_id: parseInt(recipe_component_id),
+                    component_display_order: parseInt(compDisplayOrder)
+                });
                 return;
             };
             
@@ -1092,18 +1099,49 @@ function validateIngredientRows() {
             // Check if all fields are filled
             const isAllFieldsFilled = values.every(v => v !== "");
 
+            // validate if the 1st component display is none or block. if block then text cant be empty
+            if (!isAllFieldsFilled && index === 0) {
+                if(row.style.display != "none"){
+                    if(compText == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
+                    errorMessage = `Check first component fields.`;
+                    console.log(errorMessage);
+                }
+            }
+            
+
             // Validate that empty field of components are not allowed EXCEPT for index 0 (first row)
             if (!isAllFieldsFilled && index !== 0) {
                 if(compText == ""){errorCompBox[`errorCompText_${realIndex}`].textContent =  "Component text required" };
                 errorMessage = `Check all the fields. One or more errors found.`;
             }
 
-            //check if previous component has any ingredient. Cant be empty rows for ingredient
-            if (componentIndex != -1){
-                if(ingredientsData[componentIndex].ingredients.length === 0){
-                const subheading = ingredientsData[componentIndex].component_input_text;
-                errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
-                };
+            // check the very 1st component. if component_text(hidden component) and its ingredients are empty 
+            // then reset the componentIndex which will make the next component as very 1st component from future.
+            if (componentIndex === 0){
+                const prevComponent = ingredientsData[componentIndex];
+                if(prevComponent.component_text == ''){
+                    if(prevComponent.ingredients.length === 0){
+                        componentIndex = -1;
+                        compDisplayOrder = 0;
+                        update_components.pop();
+                    }
+                } else if(prevComponent.component_text !== ''){
+                    const prevComponent = ingredientsData[componentIndex];
+                    if(prevComponent && prevComponent.ingredients.length === 0){
+                        const subheading = prevComponent.component_text;
+                        errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
+                    } 
+                }               
+            }
+
+            // as above we have spcl condition for very 1st component, we will now check other components below
+            // check if previous(which is not the 1st component) has any ingredient. Cant be empty rows for ingredient
+            if (componentIndex !== 0 && componentIndex !== -1){
+                const prevComponent = ingredientsData[componentIndex];
+                if(prevComponent && prevComponent.ingredients.length === 0){
+                    const subheading = prevComponent.component_text;
+                    errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
+                }                            
             };
 
             // Process filled component
@@ -1192,7 +1230,11 @@ function validateIngredientRows() {
                 if(basePriceInput.value.trim() == ""){errorBoxes[`errorBasePrice_${realIndex}`].textContent =  "Base Price required" };
                 errorMessage = `Check all the fields. One or more errors found.`;
             }
-
+            // check if recipe_ingredient_id exists and no fields are field then push that row in remove_ingredient
+            if(recipe_ingredient_id && !isAnyFieldFilled){
+                remove_ingredients.push({recipe_ingredient_id: parseInt(recipe_ingredient_id)});
+                return;
+            }
             // Process fully filled rows
             if (isAllFieldsFilled) {
                 filledRowsCount++;
@@ -1221,9 +1263,9 @@ function validateIngredientRows() {
                     ingredientObj.recipe_component_id = parseInt(recipe_component_id);
                 }
                 // Include base fields only if they differ from original values
-                if (parseFloat(baseQtyInput.value) != parseFloat(baseQtyInput.dataset.original) ||
-                    baseUnitInput.value != baseUnitInput.dataset.original ||
-                    parseFloat(basePriceInput.value) != parseFloat(basePriceInput.dataset.original)) {
+                if (parseFloat(baseQtyInput.value) != parseFloat(row.dataset.defaultBaseQuantity) ||
+                    baseUnitInput.value != row.dataset.defaultBaseUnit ||
+                    parseFloat(basePriceInput.value) != parseFloat(row.dataset.defaultBasePrice)) {
                 ingredientObj.base_quantity = parseFloat(baseQtyInput.value);
                 ingredientObj.base_unit = baseUnitInput.value;
                 ingredientObj.base_price = parseFloat(basePriceInput.value);
@@ -1243,7 +1285,9 @@ function validateIngredientRows() {
                 };
                 
                 // console.log("componentIndex :", componentIndex);
-                ingredientsData[componentIndex].ingredients.push(ingredientObj);
+                if(componentIndex !== -1){
+                    ingredientsData[componentIndex].ingredients.push(ingredientObj);
+                }    
             };
         };
     });
@@ -1294,10 +1338,10 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
     payload.update_components = completeRecipeData.ingredients.update_components
         .map(updatedRow => {
             const originalRow = originalRecipeData.ingredients.find(
-                comp => comp.recipe_component_id === updatedRow.recip_component_id
+                comp => comp.recipe_component_id === updatedRow.recipe_component_id
             );
 
-            if (!originalRow) return updatedRow;
+            if (!originalRow) return updatedRow; // this row idealy should never run
 
             const changes = { recipe_component_id: updatedRow.recipe_component_id };
 
@@ -1335,7 +1379,7 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
             parseFloat(newRow.base_quantity) !== defaultBaseQuantity ||
             newRow.base_unit !== defaultBaseUnit ||
             parseFloat(newRow.base_price) !== defaultBasePrice
-        ) {
+            ){
             cleaned.base_quantity = parseFloat(newRow.base_quantity);
             cleaned.base_unit = newRow.base_unit;
             cleaned.base_price = Number(parseFloat(newRow.base_price).toFixed(2));
@@ -1355,48 +1399,56 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
 
             const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
 
+            //  change in display order
+            if (updatedRow.ingredient_display_order != originalRow.ingredient_display_order){
+                 changes.ingredient_display_order = updatedRow.ingredient_display_order;
+            }
+
             // CASE 1: Ingredient changed
             if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
                 changes.ingredient_id = updatedRow.ingredient_id;
                 changes.quantity = parseFloat(updatedRow.quantity);
                 changes.unit_id = parseInt(updatedRow.unit_id);
 
-                const newDefaults = {
-                    base_quantity: parseFloat(updatedRow._default_base_quantity),
-                    base_unit: updatedRow._default_base_unit,
-                    base_price: parseFloat(updatedRow._default_base_price)
-                };
+                // const newDefaults = {
+                //     base_quantity: parseFloat(updatedRow._default_base_quantity),
+                //     base_unit: updatedRow._default_base_unit,
+                //     base_price: parseFloat(updatedRow._default_base_price)
+                // };
 
-                if (
-                    parseFloat(updatedRow.base_quantity) !== newDefaults.base_quantity ||
-                    updatedRow.base_unit !== newDefaults.base_unit ||
-                    parseFloat(updatedRow.base_price) !== newDefaults.base_price
+                if (updatedRow.default_base_unit
+                    // parseFloat(updatedRow.base_quantity) !== originalRow.dataset.defaultBaseQuantity ||
+                    // updatedRow.base_unit !== originalRow.dataset.defaultBaseUnit ||
+                    // parseFloat(updatedRow.base_price) !== originalRow.dataset.defaultBasePrice
                 ) {
                     changes.base_quantity = parseFloat(updatedRow.base_quantity);
                     changes.base_unit = updatedRow.base_unit;
-                    changes.base_price = parseFloat(updatedRow.base_price).toFixed(2);
+                    changes.base_price = parseFloat(updatedRow.base_price.toFixed(2));
                 }
 
                 return changes;
             }
 
             // CASE 2: Same ingredient
-            if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
-                changes.quantity = parseFloat(updatedRow.quantity);
-            }
-            if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
-                changes.unit_id = parseInt(updatedRow.unit_id);
-            }
+            if(updatedRow.ingredient_id === originalRow.ingredient_id){
+                    if (parseFloat(updatedRow.quantity) !== parseFloat(originalRow.quantity)) {
+                    changes.quantity = parseFloat(updatedRow.quantity);
+                }
+                if (parseInt(updatedRow.unit_id) !== parseInt(originalRow.unit_id)) {
+                    changes.unit_id = parseInt(updatedRow.unit_id);
+                }
 
-            if (
-                parseFloat(updatedRow.base_quantity) !== parseFloat(originalRow.base_quantity) ||
-                updatedRow.base_unit !== originalRow.unit ||
-                parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
-            ) {
-                changes.base_quantity = parseFloat(updatedRow.base_quantity);
-                changes.base_unit = updatedRow.base_unit;
-                changes.base_price = Number(parseFloat(updatedRow.base_price).toFixed(2));
+                if (updatedRow.base_unit
+                    // parseFloat(updatedRow.base_quantity) !== parseFloat(originalRow.base_quantity) ||
+                    // updatedRow.base_unit !== originalRow.unit ||
+                    // parseFloat(updatedRow.base_price) !== Number(parseFloat(originalRow.base_price).toFixed(2))
+                ) {
+                    changes.base_quantity = parseFloat(updatedRow.base_quantity);
+                    changes.base_unit = updatedRow.base_unit;
+                    changes.base_price = parseFloat(updatedRow.base_price.toFixed(2));
+                }
             }
+            
 
             return Object.keys(changes).length > 1 ? changes : null;
         })
@@ -1405,7 +1457,149 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
     return payload;
 }
 
+// reload recipe for edit via reset button
+function resetLoadRecipeForEdit(data){
+    // populate form fields with data.recipe, ingredients, steps...
+    document.getElementById("recipe-name-input").value = data.recipe.name;
+    document.getElementById("portion-size-input").value = data.recipe.portion_size;
+    document.getElementById("description-input").value = data.recipe.description;
 
+    // Populate ingredients table
+    const ingredients = data.ingredients;// console.log("ingredients:", ingredients);
+    const totalIngredientRows = ingredients.length; // console.log("total rows from db are :", totalIngredientRows);
+    const tbody = document.getElementById("ingredients-tbody");
+    tbody.innerHTML = ""; // clear existing rows
+
+    // Get unique component_display_order values in ascending order
+    const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
+    
+    let rowIndex = 0;
+    // Iterate through each component_display_order
+    for (const order of uniqueComponents) {
+        // Get the component_text for the first item of this component_display_order
+        const component = ingredients.find(item => item.component_display_order === order);
+        const componentText = component.component_text ? component.component_text.trim() : "";
+        
+        // Before create component row, check if the rowIndex is more than 0 to add empty ingredient row
+        if (rowIndex !== 0){
+            const tr = document.createElement("tr");
+            tr.classList.add("ingredient-row");
+            tr.innerHTML = getEmptyIngredientRow(rowIndex);
+            tbody.appendChild(tr);
+            rowIndex++                
+            initializeIngredientRow(tr, token);
+            
+        }
+        
+        const componentRow = document.createElement("tr");
+        componentRow.classList.add("component-row");
+        componentRow.dataset.recipeComponentId = component.recipe_component_id || 0;
+        componentRow.innerHTML = `
+            <td colspan="7" style="background-color:#f2f2f2; font-weight:bold;">
+            <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+            <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
+            </td>
+            <td><button class="remove-component-btn">Remove</button></td>
+        `;
+        
+        // Only create a component row if component_text is non-empty
+        if (componentText == "" && rowIndex == 0) {
+            componentRow.style.display="none";
+        }
+        tbody.appendChild(componentRow);
+        rowIndex++
+
+        // create rows for ingredient for the component above in ascending order
+        componentIngredients = ingredients.filter(item => item.component_display_order === component.component_display_order).sort((a,b) => a.ingredient_display_order - b.ingredient_display_order);        
+        for (const i of componentIngredients) {
+            const tr = document.createElement("tr");
+            tr.classList.add("ingredient-row");
+            tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
+            tr.dataset.ingredientId = i.ingredient_id || "";
+            tr.dataset.originalOrder = rowIndex || 0;
+            tr.innerHTML = `
+                <td style="position: relative;">
+                    <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
+                    <div class="suggestions" id="suggestions_${rowIndex}"></div>
+                    <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
+                </td>
+                <td>
+                    <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number" value="${i.quantity}">
+                    <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
+                </td>
+                <td>
+                    <select name="unit_${rowIndex}" class="unit-select">
+                        <option value="${i.unit_id}"> ${i.unit_name} </option>
+                    </select>
+                    <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+                </td>
+                <td class="cost-input" style="text-align: center;"></td>
+                <td>
+                    <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${Number(1)}">
+                    <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
+                </td>
+                <td>
+                    <select name="base_unit_${rowIndex}" class="base-unit-select">
+                        <option value="${i.unit}"> ${i.unit} </option>
+                    </select>
+                    <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
+                </td>
+                <td>
+                    <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
+                    <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
+                </td>
+                <td><button class="remove-ingredient-btn">Remove</button></td>
+            `;
+            tbody.appendChild(tr);
+            rowIndex++
+            
+            populateUnits(tr, token);
+            populateBaseUnits(tr);
+            recalcCost(tr);
+            initializeIngredientRow(tr, token);
+
+            // For normal quantity (only number without -/+ signs and no e. Also 3 decimal places)
+            // enforceQuantityValidation(tr.querySelector('input[name^="quantity_"]'),{allowDecimal : 3});
+
+            // // For base quantity (only number without -/+ signs and no e. Also 3 decimal places)
+            // enforceQuantityValidation(tr.querySelector('input[name^="base_quantity_"]'), {allowDecimal : 3});
+
+            // // For base price (only number without -/+ signs and no e. Also 2 decimal places)
+            // enforceQuantityValidation(tr.querySelector('input[name^="base_price_"]'), {allowDecimal : 3});
+
+            
+        };
+    };
+    // add an empty ingredientrow at the end of table. (kept in 'if' for easy understanding)
+    if (true) {
+        const tr = document.createElement("tr");
+        tr.classList.add("ingredient-row");
+        tr.innerHTML = getEmptyIngredientRow(rowIndex);
+        tbody.appendChild(tr);
+        rowIndex++                
+        // await populateUnits(tr, token);
+        // populateBaseUnits(tr);
+        // recalcCost(tr);
+        initializeIngredientRow(tr, token);
+        
+    };
+    // update total cost
+    updateTotalRecipeCost();
+
+    // Populate steps
+    steps = data.steps;
+    const stepsContainer = document.getElementById("steps-container");
+    stepsContainer.innerHTML = "";
+    steps.forEach(s => {
+    const div = document.createElement("div");
+    div.classList.add("step-row");
+    div.innerHTML = `
+        <textarea class="step-text">${s.step_text}</textarea>
+        <button class="remove-step-btn">Remove</button>
+    `;
+    stepsContainer.appendChild(div);
+    });
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
     const tbody = document.getElementById("ingredients-tbody");
@@ -1462,10 +1656,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         return orderUpdates;
     }
-
-
-    // window.validateIngredientRows = validateIngredientRows; -------------------> FOR TESTING
-    
     
     // remove-button logic for ingredients
     document.addEventListener("click", async (e) => {
@@ -1587,6 +1777,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    // cancel changes (dont do any changes and go back to previous page)
+    document.getElementById("cancel-edit-btn").addEventListener("click", ()=>{
+        window.history.back();
+    });
+
+    // reset any changes and stay on same page 
+    // (does NOT go back or fetch from back end.rather reload from the originalRecipeData object)
+    document.getElementById("reset-recipe-btn").addEventListener("click", ()=>{
+        resetLoadRecipeForEdit(originalRecipeData);
+    });
+
     // submitting changes of recipe Save BUTTON
     document.getElementById("save-recipe-btn").addEventListener("click", async () => {
         // Validate all form sections
@@ -1600,15 +1801,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // const ingredientsData = validateIngredientRows();
         // if (!ingredientsData) return;
+
+        const ingredientsData  = validateIngredientRows();
+        if (ingredientsData.hasError) {
+            console.log("error from ingredients table:", ingredientsData.errorMessage);
+            return;
+        }
         // const stepsData = validateStepsForm();
         // if (!stepsData) return;
-
-        const result  = validateIngredientRows();
-        if (result.hasError) {
-            console.log("error from ingredients table:", errorMessage);
-            return;
-        };
-
 
 
 
@@ -1629,21 +1829,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         //     return;
         // } 
         completeRecipeData.recipe = recipeData;
-        completeRecipeData.ingredients = result;
+        completeRecipeData.ingredients = ingredientsData;
         // completeRecipeData.remove_components = result.remove_components;
         // completeRecipeData.add_components = result.add_components;
         // comp
 
         completeRecipeData.steps = [];
-        console.log("completeRecipeData is :",completeRecipeData);
-        console.log("removed_components :", result.remove_components);
-        console.log("add_components :",result.add_components);
-        console.log("update_components :",result.update_components);
-        console.log("removed_ingredients :", result.remove_ingredients);
-        console.log("add_ingredients :", result.add_ingredients);
-        console.log("update_ingredients :",result.update_ingredients);
+        // console.log("completeRecipeData is :",completeRecipeData);
+        // console.log("removed_components :", result.remove_components);
+        // console.log("add_components :",result.add_components);
+        // console.log("update_components :",result.update_components);
+        // console.log("removed_ingredients :", result.remove_ingredients);
+        // console.log("add_ingredients :", result.add_ingredients);
+        // console.log("update_ingredients :",result.update_ingredients);
         console.log("compelete recipe data :", completeRecipeData);
-        // const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
+
+        const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
+        console.log("recipePayLoad is:", recipePayload);
         console.log("end");
         return;
         //console.log("originalRecipeData : ", originalRecipeData);
@@ -1659,9 +1861,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         completeRecipeData.remove_ingredients = remove_ingredients; // 
         //console.log("completeRecipeData : ", completeRecipeData);
         //console.log("filled rows:", filledRows.length);
-
-        // Usage example
-        // const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
+        // 
 
         // Submit recipe to backend API
         //console.log("Payload for recipe update:", recipePayload);
