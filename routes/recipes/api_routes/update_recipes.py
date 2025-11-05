@@ -275,8 +275,78 @@ def update_recipe(recipe_id):
                     cleaned[field] = value  # keep as-is if not a string
                     #return jsonify({"error": f"Expected string in {field} but recieved non string value", "submitted_data": request.get_json()}), 400
             
+            # check data of remove_components and normalize required data only
+            remove_component_fields = ['recipe_component_id']
+            remove_components = data.get('remove_components')
+            if remove_components is None:     
+                cleaned["remove_components"] = []
+            elif isinstance(remove_components, list):
+                cleaned_remove_components = []
+                for each_component in remove_components:
+                    cleaned_each_component = {}
+                    for field in remove_component_fields:
+                        value = each_component.get(field)
+                        if value is None:
+                            continue
+                        elif isinstance(value, str):
+                            # Remove leading/trailing spaces, collapse internal spaces, convert to lowercase
+                            cleaned_each_component[field] = re.sub(r"\s+", " ", value.strip()).lower()                 
+                        else:
+                            cleaned_each_component[field] = value
+                    cleaned_remove_components.append(cleaned_each_component)
+                cleaned["remove_components"] = cleaned_remove_components
+
+            # check data of add_components and normalize required data only
+            add_components_fields =[ "component_display_order", "component_text"]
+            add_components = data.get('add_components')
+            if add_components is None:     
+                cleaned["add_components"] = []
+            elif isinstance(add_components, list):
+                cleaned_add_components = []
+                for each_component in add_components:
+                    cleaned_each_component = {}
+                    for field in add_components_fields:
+                        value = each_component.get(field)
+                        if value is None:
+                            continue
+                        elif isinstance(value, str):
+                            # Remove leading/trailing spaces, collapse internal spaces, convert to lowercase
+                            cleaned_each_component[field] = re.sub(r"\s+", " ", value.strip()).lower()                 
+                        else:
+                            cleaned_each_component[field] = value
+                    cleaned_add_components.append(cleaned_each_component)                                    
+
+                cleaned["add_components"] = cleaned_add_components
+
+            # check data of update_components and normalize required data only
+            update_components_fields =["recipe_component_id", "component_text", "component_display_order","orderChanged"]
+            update_components = data.get('update_components')
+            if update_components is None:
+                cleaned["update_components"] = []
+            elif isinstance(update_components, list):
+                cleaned_update_components = []
+                for each_component in update_components:
+                    cleaned_each_component = {}
+                    for field in update_components_fields:
+                        value = each_component.get(field)
+
+                        if not value or value is None:
+                            continue
+                        elif isinstance(value, str):
+                            # Remove leading/trailing spaces, collapse internal spaces, convert to lowercase
+                            val = re.sub(r"\s+", " ", value.strip()).lower()
+                            if val == "":
+                                continue
+                            else:
+                                cleaned_each_component[field] = val                
+                        else:
+                            cleaned_each_component[field] = value
+                            #return jsonify({"error": f"Expected string, integer or float in {field} but recieved non string value", "submitted_data": request.get_json()}), 400
+                    cleaned_update_components.append(cleaned_each_component)
+                cleaned["update_components"] = cleaned_update_components
+
             # check fields of update ingredients and normalize required fields only
-            update_ingredient_fields =["recipe_ingredient_id", "ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit", "place"]
+            update_ingredient_fields =["recipe_ingredient_id", "ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit", "place", "component_display_order", "ingredient_display_order"]
             update_ingredients = data.get('update_ingredients')
             if update_ingredients is None:
                 cleaned["update_ingredients"] = []
@@ -303,7 +373,7 @@ def update_recipe(recipe_id):
                 cleaned["update_ingredients"] = cleaned_update_ingredients
 
             # check fields of add ingredients and normalize required fields only
-            add_ingredient_fields =["ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit"]
+            add_ingredient_fields =["ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit","component_display_order","ingredient_display_order"]
             add_ingredients = data.get('add_ingredients')
             if add_ingredients is None:     
                 cleaned["add_ingredients"] = []
@@ -335,7 +405,6 @@ def update_recipe(recipe_id):
             remove_ingredients = data.get('remove_ingredients')
             if remove_ingredients is None:
                 cleaned["remove_ingredients"] = []
-
             elif isinstance(remove_ingredients, list):
                 cleaned_remove_ingredients = []
 
@@ -353,6 +422,7 @@ def update_recipe(recipe_id):
                             cleaned_remove_ing[field] = value                
                     cleaned_remove_ingredients.append(cleaned_remove_ing)            
                 cleaned["remove_ingredients"] = cleaned_remove_ingredients
+            
             return cleaned
         
         def validate_recipe_and_ingredient_data(data):
@@ -383,12 +453,77 @@ def update_recipe(recipe_id):
                     return f"Invalid description: must be a string ≤ 500 chars"
 
             # --- Ingredients  with field details
+            remove_components = data.get("remove_components",[])
+            add_components = data.get("add_components",[])
+            update_components = data.get("update_components",[])
             update_ingredients = data.get("update_ingredients",[])
             add_ingredients = data.get("add_ingredients",[])
             remove_ingredients = data.get("remove_ingredients",[])
 
-            
-            # --- for updating ingredients - fields validation
+            # --- for remove_components field validation
+            if remove_components:
+                for component in remove_components:
+                    value = component.get('recipe_component_id')
+                    if value is None:
+                        return f"need to have recipe component id to remove it"
+
+                    if not isinstance(value,int) or value <=0:
+                        return f"Invalid recipe component id `{value}`: must be an int > 0"
+
+            # --- for updating/adding components - fields validation
+            component_groups = {
+                "update_components": update_components,
+                "add_components": add_components
+            }
+
+            for group_name, components in component_groups.items():
+                if components:  # only check if list is not empty
+                    for comp in components:
+                        component_display_order = comp.get('component_display_order')
+                        component_text = comp.get('component_text')
+                        recipe_component_id = comp.get("recipe_component_id")
+                        component_display_order = comp.get('component_display_order')
+
+                        if group_name == 'add_components':                            
+                            #unit_id = comp.get('unit_id')
+                            if component_display_order is None or component_text is None: # or unit_id is None:
+                                return f"Need component_display_order and component_text to add new component in recipe." 
+                            
+                        if group_name == 'update_components':                            
+                            if recipe_component_id is None or component_display_order is None:
+                                return f"Need recipe_component_id and component_display_order to update component in recipe."  
+                            
+                        # check if recipe_component_id provided is valid or not (check for both update and add component) - to reduce vebrose
+                        if recipe_component_id:
+                            if not isinstance(recipe_component_id,int) or recipe_component_id < 0:
+                                return f"Invalid recipe_component_id '{recipe_component_id}': must be int >= 0"    
+
+                        # check if component_display_order provided is valid or not 
+                        if component_display_order:
+                            if not isinstance(component_display_order,int) or component_display_order < 0: 
+                                return f"Invalid component_display_order '{component_display_order}': must be int > 0"         
+
+                        # check if component_text provided is valid or not
+                        if component_text:
+                            if component_display_order == 0:
+                                if not isinstance(component_text, str) or len(component_text) > 99:
+                                    return f"Invalid component_text '{component_text}': must be string type and less than 100 characters"
+
+                            if component_display_order != 0:
+                                    if not isinstance(component_text, str) or component_text =="" or len(component_text) > 99:
+                                        return f"Invalid component_text '{component_text}': must be string type, non empty and less than 100 characters"
+
+            # -- for remove_ingredients field validation
+            if remove_ingredients:
+                for ingredient in remove_ingredients:
+                    value = ing.get('recipe_ingredient_id')
+                    if value is None:
+                        return f"need to have recipe ingredient id to remove it"
+
+                    if not isinstance(value,int) or value <=0:
+                        return f"Invalid recipe ingredient id: must be an int > 0"
+
+            # --- for updating.adding ingredients - fields validation
             ingredient_groups = {
                 "update_ingredients": update_ingredients,
                 "add_ingredients": add_ingredients
@@ -422,6 +557,16 @@ def update_recipe(recipe_id):
                         if unit_id is not None:
                             if not isinstance(unit_id, (int)) or unit_id <= 0:
                                 return f"Invalid unit id: must be int > 0"
+                        
+                        component_display_order = ing.get("component_display_order")
+                        if component_display_order is not None:
+                            if not isinstance(component_display_order, (int)) or component_display_order < 0:
+                                return f"Invalid component_display_order: must be integer type >= 0"
+
+                        ingredient_display_order = ing.get("ingredient_display_order")
+                        if ingredient_display_order is not None:
+                            if not isinstance(ingredient_display_order, (int)) or ingredient_display_order <= 0:
+                                return f"Invalid ingredient_display_order: must be int > 0"
 
                         # if any data provided for tsp, tbsp or cup
                         if any(ing.get(key) for key in ["base_price", "base_unit", "base_quantity"]):
@@ -449,15 +594,7 @@ def update_recipe(recipe_id):
                             if place:
                                 if not isinstance(place, str) or len(place) > 25:
                                     return f"Invalid place: must be a string ≤ 25 chars"
-
-            for ing in data.get('remove_ingredients',[]):
-                value = ing.get('recipe_ingredient_id')
-                if value is None:
-                    continue
-
-                if not isinstance(value,int) or value <=0:
-                    return f"Invalid recipe ingredient id: must be an int > 0"
-                
+                            
             return None
 
         data = normalize_recipe_and_ingredient_data(request.get_json())
@@ -468,9 +605,9 @@ def update_recipe(recipe_id):
         error = validate_recipe_and_ingredient_data(data)
         if error:
             return jsonify({"error": error, "submitted_data": data}), 400  
-        # -------------------------- normailisation and validation done -----------------------
+        # -------------------------- normalisation and validation done -----------------------
         #print("data about to be checked with db is :", data)
-
+        
         # get db connection
         conn = get_db_connection()
         if conn is None:
@@ -535,6 +672,129 @@ def update_recipe(recipe_id):
                     'submitted_data': data
                 }), 409
         # ---------------------------------------------------------------------------------
+        # check all the fields of components like add, update and remove but first we will find some data to help verify later
+
+        # remove_components are being checked if valid with db
+        for component in data.get('remove_components', []):
+            value = component.get('recipe_component_id')
+            if value is None:
+                continue
+            cursor.execute("""SELECT 1 FROM recipe_components 
+                WHERE recipe_id = %s AND recipe_component_id = %s AND is_active = TRUE
+            """,(recipe_id, value))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
+        
+        # finding out what can be the max number for component_display_order
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM recipe_components
+            WHERE recipe_id = %s and is_active = 1
+        """,(recipe_id,)) 
+        dbComponentLength = cursor.fetchone()['total']
+        maxDisplayOrder = dbComponentLength + len(data.get('add_components', [])) - len(data.get('remove_components',[]))
+        
+        # ------------------- below to check component_text is duplicate or not while saving --------------------------------------------------
+        # finding dict of all the component_text in db for that recipe
+        cursor.execute("""
+            SELECT recipe_component_id, component_text FROM recipe_components
+            WHERE recipe_id = %s and is_active = 1 and component_text != ''
+        """,(recipe_id,)) 
+        dbComponentTextDict = {row["recipe_component_id"]:row["component_text"] for row in cursor.fetchall()}
+        
+        # finding component_text of remove_component
+        removeRCId = tuple(row['recipe_component_id'] for row in data.get('remove_components',[]))
+        if not removeRCId:
+            removeComponentTextDict = {}
+        else:
+            placeholders = ','.join(['%s'] * len(removeRCId))  # one %s per component_id
+            sql = f"""
+                SELECT recipe_component_id, component_text FROM recipe_components
+                WHERE recipe_id = %s AND is_active = 1 AND component_text != '' AND recipe_component_id IN ({placeholders})
+            """
+            cursor.execute(sql, (recipe_id, *removeRCId))  # unpack removeRCId as additional parameters
+   
+            removeComponentTextDict = {row["recipe_component_id"]:row["component_text"] for row in cursor.fetchall()}
+        
+        compTextDictAfterRemove = {
+            comp_id: text
+            for comp_id, text in dbComponentTextDict.items()
+            if comp_id not in removeComponentTextDict
+        }
+        
+        # finding component_text of update_component and mergin with component text dict after remove
+        updateComponentTextDict = {row['recipe_component_id']:row['component_text'] for row in data.get('update_components',[]) if row.get('component_text') is not None}
+        compTextDictAfterUpdate = {
+            comp_id: updateComponentTextDict.get(comp_id, text)
+            for comp_id, text in compTextDictAfterRemove.items()
+        }
+
+        # checking after finding component_text in update_component, are there any duplicate values of component_text
+        values = list(compTextDictAfterUpdate.values())
+        has_duplicate = len(finalList) != len(set(finalList))
+        if has_duplicate:
+            return jsonify({'error': "Can't have duplicate sub heading.", "submitted_data":data}), 404
+
+        #creating list of add_component - component_text and also of compTextDictAfterUpdate to combine both and check duplicates
+        addCompTextList = [item['component_text'] for item in data.get('add_components',[])]
+        updateCompTextList = list(compTextDictAfterUpdate.values())
+        finalList = updateCompTextList + addCompTextList
+        
+        has_duplicate = len(finalList) != len(set(finalList))
+        if has_duplicate :
+            return jsonify({'error': "Can't have duplicate sub heading.", "submitted_data":data}), 404
+        # -------------------------- above to check component_text is duplicate or not while saving ---------------------
+
+
+        # add_components and update_components are being check if valid with db
+        for action, components in [
+            ('add', data.get('add_components', [])),
+            ('update', data.get('update_components', []))
+        ]:
+            for component in components:
+                if action == 'update':
+                    # check is recipe component id exists in recipe components table. ONLY for update
+                    cursor.execute("""
+                        SELECT 1 
+                        FROM recipe_components
+                        WHERE recipe_component_id = %s and recipe_id = %s and is_active = TRUE
+                    """,(component.get('recipe_component_id'),recipe_id))   
+                    row = cursor.fetchone()
+                    if not row:
+                        cursor.close()
+                        conn.close()
+                        return jsonify({'error': f"Can't find recipe component id {component.get('recipe_component_id')} with action as {action}", "submitted_data":data}), 404  
+                    
+                # check to see how many components are there in total after calculating add, remove and update length
+                # and make sure the component_display _order is within that range
+                if 'component_display_order' in component:
+                    if component['component_display_order'] >= maxDisplayOrder:
+                        cursor.close()
+                        conn.close()
+                        return jsonify({'error': f"Internal error. compDisplayOrder out of range", "submitted_data":data}), 404  
+        # -----------------------------------------------------------------------------------
+        #-------------------------------------------------------------------------------
+        
+        # Remove ingredients
+        for ing in data.get('remove_ingredients', []):
+            value = ing.get('recipe_ingredient_id')
+            if value is None:
+                continue
+            cursor.execute("""SELECT 1 FROM recipe_ingredients 
+                WHERE recipe_id = %s AND recipe_ingredient_id = %s AND is_active = TRUE
+            """,(recipe_id, value))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
+        
+        # finding out what can be the max number for ingredient_display_order
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM recipe_ingredients
+            WHERE recipe_id = %s and is_active = 1
+        """,(recipe_id,)) 
+        dbIngredientLength = cursor.fetchone()['total']
+        maxIngredientDisplayOrder = dbIngredientLength + len(data.get('add_ingredients', [])) - len(data.get('remove_ingredients',[]))
+
         # add_ingredients and update_ingredients are being check if valid with db
         for action, ingredients in [
             ('add', data.get('add_ingredients', [])),
@@ -542,7 +802,7 @@ def update_recipe(recipe_id):
         ]:
             for ing in ingredients:
                 if action == 'update':
-                    # check is recipe ingredient id exists in recipe ingredients table ONLY for update
+                    # check is recipe ingredient id exists in recipe ingredients table. ONLY for update
                     cursor.execute("""
                         SELECT ingredient_id, quantity, unit_id 
                         FROM recipe_ingredients
@@ -557,12 +817,14 @@ def update_recipe(recipe_id):
                     old_ing_id = row['ingredient_id']
                     old_quantity = row['quantity']
                     old_unit_id = row['unit_id']
-                    # print("----------------") #  ----------------------PRINT--------------------------------------
-                    # print("recipe_ingredient_id : ", ing.get('recipe_ingredient_id')) #  ----------------------PRINT--------------------------------------
-                    # print("old ing id :", old_ing_id) #  ----------------------PRINT--------------------------------------
-                    # print("old quantity:", old_quantity) #  ----------------------PRINT--------------------------------------
-                    # print("old unit id :", old_unit_id) #  ----------------------PRINT--------------------------------------
-                    # print("----------------") #  ----------------------PRINT--------------------------------------
+
+                # check to see how many ingredients are there in total after calculating add, remove and update length
+                # and make sure the ingredient_display_order is within the range
+                if 'ingredient_display_order' in ing:
+                    if ing['ingredient_display_order'] > maxIngredientDisplayOrder:
+                        cursor.close()
+                        conn.close()
+                        return jsonify({'error': f"Internal error. ingredientDisplayOrder out of range", "submitted_data":data}), 404 
 
                 # check if new ingredient id exists in ingredients table
                 if 'ingredient_id' in ing:
@@ -609,21 +871,10 @@ def update_recipe(recipe_id):
                         if ing['base_unit'] not in ['bunch']:
                             return jsonify({'error': f"new base_unit Can't be {ing['base_unit']}. should be bunch", "submitted_data":data}), 404
                 
-        # Remove ingredients
-        for ing in data.get('remove_ingredients', []):
-            value = ing.get('recipe_ingredient_id')
-            if value is None:
-                continue
-            cursor.execute("""SELECT 1 FROM recipe_ingredients 
-                WHERE recipe_id = %s AND recipe_ingredient_id = %s AND is_active = TRUE
-            """,(recipe_id, value))
-            row = cursor.fetchone()
-            if not row:
-                return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
                                      
         # return jsonify({"msg": "every ingredient check and data ready to to be inserted for update"}), 200
         # ----------------------------- UPDATE in DB BEGINS BELOW -------------------------------------------------
-
+        return jsonify({"error":"db connected and about to start updating in db", "submitted_data": data}), 400
         # Update recipe table if any fields are provided
         if update_fields:
             update_values.append(recipe_id)
@@ -635,6 +886,19 @@ def update_recipe(recipe_id):
                 WHERE recipe_id = %s AND user_id = %s AND is_active = TRUE
             """, update_values)
                 
+        # Remove components if any fields are provided
+        for component in data.get('remove_components', []):
+            cursor.execute("""
+                UPDATE recipe_components 
+                SET is_active = FALSE, end_date = CURRENT_TIMESTAMP, display_order = -1
+                WHERE recipe_id = %s AND recipe_component_id = %s AND is_active = TRUE
+            """, (recipe_id, component['recipe_component_id']))
+
+
+
+        
+        
+        
         # Remove ingredients if any fields are provided
         for ing in data.get('remove_ingredients', []):
             cursor.execute("""

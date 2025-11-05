@@ -1343,17 +1343,20 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
 
             if (!originalRow) return updatedRow; // this row idealy should never run
 
-            const changes = { recipe_component_id: updatedRow.recipe_component_id };
+            const changes = { 
+                recipe_component_id: updatedRow.recipe_component_id,
+                component_display_order : updatedRow.component_display_order
+             };
 
             // CASE 1: Ingredient changed
             if (updatedRow.component_text !== originalRow.component_text) {
-                changes.compoent_text = updatedRow.component_text;
+                changes.component_text = updatedRow.component_text;
             };
             if (updatedRow.component_display_order !== originalRow.component_display_order){
-                changes.component_display_order = updatedRow.component_display_order;
+                changes.orderChanged = true;
             };
 
-            return Object.keys(changes).length > 1 ? changes : null;
+            return Object.keys(changes).length > 2 ? changes : null;
         })
     .filter(Boolean);
 
@@ -1370,16 +1373,7 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
             ingredient_display_order: parseInt(newRow.ingredient_display_order)
         };
 
-        // Compare against defaults
-        const defaultBaseQuantity = parseFloat(newRow._default_base_quantity);
-        const defaultBaseUnit = newRow._default_base_unit;
-        const defaultBasePrice = parseFloat(newRow._default_base_price);
-
-        if (
-            parseFloat(newRow.base_quantity) !== defaultBaseQuantity ||
-            newRow.base_unit !== defaultBaseUnit ||
-            parseFloat(newRow.base_price) !== defaultBasePrice
-            ){
+        if (newRow.base_quantity){
             cleaned.base_quantity = parseFloat(newRow.base_quantity);
             cleaned.base_unit = newRow.base_unit;
             cleaned.base_price = Number(parseFloat(newRow.base_price).toFixed(2));
@@ -1821,6 +1815,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Submit recipe to backend API
         //console.log(" recipeId :", recipeId)
+        // return;
         try {
         const response = await fetch(`/recipes/api/update-recipe/${recipeId}`, {
             method: "PATCH",
@@ -1831,7 +1826,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             body: JSON.stringify(recipePayload)
         });
         const data = await response.json();
-        //console.log("After fetch command for update-recipe", response)
+        console.log("After fetch command for update-recipe", response)
 
         if (!response.ok) {
             errorBox.textContent = data.error || "Something went wrong while doing api fetch for update-recipe.";
