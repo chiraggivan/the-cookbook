@@ -731,7 +731,7 @@ def update_recipe(recipe_id):
 
         # checking after finding component_text in update_component, are there any duplicate values of component_text
         values = list(compTextDictAfterUpdate.values())
-        has_duplicate = len(finalList) != len(set(finalList))
+        has_duplicate = len(values) != len(set(values))
         if has_duplicate:
             return jsonify({'error': "Can't have duplicate sub heading.", "submitted_data":data}), 404
 
@@ -755,7 +755,7 @@ def update_recipe(recipe_id):
                 if action == 'update':
                     # check is recipe component id exists in recipe components table. ONLY for update
                     cursor.execute("""
-                        SELECT 1 
+                        SELECT display_order, component_text 
                         FROM recipe_components
                         WHERE recipe_component_id = %s and recipe_id = %s and is_active = TRUE
                     """,(component.get('recipe_component_id'),recipe_id))   
@@ -765,13 +765,23 @@ def update_recipe(recipe_id):
                         conn.close()
                         return jsonify({'error': f"Can't find recipe component id {component.get('recipe_component_id')} with action as {action}", "submitted_data":data}), 404  
                     
+                    old_component_text = row['component_text']
+                    old_component_display_order = row['display_order']
+
                 # check to see how many components are there in total after calculating add, remove and update length
                 # and make sure the component_display _order is within that range
                 if 'component_display_order' in component:
                     if component['component_display_order'] >= maxDisplayOrder:
                         cursor.close()
                         conn.close()
-                        return jsonify({'error': f"Internal error. compDisplayOrder out of range", "submitted_data":data}), 404  
+                        return jsonify({'error': f"Internal error. compDisplayOrder out of range", "submitted_data":data}), 404 
+
+                # the below part is done to save old data if not provided, while updating in one go rather than write different codes for different conditions
+                if component.get('component_text') is None:
+                    component['component_text'] = old_component_text
+                if component.get('component_display_order') is None:
+                    component['component_display_order'] = old_component_display_order
+
         # -----------------------------------------------------------------------------------
         #-------------------------------------------------------------------------------
         
@@ -802,9 +812,9 @@ def update_recipe(recipe_id):
         ]:
             for ing in ingredients:
                 if action == 'update':
-                    # check is recipe ingredient id exists in recipe ingredients table. ONLY for update
+                    # check if recipe ingredient id exists in recipe ingredients table. ONLY for update
                     cursor.execute("""
-                        SELECT ingredient_id, quantity, unit_id 
+                        SELECT ingredient_id, quantity, unit_id, display_order, component_id, display_order
                         FROM recipe_ingredients
                         WHERE recipe_ingredient_id = %s and recipe_id = %s and is_active = TRUE
                     """,(ing.get('recipe_ingredient_id'),recipe_id))   
@@ -817,6 +827,10 @@ def update_recipe(recipe_id):
                     old_ing_id = row['ingredient_id']
                     old_quantity = row['quantity']
                     old_unit_id = row['unit_id']
+                    old_ingredient_display_order = row['display_order']
+                    old_component_id = row['component_id']
+                    if ing.get('component_id') is None:
+                        ing['component_id'] = old_component_id 
 
                 # check to see how many ingredients are there in total after calculating add, remove and update length
                 # and make sure the ingredient_display_order is within the range
@@ -838,14 +852,26 @@ def update_recipe(recipe_id):
                         return jsonify({'error': f"Can't find ingredient id {ing.get('ingredient_id')}","submitted_data":data}), 404
                     main_base_unit = row['base_unit']
 
-                # check if ingredient id and unit id exists in units table
+                
                 if ing.get('ingredient_id') is None:
                     ing['ingredient_id'] = old_ing_id
                 if ing.get('unit_id') is None:
                     ing['unit_id'] = old_unit_id
                 if ing.get('quantity') is None:
                     ing['quantity'] = old_quantity
+                if ing.get('ingredient_display_order') is None:
+                    ing['ingredient_display_order'] = old_ingredient_display_order
+                if ing.get('component_display_order') is None:
+                    ing['component_display_order'] = old_component_display_order
                 
+                # check component_display_order sent in add/update ingredients are in range
+                if 'component_display_order' in ing:
+                    if ing['component_display_order'] >= maxDisplayOrder:
+                        cursor.close()
+                        conn.close()
+                        return jsonify({'error': f"component_display_order out of range. it was submitted within add/update ingredients", "submitted_data":data}), 404 
+
+                # check if ingredient id and unit id exists in units table
                 cursor.execute("""SELECT 1 FROM units WHERE ingredient_id = %s AND unit_id =%s""",(ing['ingredient_id'],ing['unit_id']))
                 if not cursor.fetchone():
                     cursor.close()
@@ -894,16 +920,42 @@ def update_recipe(recipe_id):
                 WHERE recipe_id = %s AND recipe_component_id = %s AND is_active = TRUE
             """, (recipe_id, component['recipe_component_id']))
 
+        # update components if any fields provided
+        for action, components in [
+            ('update', data.get('update_components',[]))
+        ]:
+            for component in components:
+                if action == 'update':
+                    cursor.execute("""
+                        UPDATE recipe_components 
+                        SET component_text = %s, display_order = %s
+                        WHERE recipe_ingredient_id = %s AND is_active = TRUE
+                    """, (component['component_text'], component['display_order'], component['recipe_component_id']))                    
 
-
-        
+                else:
+                    cursor.execute("""
+                        select recipe_component_id FROM recipe_components
+                        WHERE recipe_id = %s and is_active = 0
+                    """,(recipe_id,))
+                    row = cursor.fetchone()
+                    if row:
+                        cursor.execute("""
+                            UPDATE recipe_components
+                            SET component_text = %s, display_order = %s, is_active = 1, end_date = NULL
+                            WHERE recipe_component_id = %s
+                        """,(component['component_text'], component['component_display_order'],row['recipe_component_id']))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO recipe_components (recipe_id, component_text, dipslay_order)
+                            VALUES (%s, %s, %s)
+                        """,(recipe_id, component['component_text'], component['component_display_order']))
         
         
         # Remove ingredients if any fields are provided
         for ing in data.get('remove_ingredients', []):
             cursor.execute("""
                 UPDATE recipe_ingredients 
-                SET is_active = FALSE, end_date = CURRENT_TIMESTAMP, display_order = -1
+                SET is_active = FALSE, end_date = CURRENT_TIMESTAMP, display_order = -1, component_id = -1
                 WHERE recipe_id = %s AND recipe_ingredient_id = %s AND is_active = TRUE
             """, (recipe_id, ing['recipe_ingredient_id']))
         
@@ -913,6 +965,19 @@ def update_recipe(recipe_id):
             ('update', data.get('update_ingredients', []))
         ]:
             for ing in ingredients:
+                # find recipe_component_id from component_display_order to store as component_id in new ingredient for new component
+                cursor.execute("""
+                    SELECT recipe_component_id FROM recipe_components 
+                    WHERE recipe_id = %s AND display_order = %s AND is_active = 1
+                """,(recipe_id, ing['component_display_order']))
+                row = cursor.fetchone()
+                if row:
+                    ing['component_id'] = row['recipe_component_id']
+                else: # mostly wont get executed as new ingredient will have to be one of the components
+                    cursor.close()
+                    conn.close()
+                    return jsonify({'error': f"Can't find recipe_component_id for new/updated ingredient thru component_display_order", "submitted_data":data}), 404  
+                    
 
                 if action == 'add':
                     #Check if ingredient exists in recipe_ingredients and is inactive
@@ -926,20 +991,20 @@ def update_recipe(recipe_id):
                         ri_id = row["recipe_ingredient_id"]
                         cursor.execute("""
                             UPDATE recipe_ingredients 
-                            SET quantity = %s, unit_id = %s, is_active = TRUE, end_date = NULL
+                            SET quantity = %s, unit_id = %s, display_order = %s, component_id = %s, is_active = TRUE, end_date = NULL
                             WHERE recipe_ingredient_id = %s
-                        """, (ing['quantity'], ing['unit_id'], ri_id))
+                        """, (ing['quantity'], ing['unit_id'], ing['ingredient_display_order'], ri_id))
                     else:
                         cursor.execute("""
-                            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active)
+                            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, component_id, display_order, is_active)
                             VALUES (%s, %s, %s, %s, TRUE)
-                        """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id']))
+                        """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['component_id'], ing['ingredient_display_order']))
                 else:  # update
                     cursor.execute("""
                         UPDATE recipe_ingredients 
-                        SET ingredient_id = %s, quantity = %s, unit_id = %s
+                        SET ingredient_id = %s, quantity = %s, unit_id = %s, display_order = %s, component_id = %s
                         WHERE recipe_ingredient_id = %s AND is_active = TRUE
-                    """, (ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['recipe_ingredient_id']))
+                    """, (ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'], ing['component_id'], ing['recipe_ingredient_id']))
                     
                 # if base unit doesnt match with original base unit then convert custom price and unit. eg:  if main unit is kg and
                 # supplied base_unit in g, oz, or lbs then convert it into kg. similar for litre for ml, fl.oz and pint
