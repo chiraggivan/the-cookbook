@@ -1393,9 +1393,14 @@ function getRecipePayload(originalRecipeData, completeRecipeData) {
 
             const changes = { recipe_ingredient_id: updatedRow.recipe_ingredient_id };
 
-            //  change in display order
+            //  change in ingredient display order
             if (updatedRow.ingredient_display_order != originalRow.ingredient_display_order){
                  changes.ingredient_display_order = updatedRow.ingredient_display_order;
+            }
+
+            //  change in component display order
+            if (updatedRow.component_display_order != originalRow.component_display_order){
+                 changes.component_display_order = updatedRow.component_display_order;
             }
 
             // CASE 1: Ingredient changed
@@ -1861,6 +1866,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         showAlert(data.message || "Recipe updated successfully!");
         setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 1000);
         } catch (err) {
+        console.log("error is :", err.message);
         errorBox.textContent = err.message;
         }        
 
