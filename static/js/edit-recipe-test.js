@@ -119,6 +119,7 @@ async function loadRecipeForEdit(recipeId, token) {
             // Only create a component row if component_text is non-empty
             if (componentText == "" && rowIndex == 0) {
                 componentRow.style.display="none";
+                document.getElementById("add-first-component-btn").style.display = "block";
             }
             tbody.appendChild(componentRow);
             rowIndex++
@@ -1288,7 +1289,15 @@ function validateIngredientRows() {
                 if(componentIndex !== -1){
                     ingredientsData[componentIndex].ingredients.push(ingredientObj);
                 }    
-            };
+            }         
+            // check if its last row of ingredient in the table and does the last component have any ingredients.
+            if(index == rows.length - 1){
+                const prevComponent = ingredientsData[componentIndex];
+                if(prevComponent && prevComponent.ingredients.length === 0){
+                    const subheading = prevComponent.component_text;
+                    errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
+                }
+            }
         };
     });
 
@@ -1815,7 +1824,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
         console.log("recipePayLoad is:", recipePayload);
-        // return;
+        return;
         //console.log("originalRecipeData : ", originalRecipeData);
 
         // Submit recipe to backend API

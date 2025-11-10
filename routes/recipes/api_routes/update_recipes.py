@@ -36,7 +36,7 @@ def get_recipe_details_for_update(recipe_id):
 
         # check is the recipe owner is same as logged in users.
         cursor.execute("""
-            SELECT 1 FROM recipes WHERE user_id =%s AND recipe_id = %s
+            SELECT 1 FROM recipes WHERE user_id =%s AND recipe_id = %s LIMIT 1
         """,(s_user_id, recipe_id))
         isOwner = cursor.fetchone()
         if not isOwner:
@@ -52,6 +52,7 @@ def get_recipe_details_for_update(recipe_id):
             AND r.is_active = 1
             AND (r.user_id = %s
             OR r.privacy = 'public')
+            LIMIT 1
             """,(recipe_id, s_user_id))
         recipe = cursor.fetchone()
         if not recipe:
@@ -143,7 +144,7 @@ def update_privacy(recipe_id):
         cursor = conn.cursor(dictionary=True)
 
         # Validate user_id exists
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1" , (s_user_id,))
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1 LIMIT 1" , (s_user_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
@@ -152,7 +153,8 @@ def update_privacy(recipe_id):
         # Check if recipe exists and belongs to user
         cursor.execute("""
             SELECT user_id FROM recipes 
-            WHERE recipe_id = %s  AND is_active = TRUE
+            WHERE recipe_id = %s  AND is_active = TRUE 
+            LIMIT 1
         """, (recipe_id,))
         recipeOwner = cursor.fetchone() # print("recipeOwner user_id : ", recipeOwner["user_id"], " ", type(recipeOwner["user_id"]))
         if not recipeOwner["user_id"]:
@@ -207,6 +209,7 @@ def update_ingredient_order(recipe_ingredient_id):
             AND ri.is_active = TRUE 
             AND r.user_id = %s 
             AND r.is_active = TRUE
+            LIMIT 1
         """, (recipe_ingredient_id, user_id))
         ingredient_check = cursor.fetchone()
         if not ingredient_check:
@@ -330,12 +333,12 @@ def update_recipe(recipe_id):
                     for field in update_components_fields:
                         value = each_component.get(field)
 
-                        if not value or value is None:
+                        if value is None:
                             continue
                         elif isinstance(value, str):
                             # Remove leading/trailing spaces, collapse internal spaces, convert to lowercase
                             val = re.sub(r"\s+", " ", value.strip()).lower()
-                            if val == "":
+                            if each_component.get('component_display_order') !=0 and val == "":
                                 continue
                             else:
                                 cleaned_each_component[field] = val                
@@ -606,6 +609,8 @@ def update_recipe(recipe_id):
         error = validate_recipe_and_ingredient_data(data)
         if error:
             return jsonify({"error": error, "submitted_data": data}), 400  
+        
+        # return jsonify({"error":"db connected and about to start updating in db", "submitted_data": data}), 400
         # -------------------------- normalisation and validation done -----------------------
         #print("data about to be checked with db is :", data)
         
@@ -626,6 +631,7 @@ def update_recipe(recipe_id):
         cursor.execute("""
             SELECT name, portion_size FROM recipes 
             WHERE recipe_id = %s AND user_id = %s AND is_active = TRUE
+            LIMIT 1
         """, (recipe_id, s_user_id))
         recipe = cursor.fetchone()
         if not recipe:
@@ -664,6 +670,7 @@ def update_recipe(recipe_id):
             cursor.execute("""
                 SELECT recipe_id FROM recipes 
                 WHERE name = %s AND portion_size = %s AND user_id = %s AND is_active = TRUE AND recipe_id != %s
+                LIMIT 1
             """, (current_name, current_portion_size, s_user_id, recipe_id))
             if cursor.fetchone(): 
                 cursor.close()
@@ -691,6 +698,7 @@ def update_recipe(recipe_id):
         cursor.execute("""
             SELECT COUNT(*) as total FROM recipe_components
             WHERE recipe_id = %s and is_active = 1
+            LIMIT 1
         """,(recipe_id,)) 
         dbComponentLength = cursor.fetchone()['total']
         maxDisplayOrder = dbComponentLength + len(data.get('add_components', [])) - len(data.get('remove_components',[]))
@@ -745,8 +753,7 @@ def update_recipe(recipe_id):
         if has_duplicate :
             return jsonify({'error': "Can't have duplicate sub heading.", "submitted_data":data}), 404
         # -------------------------- above to check component_text is duplicate or not while saving ---------------------
-
-
+        
         # add_components and update_components are being check if valid with db
         for action, components in [
             ('add', data.get('add_components', [])),
@@ -758,7 +765,8 @@ def update_recipe(recipe_id):
                     cursor.execute("""
                         SELECT display_order, component_text 
                         FROM recipe_components
-                        WHERE recipe_component_id = %s and recipe_id = %s and is_active = TRUE
+                        WHERE recipe_component_id = %s AND recipe_id = %s AND is_active = TRUE
+                        LIMIT 1
                     """,(component.get('recipe_component_id'),recipe_id))   
                     row = cursor.fetchone()
                     if not row:
@@ -782,17 +790,18 @@ def update_recipe(recipe_id):
                     component['component_text'] = old_component_text
                 if component.get('component_display_order') is None:
                     component['component_display_order'] = old_component_display_order
-
+        
         # -----------------------------------------------------------------------------------
         #-------------------------------------------------------------------------------
         
-        # Remove ingredients
+        # Remove ingredients are being checked if valid with db
         for ing in data.get('remove_ingredients', []):
             value = ing.get('recipe_ingredient_id')
             if value is None:
                 continue
             cursor.execute("""SELECT 1 FROM recipe_ingredients 
                 WHERE recipe_id = %s AND recipe_ingredient_id = %s AND is_active = TRUE
+                LIMIT 1
             """,(recipe_id, value))
             row = cursor.fetchone()
             if not row:
@@ -802,6 +811,7 @@ def update_recipe(recipe_id):
         cursor.execute("""
             SELECT COUNT(*) as total FROM recipe_ingredients
             WHERE recipe_id = %s and is_active = 1
+            LIMIT 1
         """,(recipe_id,)) 
         dbIngredientLength = cursor.fetchone()['total']
         maxIngredientDisplayOrder = dbIngredientLength + len(data.get('add_ingredients', [])) - len(data.get('remove_ingredients',[]))
@@ -817,7 +827,8 @@ def update_recipe(recipe_id):
                     cursor.execute("""
                         SELECT i.ingredient_id, i.quantity, i.unit_id, i.display_order, i.component_id, c.display_order as cdo
                         FROM recipe_ingredients i JOIN recipe_components c ON i.component_id = c.recipe_component_id
-                        WHERE i.recipe_ingredient_id = %s and i.recipe_id = %s and i.is_active = TRUE
+                        WHERE i.recipe_ingredient_id = %s AND i.recipe_id = %s AND i.is_active = TRUE
+                        LIMIT 1
                     """,(ing.get('recipe_ingredient_id'),recipe_id))   
                     row = cursor.fetchone()
                     if not row:
@@ -851,6 +862,7 @@ def update_recipe(recipe_id):
                 if 'ingredient_id' in ing:
                     cursor.execute("""SELECT base_unit FROM ingredients 
                         WHERE ingredient_id = %s AND is_active = TRUE AND (approval_status = "approved" OR submitted_by = %s)
+                        LIMIT 1
                     """, (ing['ingredient_id'],s_user_id))
                     row = cursor.fetchone()
                     if not row:
@@ -872,7 +884,7 @@ def update_recipe(recipe_id):
 
                 
                 # check if ingredient id and unit id exists in units table
-                cursor.execute("""SELECT 1 FROM units WHERE ingredient_id = %s AND unit_id =%s""",(ing['ingredient_id'],ing['unit_id']))
+                cursor.execute("""SELECT 1 FROM units WHERE ingredient_id = %s AND unit_id =%s LIMIT 1""",(ing['ingredient_id'],ing['unit_id']))
                 if not cursor.fetchone():
                     cursor.close()
                     conn.close()
@@ -882,7 +894,7 @@ def update_recipe(recipe_id):
                 #       acceptable base unit is ['kg','g','oz','lbs'] and similar for 'l' its ['l','ml','fl.oz','pint']
                 #       for 'pc' and 'bunch' base unit must be same.
                 if ing.get('base_unit') is not None:
-                    cursor.execute("""SELECT base_unit FROM ingredients WHERE ingredient_id = %s""",(ing['ingredient_id'],))
+                    cursor.execute("""SELECT base_unit FROM ingredients WHERE ingredient_id = %s LIMIT 1""",(ing['ingredient_id'],))
                     check_base = cursor.fetchone()['base_unit']
                     if check_base == 'kg':
                         if ing['base_unit'] not in ['kg','g','oz','lbs']:
@@ -935,18 +947,28 @@ def update_recipe(recipe_id):
         ]:
             for component in components:
                 if action == 'update':
+                    if component.get('orderChanged') and component['component_display_order'] == 0:
+                        cursor.execute("""
+                            UPDATE recipe_components 
+                            SET display_order = NULL, end_date = CURRENT_TIMESTAMP, is_active = FALSE
+                            WHERE  recipe_id = %s AND display_order = 0 AND is_active = TRUE
+                        """, (recipe_id,)) 
+                        if cursor.rowcount == 0:
+                            return jsonify({'error':"Problem encountered while updating recipe component."}), 400
+                        
                     cursor.execute("""
                         UPDATE recipe_components 
                         SET component_text = %s, display_order = %s
-                        WHERE recipe_component_id = %s AND is_active = TRUE
+                        WHERE recipe_component_id = %s
                     """, (component['component_text'], component['component_display_order'], component['recipe_component_id'])) 
                     if cursor.rowcount == 0:
-                        return jsonify({'error':"Problem encountered while updating recipe component."}), 400
+                        return jsonify({'error':"Problem encountered while - updating recipe component.", "submitted_data": data}), 400
 
                 else: # action = add
                     cursor.execute("""
                         select recipe_component_id FROM recipe_components
-                        WHERE recipe_id = %s and is_active = 0
+                        WHERE recipe_id = %s and is_active = 0 ORDER BY recipe_component_id 
+                        LIMIT 1
                     """,(recipe_id,))
                     row = cursor.fetchone()
                     if row:
@@ -975,7 +997,7 @@ def update_recipe(recipe_id):
             """, (recipe_id, ing['recipe_ingredient_id']))
             if cursor.rowcount == 0:
                 return jsonify({'error':"Problem encountered while removing recipe ingredient."}), 400
-        # return jsonify({"error":"db connected and about to start updating in db", "submitted_data": data}), 400
+        
         # update/add ingredients if any fields are provided
         for action, ingredients in [
             ('add', data.get('add_ingredients', [])),
@@ -985,7 +1007,8 @@ def update_recipe(recipe_id):
                 # find recipe_component_id from component_display_order to store as component_id in new ingredient for new component
                 cursor.execute("""
                     SELECT recipe_component_id FROM recipe_components 
-                    WHERE recipe_id = %s AND display_order = %s AND is_active = 1 LIMIT 1
+                    WHERE recipe_id = %s AND display_order = %s AND is_active = 1 
+                    LIMIT 1
                 """,(recipe_id, ing['component_display_order']))
                 row = cursor.fetchone()
                 if row:
@@ -1005,6 +1028,7 @@ def update_recipe(recipe_id):
                     cursor.execute("""
                         SELECT recipe_ingredient_id FROM recipe_ingredients 
                         WHERE recipe_id = %s AND ingredient_id = %s AND is_active = 0
+                        LIMIT 1
                     """, (recipe_id, ing['ingredient_id']))
                     row = cursor.fetchone()
                     if row:
@@ -1039,13 +1063,16 @@ def update_recipe(recipe_id):
                     cursor.execute("""
                         SELECT default_price, base_unit FROM ingredients 
                         WHERE ingredient_id = %s AND (approval_status = 'approved' OR submitted_by = %s)
+                        LIMIT 1
                     """,(ing['ingredient_id'],s_user_id))
                     row = cursor.fetchone()
                     default_price = row.get('default_price')
                     actual_base_unit = row.get('base_unit')
 
                     cursor.execute("""
-                        SELECT custom_price FROM user_prices WHERE ingredient_id = %s  AND user_id = %s AND is_active = 1
+                        SELECT custom_price FROM user_prices 
+                        WHERE ingredient_id = %s  AND user_id = %s AND is_active = 1
+                        LIMIT 1
                     """,(ing['ingredient_id'], s_user_id))
                     row = cursor.fetchone()
                     if row:
