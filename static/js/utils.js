@@ -1,136 +1,153 @@
 // static/js/utils.js
 
-// * Normalize user input: Trim leading/trailing spaces - Collapse multiple spaces into one
-function normalizeInput(str) {
-  if (typeof str !== "string") return "";
-  return str.replace(/\s+/g, " ").trim();
-}
+import * as utils from "./core/utils.js";
+Object.assign(window, utils);
 
-// show alert function common for all pages
-function showAlert(message, isError = false, autoClose = true) {
-  const overlay = document.getElementById("modal-overlay");
-  const alertBox = document.getElementById("alert-box");
-  const alertMessage = document.getElementById("alert-message");
-  const alertActions = document.getElementById("alert-actions");
+// // * Normalize user input: Trim leading/trailing spaces - Collapse multiple spaces into one
+// function normalizeInput(str) {
+//   if (typeof str !== "string") return "";
+//   return str.replace(/\s+/g, " ").trim();
+// }
 
-  alertMessage.textContent = message;
-  alertBox.className = "alert-box" + (isError ? " error" : " success");
-  overlay.style.display = "flex";
-  alertActions.style.display = "none"; // hide OK button if autoclose
+// // show alert function common for all pages
+// function showAlert(message, isError = false, autoClose = true) {
+//   const overlay = document.getElementById("modal-overlay");
+//   const alertBox = document.getElementById("alert-box");
+//   const alertMessage = document.getElementById("alert-message");
+//   const alertActions = document.getElementById("alert-actions");
 
-  if (autoClose) {
-    setTimeout(() => {
-      overlay.style.display = "none";
-    }, 2000); // hide after 2s
-  } else {
-    alertActions.style.display = "block"; // show OK button
-    document.getElementById("alert-ok").onclick = () => {
-      overlay.style.display = "none";
-    };
-  }
-}
-// show confirm message
-function showConfirm(message) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("modal-overlay");
-    const alertBox = document.getElementById("alert-box");
-    const alertMessage = document.getElementById("alert-message");
-    const alertActions = document.getElementById("alert-actions");
+//   alertMessage.textContent = message;
+//   alertBox.className = "alert-box" + (isError ? " error" : " success");
+//   overlay.style.display = "flex";
+//   alertActions.style.display = "none"; // hide OK button if autoclose
 
-    alertMessage.textContent = message;
-    alertBox.className = "alert-box";
-    overlay.style.display = "flex";
+//   if (autoClose) {
+//     setTimeout(() => {
+//       overlay.style.display = "none";
+//     }, 2000); // hide after 2s
+//   } else {
+//     alertActions.style.display = "block"; // show OK button
+//     document.getElementById("alert-ok").onclick = () => {
+//       overlay.style.display = "none";
+//     };
+//   }
+// }
+// // show confirm message
+// function showConfirm(message) {
+//   return new Promise((resolve) => {
+//     const overlay = document.getElementById("modal-overlay");
+//     const alertBox = document.getElementById("alert-box");
+//     const alertMessage = document.getElementById("alert-message");
+//     const alertActions = document.getElementById("alert-actions");
 
-    // Replace actions with Yes/No buttons
-    alertActions.innerHTML = `
-      <button id="confirm-yes">Yes</button>
-      <button id="confirm-no" style="background:#f44336;">No</button>
-    `;
-    alertActions.style.display = "block";
+//     alertMessage.textContent = message;
+//     alertBox.className = "alert-box";
+//     overlay.style.display = "flex";
 
-    document.getElementById("confirm-yes").onclick = () => {
-      overlay.style.display = "none";
-      resolve(true);
-    };
-    document.getElementById("confirm-no").onclick = () => {
-      overlay.style.display = "none";
-      resolve(false);
-    };
-  });
-}
+//     // Replace actions with Yes/No buttons
+//     alertActions.innerHTML = `
+//       <button id="confirm-yes">Yes</button>
+//       <button id="confirm-no" style="background:#f44336;">No</button>
+//     `;
+//     alertActions.style.display = "block";
 
-// Show a multi-option confirm modal
-function showMultiConfirm(message, componentName) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("multi-modal-overlay");
-    const alertBox = document.querySelector(".multi-alert-box");
-    const alertMessage = document.getElementById("multi-alert-message");
-    const alertActions = document.getElementById("multi-alert-actions");
+//     document.getElementById("confirm-yes").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(true);
+//     };
+//     document.getElementById("confirm-no").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(false);
+//     };
+//   });
+// }
 
-    alertMessage.textContent = message;
-    alertBox.className = "multi-alert-box";
-    overlay.style.display = "flex";
+// // Show a multi-option confirm modal
+// function showMultiConfirm(message, componentName) {
+//   return new Promise((resolve) => {
+//     const overlay = document.getElementById("multi-modal-overlay");
+//     const alertBox = document.querySelector(".multi-alert-box");
+//     const alertMessage = document.getElementById("multi-alert-message");
+//     const alertActions = document.getElementById("multi-alert-actions");
 
-    // Replace actions with three options
-    alertActions.innerHTML = `
-      <button id="confirm-delete-component" class="select-btn">Remove ${componentName} Only</button>
-      <button id="confirm-delete-with-ingredients" class="select-btn">Remove ${componentName} + Ingredients</button>
-      <button id="confirm-cancel" style="background:#f44336;">Cancel</button>
-    `;
-    alertActions.style.display = "block";
+//     alertMessage.textContent = message;
+//     alertBox.className = "multi-alert-box";
+//     overlay.style.display = "flex";
 
-    // Button events
-    document.getElementById("confirm-delete-component").onclick = () => {
-      overlay.style.display = "none";
-      resolve("component");
-    };
+//     // Replace actions with three options
+//     alertActions.innerHTML = `
+//       <button id="confirm-delete-component" class="select-btn">Remove ${componentName} Only</button>
+//       <button id="confirm-delete-with-ingredients" class="select-btn">Remove ${componentName} + Ingredients</button>
+//       <button id="confirm-cancel" style="background:#f44336;">Cancel</button>
+//     `;
+//     alertActions.style.display = "block";
 
-    document.getElementById("confirm-delete-with-ingredients").onclick = () => {
-      overlay.style.display = "none";
-      resolve("with-ingredients");
-    };
+//     // Button events
+//     document.getElementById("confirm-delete-component").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve("component");
+//     };
 
-    document.getElementById("confirm-cancel").onclick = () => {
-      overlay.style.display = "none";
-      resolve("cancel");
-    };
-  });
-}
+//     document.getElementById("confirm-delete-with-ingredients").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve("with-ingredients");
+//     };
 
-// validate recipe table data for create and update recipe
-function validateRecipeForm({rName, portion_size, rDescription } ={}) {
-  let errors = {};
+//     document.getElementById("confirm-cancel").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve("cancel");
+//     };
+//   });
+// }
 
-  // Normalize inputs
-  const recipeName = normalizeInput(rName);
-  const portionSize = normalizeInput(portion_size);
-  const  description = normalizeInput(rDescription);
+// // validate recipe table data for create and update recipe
+// function validateRecipeForm({rName, portion_size, rDescription } ={}) {
+//   let errors = {};
 
-  // Recipe name
-  if (!recipeName) {
-    errors.name = "Recipe name is required.";
-  } else if (recipeName.length > 50) {
-    errors.name = "Recipe name must be less than 50 characters.";
-  }
+//   // Normalize inputs
+//   const recipeName = normalizeInput(rName);
+//   const portionSize = normalizeInput(portion_size);
+//   const  description = normalizeInput(rDescription);
 
-  // Portion size
-  if (!portionSize) {
-    errors.portion_size = "Portion size is required.";
-  } else if (portionSize.length < 1 || portionSize.length > 20) {
-    errors.portion_size = "Portion size must not be empty and be less than 20 characters.";
-  }
+//   // Recipe name
+//   if (!recipeName) {
+//     errors.name = "Recipe name is required.";
+//   } else if (recipeName.length > 50) {
+//     errors.name = "Recipe name must be less than 50 characters.";
+//   }
 
-  // Description
-  if (description.length > 500) {
-    errors.description = "Description must be ≤ 500 characters.";
-  }
+//   // Portion size
+//   if (!portionSize) {
+//     errors.portion_size = "Portion size is required.";
+//   } else if (portionSize.length < 1 || portionSize.length > 20) {
+//     errors.portion_size = "Portion size must not be empty and be less than 20 characters.";
+//   }
 
-  // Privacy
-  //if (!["public", "private"].includes(privacy)) {
-  //  errors.privacy = "Privacy must be public or private.";
-  //}
+//   // Description
+//   if (description.length > 500) {
+//     errors.description = "Description must be ≤ 500 characters.";
+//   }
+
+//   // Privacy
+//   //if (!["public", "private"].includes(privacy)) {
+//   //  errors.privacy = "Privacy must be public or private.";
+//   //}
   
-  return {errors, data: { recipeName, portionSize, description} };
-}
+//   return {errors, data: { recipeName, portionSize, description} };
+// }
 
-
+// // check if token is valid
+// function isTokenValid(token) {
+//     if (!token) return true; // no token = treat as expired
+    
+//     try {
+//         const payload = JSON.parse(atob(token.split('.')[1])); // decode the middle part
+//         const exp = payload.exp;
+//         if (!exp) return true; // no exp field? treat as invalid
+//         const now = Math.floor(Date.now() / 1000); // current time in seconds
+//         return exp > now; // true if valid
+//     } catch (err) {
+//         console.error("Invalid token:", err);
+//         return true; // if token can’t be decoded → treat as invalid
+//     }
+// }

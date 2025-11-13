@@ -1,10 +1,13 @@
 const token = localStorage.getItem("access_token");//console.log("token is :", token);
-if (!token) {
-    window.location.href = "/auth/login";
+
+// validate token
+if (!isTokenValid(token)) {
+    setTimeout(() => {window.location.href = "/auth/login";}, 2000);
     // return;
 } else {
     loadRecipeForEdit(window.recipeId,token);
 }
+
 let originalRecipeData = null; // global variable to compare the change in recipe
 const recipeId = window.recipeId;//console.log("recipeId is :", window.recipeId);
 
