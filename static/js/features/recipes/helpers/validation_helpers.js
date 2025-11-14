@@ -7,7 +7,7 @@ export function validateRecipeForm() {
   const name = document.getElementById("recipe-name-input").value.trim();
   const portionSize = document.getElementById("portion-size-input").value.trim();
   const description = document.getElementById("description-input").value.trim();
-  // const privacy = document.getElementById("privacy").checked ? "private" : "public";
+  const privacy = document.getElementById("privacy-toggle").checked ? "private" : "public";
   
   const nameMaxLength = 50;
   const portionSizeMaxLength = 20;
@@ -49,9 +49,15 @@ export function validateRecipeForm() {
     hasError = true;
   }
 
+  // Validate privacy setting
+  if (!["public", "private"].includes(privacy)) {
+    document.getElementById("error").textContent = "Privacy must be public or private.";
+    hasError = true;
+  }
+
   // Return false if errors exist, otherwise return validated data
   if (hasError) return false;
-  return { name, portion_size: portionSize, description};//, privacy };
+  return { name, portion_size: portionSize, description, privacy };
 }
 
 // validation of ingredient data
@@ -348,6 +354,9 @@ export function getRecipePayload(originalRecipeData, completeRecipeData) {
     }
     if (completeRecipeData.recipe.portion_size !== originalRecipeData.recipe.portion_size) {
         payload.portion_size = completeRecipeData.recipe.portion_size;
+    }
+    if (completeRecipeData.recipe.privacy !== originalRecipeData.recipe.privacy) {
+        payload.privacy = completeRecipeData.recipe.privacy;
     }
     if (completeRecipeData.recipe.description !== originalRecipeData.recipe.description) {
         payload.description = completeRecipeData.recipe.description;

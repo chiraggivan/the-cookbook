@@ -23,9 +23,31 @@
   <h1>Edit Recipe</h1>
 
   <div id="recipe-form">
-    <div class="form-field">
+    <!-- <div class="form-field">
       <label>Recipe Name:</label>
       <input type="text" id="recipe-name-input" name="recipe-name" placeholder="Eg. Aglio Olio, Red Sauce Pasta, etc...."/>
+      <div class="error-create-recipe" id="errorName"></div>
+    </div> -->
+
+    <div class="form-field" id="recipe-name-row">
+      
+
+      <div class="recipe-name-flex">
+        <div class="recipe-name-flex-left">
+          <label for="recipe-name-input">Recipe Name:</label>
+          <input type="text" id="recipe-name-input" name="recipe-name" placeholder="Eg. Aglio Olio, Red Sauce Pasta, etc...."/>
+        </div>
+        
+        <!-- Privacy Toggle (Right Aligned) -->
+        <span id="privacy-actions">
+          <span id="privacy-label-select"> Private </span>
+          <label class="switch">
+            <input type="checkbox" id="privacy-toggle" >
+            <span class="slider round"></span>
+          </label>
+        </span>
+      </div>
+
       <div class="error-create-recipe" id="errorName"></div>
     </div>
 

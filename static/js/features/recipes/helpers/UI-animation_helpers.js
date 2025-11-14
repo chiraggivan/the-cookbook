@@ -13,8 +13,6 @@ export function attachRowListeners(row) {
 export function handleRowChange(row, event) {
     if(row.classList.contains("ingredient-row")){
         row.querySelector(".remove-ingredient-btn").style.display="block";
-        row.querySelector(".move-ing-up-btn").style.display="block";
-        row.querySelector(".move-ing-down-btn").style.display="block";
         const tbody = document.getElementById("ingredients-tbody");
         const rows = Array.from(tbody.querySelectorAll("tr"));
         const currentRow = event.target.closest("tr"); // Get the row containing the input

@@ -1,59 +1,11 @@
+import{ isTokenValid } from "../../core/utils.js";
+import { validateRecipeForm } from "./helpers/validation_helpers.js"
+
 const token = localStorage.getItem("access_token");
 
-// Validate recipe form inputs (name, portion size, description, privacy)
-function validateRecipeForm() {
-  // Get input values and trim whitespace
-  const name = document.getElementById("recipe-name").value.trim();
-  const portionSize = document.getElementById("portion-size").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const privacy = document.getElementById("privacy").checked ? "private" : "public";
-
-  // Get error display elements
-  const errorName = document.getElementById("errorName");
-  const errorPS = document.getElementById("errorPS");
-  const errorDesc = document.getElementById("errorDesc");
-
-  // Clear previous error messages
-  errorName.textContent = "";
-  errorPS.textContent = "";
-  errorDesc.textContent = "";
-  document.getElementById("error").textContent = "";
-
-  let hasError = false;
-
-  // Validate recipe name
-  if (!name) {
-    errorName.textContent = "Recipe name is required.";
-    hasError = true;
-  } else if (name.length > 50) {
-    errorName.textContent = "Recipe name must be less than 50 characters.";
-    hasError = true;
-  }
-
-  // Validate portion size
-  if (!portionSize) {
-    errorPS.textContent = "Portion size is required.";
-    hasError = true;
-  } else if (portionSize.length < 1 || portionSize.length > 20) {
-    errorPS.textContent = "Portion size must be less than 20 characters.";
-    hasError = true;
-  }
-
-  // Validate description
-  if (description.length > 500) {
-    errorDesc.textContent = "Description must be ≤ 500 characters.";
-    hasError = true;
-  }
-
-  // Validate privacy setting
-  if (!["public", "private"].includes(privacy)) {
-    document.getElementById("error").textContent = "Privacy must be public or private.";
-    hasError = true;
-  }
-
-  // Return false if errors exist, otherwise return validated data
-  if (hasError) return false;
-  return { name, portion_size: portionSize, description, privacy };
+// validate token
+if (!isTokenValid(token)) {
+    setTimeout(() => { window.location.href = "/auth/login"; }, 10);
 }
 
 // Validate ingredient table rows
@@ -476,6 +428,75 @@ function attachNumberValidation(input) {
     }
   });
 }
+// Attach input listeners to a row
+function attachRowListeners(row) {
+  row.querySelectorAll("input, select").forEach(input => {
+    input.addEventListener("input", handleRowChange);
+  });
+}
+
+// Handle row input changes to add new rows dynamically
+function handleRowChange(event) {
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const currentRow = event.target.closest("tr"); // Get the row containing the input
+  const currentRowIndex = rows.indexOf(currentRow); //console.log("current row index:", currentRowIndex);
+  const nextRow = rows[currentRowIndex + 1];
+  const isNextRowComponent = rows[currentRowIndex + 1] && rows[currentRowIndex + 1].classList.contains("component-row");
+  const lastRow = rows[rows.length - 1];
+  const isCurrentRowLastRow = currentRow === lastRow;
+  const targetRow = (isCurrentRowLastRow || isNextRowComponent) ? currentRow : null;
+  const currentRowInputs = targetRow 
+    ? Array.from(targetRow.querySelectorAll("input, select")).map(i => i.value.trim()) 
+    : [];
+  
+  // Add new row if last non-component row is filled
+  if (targetRow && currentRowInputs.some(v => v !== "")) {
+    const index = rows.length;
+    const newRow = document.createElement("tr");
+    newRow.classList.add("ingredient-row");
+    newRow.innerHTML = `
+      <td style="position: relative;">
+        <input type="text" name="ingredient_name_${index}" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
+        <div class="suggestions" id="suggestions_${index}"></div>
+        <div class="error-create-recipe" id="errorIngName_${index}"></div>
+      </td>
+      <td><input type="number" step="any" name="quantity_${index}" placeholder="Qty">
+        <div class="error-create-recipe" id="errorQuantity_${index}"></div>
+      </td>
+      <td>
+        <select name="unit_${index}" class="unit-select">
+          <option value=""> Select unit </option>
+        </select>
+        <div class="error-create-recipe" id="errorUnit_${index}"></div>
+      </td>
+      <td><input type="number" step="any" name="base_quantity_${index}" placeholder="Base Qty" class="validated-number">
+        <div class="error-create-recipe" id="errorBaseQuantity_${index}"></div>
+      </td>
+      <td><input type="text" name="base_unit_${index}" placeholder="Base Unit">
+        <div class="error-create-recipe" id="errorBaseUnit_${index}"></div>
+      </td>
+      <td><input type="number" step="any" name="base_price_${index}" placeholder="Base Price" class="validated-number">
+        <div class="error-create-recipe" id="errorBasePrice_${index}"></div>
+      </td>
+    `;
+    
+    // Insert before the next component row, or append if none exists or last row is component
+    if (isNextRowComponent) {
+      tbody.insertBefore(newRow, nextRow);
+    } else {
+      tbody.appendChild(newRow);
+    }
+
+    // Apply number validation to new numeric inputs
+    newRow.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
+      attachNumberValidation(input);
+    });
+
+    // Attach listeners and initialize autocomplete for new row
+    attachRowListeners(newRow);
+    initializeIngredientInput(newRow, index);
+  }
+}
 
 // Initialize page functionality on load
 document.addEventListener("DOMContentLoaded", function () {
@@ -514,76 +535,6 @@ document.addEventListener("DOMContentLoaded", function () {
       attachRowListeners(tr);
     })
   );
-
-  // Attach input listeners to a row
-  function attachRowListeners(row) {
-    row.querySelectorAll("input, select").forEach(input => {
-      input.addEventListener("input", handleRowChange);
-    });
-  }
-
-  // Handle row input changes to add new rows dynamically
-  function handleRowChange(event) {
-    const rows = Array.from(tbody.querySelectorAll("tr"));
-    const currentRow = event.target.closest("tr"); // Get the row containing the input
-    const currentRowIndex = rows.indexOf(currentRow); //console.log("current row index:", currentRowIndex);
-    const nextRow = rows[currentRowIndex + 1];
-    const isNextRowComponent = rows[currentRowIndex + 1] && rows[currentRowIndex + 1].classList.contains("component-row");
-    const lastRow = rows[rows.length - 1];
-    const isCurrentRowLastRow = currentRow === lastRow;
-    const targetRow = (isCurrentRowLastRow || isNextRowComponent) ? currentRow : null;
-    const currentRowInputs = targetRow 
-      ? Array.from(targetRow.querySelectorAll("input, select")).map(i => i.value.trim()) 
-      : [];
-    
-    // Add new row if last non-component row is filled
-    if (targetRow && currentRowInputs.some(v => v !== "")) {
-      const index = rows.length;
-      const newRow = document.createElement("tr");
-      newRow.classList.add("ingredient-row");
-      newRow.innerHTML = `
-        <td style="position: relative;">
-          <input type="text" name="ingredient_name_${index}" class="ingredient-input" placeholder="Ingredient" autocomplete="off">
-          <div class="suggestions" id="suggestions_${index}"></div>
-          <div class="error-create-recipe" id="errorIngName_${index}"></div>
-        </td>
-        <td><input type="number" step="any" name="quantity_${index}" placeholder="Qty">
-          <div class="error-create-recipe" id="errorQuantity_${index}"></div>
-        </td>
-        <td>
-          <select name="unit_${index}" class="unit-select">
-            <option value=""> Select unit </option>
-          </select>
-          <div class="error-create-recipe" id="errorUnit_${index}"></div>
-        </td>
-        <td><input type="number" step="any" name="base_quantity_${index}" placeholder="Base Qty" class="validated-number">
-          <div class="error-create-recipe" id="errorBaseQuantity_${index}"></div>
-        </td>
-        <td><input type="text" name="base_unit_${index}" placeholder="Base Unit">
-          <div class="error-create-recipe" id="errorBaseUnit_${index}"></div>
-        </td>
-        <td><input type="number" step="any" name="base_price_${index}" placeholder="Base Price" class="validated-number">
-          <div class="error-create-recipe" id="errorBasePrice_${index}"></div>
-        </td>
-      `;
-      
-      // Insert before the next component row, or append if none exists or last row is component
-      if (isNextRowComponent) {
-        tbody.insertBefore(newRow, nextRow);
-      } else {
-        tbody.appendChild(newRow);
-      }
-
-      // Apply number validation to new numeric inputs
-      newRow.querySelectorAll("input[name^='quantity_'], input[name^='base_quantity_'], input[name^='base_price_']").forEach(input => {
-        attachNumberValidation(input);
-      });
-
-      // Attach listeners and initialize autocomplete for new row
-      attachRowListeners(newRow);
-      initializeIngredientInput(newRow, index);
-    }
-  }
 
   // Initialize existing ingredient rows
   tbody.querySelectorAll("tr").forEach((row, index) => {
@@ -645,6 +596,8 @@ document.addEventListener("DOMContentLoaded", function () {
       steps: stepsData
     });
 
+    console.log("completeRecipe : ", completeRecipe);
+    return;
     // Submit recipe to backend API //console.log("data sent:", completeRecipe);
     const errorBox = document.getElementById("error");
     try {

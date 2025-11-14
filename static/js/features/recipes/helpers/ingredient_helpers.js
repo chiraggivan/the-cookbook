@@ -1,5 +1,5 @@
 import { updateTotalRecipeCost, restrictNumberInput } from "./recipe_utils.js";
-import { attachRowListeners } from "./UI-animation_helpers.js";
+import { attachRowListeners, updateMoveButtons } from "./UI-animation_helpers.js";
 import { attachCostEvents, recalcCost } from "./recipe_utils.js";
 
 const token = localStorage.getItem("access_token");
@@ -178,6 +178,7 @@ export function initializeIngredientInput(row, token) {
                 activeIndex = 0;
                 highlightItem(items, activeIndex);
             }
+            
 
         } catch (err) {
             console.error("Error fetching ingredients:", err);
@@ -187,6 +188,7 @@ export function initializeIngredientInput(row, token) {
     // Handle keyboard navigation for selecting ingredient with (Tab or Enter) as selected ingredient
     input.addEventListener("keydown", function (e) {
         const items = suggestionBox.querySelectorAll(".suggestion-item");
+        
         if (!items.length) 
             return;
         if (e.key === "ArrowDown") {

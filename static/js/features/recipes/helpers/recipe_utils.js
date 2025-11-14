@@ -1,5 +1,5 @@
 import { initializeIngredientRow, populateUnits, populateBaseUnits, getEmptyIngredientRow } from "./ingredient_helpers.js";
-
+import { updateMoveButtons } from "./UI-animation_helpers.js"
 const token = localStorage.getItem("access_token");
 
 // update total cost of recipe
@@ -75,11 +75,19 @@ export function recalcCost(row) {
 
 // attach cost events - recalculate the ingredient cost for any change in input/select fields on ingredient
 export function attachCostEvents(row) {
+    const ingredientInput = row.querySelector('input[name^="ingredient_name_"]');
     const quantityInput = row.querySelector('input[name^="quantity_"]');
     const baseQuantityInput = row.querySelector('input[name^="base_quantity_"]');
     const basePriceInput = row.querySelector('input[name^="base_price_"]');
     const unitSelect = row.querySelector('select[name^="unit_"]');
     const baseUnitSelect = row.querySelector('select[name^="base_unit_"]');
+
+    // doing for bug in last ingredient for move up and move down button
+    [ingredientInput, quantityInput, baseQuantityInput, basePriceInput, unitSelect, baseUnitSelect]
+    .forEach(el => {
+        el.addEventListener("focus", updateMoveButtons);
+        el.addEventListener("blur", updateMoveButtons);
+    });
 
     quantityInput.addEventListener("input", () => recalcCost(row));
     baseQuantityInput.addEventListener("input", () => recalcCost(row));
@@ -138,6 +146,15 @@ export async function renderRecipeDataOnScreen(data){
     document.getElementById("recipe-name-input").value = data.recipe.name;
     document.getElementById("portion-size-input").value = data.recipe.portion_size;
     document.getElementById("description-input").value = data.recipe.description;
+    // --- PRIVACY HANDLING ---
+    const privacyToggle = document.getElementById("privacy-toggle");
+    const privacyLabel = document.getElementById("privacy-label-select");
+
+    // Set checkbox checked state
+    privacyToggle.checked = (data.recipe.privacy === "private");
+
+    // Update label text
+    privacyLabel.textContent = data.recipe.privacy === "private"? "Private" : "Public";
 
     // Populate ingredients table
     const ingredients = data.ingredients;// console.log("ingredients:", ingredients);

@@ -13,19 +13,19 @@
   <!-- Recipe Info -->
   <section id="recipe-info-section">
     <label for="recipe-name">Recipe Name:</label>
-    <input type="text" id="recipe-name" name="recipe-name" placeholder="Enter recipe name">
+    <input type="text" id="recipe-name-input" name="recipe-name" placeholder="Enter recipe name">
     <div class="error-create-recipe" id="errorName"></div>
 
     <label for="portion-size">Portion Size:</label>
-    <input type="text" id="portion-size" name="portion-size" placeholder="e.g., 2 portion or 3 people or 1.5 kg, etc.">
+    <input type="text" id="portion-size-input" name="portion-size" placeholder="e.g., 2 portion or 3 people or 1.5 kg, etc.">
     <div class="error-create-recipe" id="errorPS"></div>
 
     <label for="description">Description:</label>
-    <textarea id="description" name="description" rows="3" placeholder="Enter description"></textarea>
+    <textarea id="description-input" name="description" rows="3" placeholder="Enter description"></textarea>
     <div class="error-create-recipe" id="errorDesc"></div>
 
     <label for="privacy">Private Recipe:</label>
-    <input type="checkbox" id="privacy" name="privacy" checked>
+    <input type="checkbox" id="privacy-toggle" name="privacy" checked>
   </section>
 
   <!-- Placeholder for Recipe Image -->
@@ -133,7 +133,7 @@
   </div>
 </div>
 
-<script src="/static/js/utils.js"></script>
-<script src="/static/js/create-recipe.js"></script>
+<!-- <script src="/static/js/utils.js"></script> -->
+<script type="module" src="/static/js/features/recipes/create-recipe.js"></script>
 </body>
 </html>

@@ -180,6 +180,46 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/* Flex container for name + toggle */
+.recipe-name-flex {
+  display: flex;
+  justify-content: space-between; /* left-right */
+  align-items: center;
+  width: 100%;
+}
+
+/* Make toggle section inline-flex */
+#privacy-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.recipe-name-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;   /* pushes toggle to right */
+  gap: 1rem;
+  width: 100%;
+}
+
+.recipe-name-flex label {
+  white-space: nowrap; /* prevents label from breaking into two lines */
+}
+
+.recipe-name-flex-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;  /* space between label and input */
+  flex-grow: 1; /* takes all available space */
+}
+
+#privacy-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
 #ingredients-tbody {
     opacity: 1;
     transition: opacity 0.3s ease;
