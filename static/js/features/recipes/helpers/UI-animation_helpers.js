@@ -89,31 +89,44 @@ export function updateMoveButtons() {
         const prevRow = rows[i - 1];
         const nextRow = rows[i + 1];
 
-        // First ingredient in component
+        // First ingredient in table as it will alway be at index 1 as index 0 will be always component.
+        // if the next row after index 1 is component then no buttons should be displayed (as most likely its empty ingredient row)
         if (i == 1){
             if(nextRow && nextRow.classList.contains("component-row")){
                 upBtn.style.display = 'none';
                 downBtn.style.display = 'none'; 
+            // else if next row after index 1 is ingredient then show only move down and disable move up
             } else if (nextRow && nextRow.classList.contains("ingredient-row")){
                 upBtn.style.display = 'none';
                 downBtn.style.display = 'block';
             }
             return;   
         }
+        // if next row is component, most likely the row is empty ingredient row - disable both buttons 
         if (nextRow && nextRow.classList.contains("component-row")&& (i+1) != (rows.length - 1)){
             upBtn.style.display = 'none';
             downBtn.style.display = 'none';
             return;
         }
-        if (nextRow && nextRow.classList.contains("ingredient-row")){
+        // if next row is ingredient row and next row is not a last row then show both buttons
+        if (nextRow && nextRow.classList.contains("ingredient-row") && (i+1) != (rows.length - 1)){
             upBtn.style.display = 'block';
             downBtn.style.display = 'block';
-            
+            return;
         }
+         // if next row is ingredient and next row is last row then disable move down button
+        if(nextRow && nextRow.classList.contains("ingredient-row") && (i+1) == (rows.length - 1)){
+            upBtn.style.display = 'block';
+            downBtn.style.display = 'none';
+            return;
+        }
+        // if next row is component and next row is last row then disable move down button
         if(nextRow && nextRow.classList.contains("component-row") && (i+1) == (rows.length - 1)){
             prevRow.querySelector(".move-ing-down-btn").style.display = 'none';
             return;
         }
+        // if its the last row and no next row then dont show the move buttons
+        // THIS CODE NOT REQUIRED. just kept to show how move down button will vanish if there is only one ingredient
         if (!nextRow){
             upBtn.style.display = 'none';
             downBtn.style.display = 'none';
