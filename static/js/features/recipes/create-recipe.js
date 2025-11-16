@@ -38,7 +38,7 @@ function validateIngredientsForm() {
       const realIndex = match ? match[1] : null;
       if (!realIndex) return;
 
-      // Get error display elements
+      // Get error display elements.
       errorCompBox[`errorCompText_${realIndex}`] = document.getElementById(`errorCompText_${realIndex}`);
 
       // Reset Error messages
