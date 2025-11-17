@@ -152,7 +152,7 @@ export function validateIngredientRows() {
                     const prevComponent = ingredientsData[componentIndex];
                     if(prevComponent && prevComponent.ingredients.length === 0){
                         const subheading = prevComponent.component_text;
-                        errorMessage = `Cant have empty ingredients within sub heading -${subheading}-. Either remove it or add ingredients`
+                        errorMessage = `Cant have empty ingredients within sub heading - ${subheading} -. Either remove it or add ingredients`
                     } 
                 }               
             }

@@ -118,7 +118,7 @@ def create_recipe():
             
             # String fields: trim, collapse multiple spaces, convert to lowercase
             str_fields = ["name", "portion_size", "privacy", "description"]
-            recipe_dict = data[0] 
+            recipe_dict = data 
             for field in str_fields:
                 value = recipe_dict.get(field)
                 if isinstance(value, str):
@@ -201,38 +201,39 @@ def create_recipe():
 
             # --- Components ----
             components = recipe_dict.get("components", [])
-            # print("recipe_dict :", recipe_dict)
-            # print("components :", components)
-            # print("components length is :", len(components))
-            if not isinstance(components, list) or len(components) < 1:
-                return "Recipe must have at least 2 ingredients"
+            totalComponents = len(components)
 
-            # # min 2 Ingredients validation for a recipe
-            # ingredients = recipe_dict.get("ingredients", [])
-            # if not isinstance(ingredients, list) or len(ingredients) < 2:
-            #     return "Recipe must have at least 2 ingredients"
+            # check any component not having ingredients array.
+            for component in components:
+                if len(component["ingredients"]) < 1:
+                    return f'Component cant be empty. atleast one ingredient required for a component.'
 
-            # Normalize ingredients (list of dicts)
-            ing_fields = ["ingredient_id", "quantity", "unit_id", "base_unit", "base_price", "display_order"]
-            ing_base_fields =["custom_price", "unit_supplied", "custom_quantity", "location"]
+            # check total ingredients recipe and if less than 2 then raise error
+            totalIngredients = 0
+            for component in components:
+                totalIngredients = totalIngredients + len(component["ingredients"])
+
+            if totalIngredients < 2:
+                return f'minimum 2 ingredients required to make a recipe'
             
+            # Check every field in components and ingredients within components
             for component in components:
                 
                 try:
-                    component_disp_order = to_int(component.get("component_display_order"), "component_disp_order")
-                    if not isinstance(component_disp_order, (int)) or component_disp_order < 0 or component_disp_order >= 10**4:
-                        return f"Invalid component display order: must be numeric > 0  and < 10000"
+                    component_display_order = to_int(component.get("component_display_order"), "component_display_order")
+                    if not isinstance(component_display_order, int) or component_display_order < 0 or component_display_order >= totalComponents:
+                        return f"Invalid component display order: must be numeric >= 0  and < total components ({totalComponents})"
 
-                    component_input_text = component.get("component_input_text")
-                    if not isinstance(component_input_text, str) or len(component_input_text) > 50:
-                        return f"Invalid component_input_text: must be a string ≤ 50 chars"
+                    component_input_text = component.get("component_text")
+                    if not isinstance(component_input_text, str) or len(component_input_text) > 50 or (component_display_order != 0 and component_input_text == ""):
+                        return f"Invalid component_input_text: must be a string ≤ 50 chars {component_input_text}"
 
                     ingredients = component.get("ingredients",[])
                     for ing in ingredients:
 
-                        ing_display_order = to_int(ing.get("ing_display_order"), "ing_display_order")
-                        if not isinstance(ing_display_order, (int)) or ing_display_order <= 0 or ing_display_order >= 10**4:
-                            return f"Invalid ingredient display order: must be numeric > 0  and < 10000"
+                        ingredient_display_order = to_int(ing.get("ingredient_display_order"), "ingredient_display_order")
+                        if not isinstance(ingredient_display_order, int) or ingredient_display_order <= 0 or ingredient_display_order > totalIngredients:
+                            return f"Invalid ingredient display order: must be numeric > 0  and < total ingredients ({totalIngredients})"
 
                         ingredient_id = to_int(ing.get("ingredient_id"), "ingredient_id")
                         if not isinstance(ingredient_id, (int, float)) or ingredient_id <= 0 or ingredient_id >= 10**6:
@@ -273,7 +274,7 @@ def create_recipe():
                     return str(e) 
 
             # validate steps data
-            steps = recipe_dict.get("steps")
+            steps = recipe_dict.get("steps",[])
             for step in steps:
                 if not isinstance(step, (str, int, float)):
                     return "Error in normalizing steps: step must be str, int, or float."
@@ -368,15 +369,6 @@ def create_recipe():
                     if ing['base_unit'] not in groups.get(ing_data['base_unit'], []):
                         return jsonify({'error': f"base unit of ingredient {ing['ingredient_id']} not matched with stored data"}), 400
 
-                    
-                    # base_unit = ing_data['base_unit']
-                    # price = ing_data['price']
-                    # f_base_price = ing['base_price']    
-                    # if round(float(price),6) != round(float(ing['base_price']),6):
-                    #     cursor.close()
-                    #     conn.close()
-                    #     return jsonify({'error': f"base price : price = {round(price,6)} ing['base_price'] = {round(f_base_price,6)} of ingredient {ing['ingredient_id']} not matched with stored data"}), 400    
-
         # validate steps for recipe_procedures
         
         # return jsonify({'message': "Every thing accepted and ready to insert recipe"}), 200
@@ -384,7 +376,6 @@ def create_recipe():
 
         # ---------------- Data checked and ready to be inserted. About to actually insert data in db ---------------------------
         # Insert into recipes
-        print("About to insert in recipes table....")
         cursor.execute("""
             INSERT INTO recipes (name, portion_size, user_id, privacy, description, is_active, created_at)
             VALUES (%s, %s, %s, %s, %s, TRUE, CURRENT_TIMESTAMP)
@@ -397,7 +388,7 @@ def create_recipe():
             cursor.execute("""
                 INSERT INTO recipe_components (recipe_id, component_text, display_order)
                 VALUES (%s,%s,%s)
-            """,(recipe_id, component['component_input_text'], component['component_display_order']))
+            """,(recipe_id, component['component_text'], component['component_display_order']))
             component_id = cursor.lastrowid
             print("Inserted in components table and generated component_id. about to insert in recipe ingredients table")
             print("ingredients in components are :", component["ingredients"])
@@ -406,7 +397,7 @@ def create_recipe():
                 cursor.execute("""
                     INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order, component_id)
                     VALUES (%s, %s, %s, %s, TRUE, %s,%s)
-                """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ing_display_order'],component_id))
+                """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'],component_id))
 
                 # Update user_prices if base_unit/base_price/base_quantity is provided and different
                 if ing.get('base_unit'):
