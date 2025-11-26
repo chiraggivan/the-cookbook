@@ -249,7 +249,7 @@ def update_ingredient_order(recipe_ingredient_id):
             conn.rollback()
         return jsonify({'error': str(err)}), 500
 
-# Update recipe (PATCH)
+# Update recipe (PATCH)...
 @recipes_api_bp.route('/update-recipe/<int:recipe_id>', methods=['PATCH'])
 @jwt_required()
 def update_recipe(recipe_id):
