@@ -305,7 +305,7 @@ def create_recipe():
         cursor = conn.cursor(dictionary=True)
         
         # Validate user_id exists
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s", (s_user_id,))
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()

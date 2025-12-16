@@ -5,7 +5,7 @@ from flask_jwt_extended import JWTManager, jwt_required, create_access_token, ge
 from . import dishes_api_bp
 
 # Get dishes prepared by user
-@dishes_api_bp.route('/dishes', methods=['GET'])
+@dishes_api_bp.route('/my_dishes', methods=['GET'])
 @jwt_required()
 def get_dishes():
 
@@ -18,27 +18,27 @@ def get_dishes():
         cursor = conn.cursor(dictionary=True)
 
         # Validate user_id exists
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s", (s_user_id,))
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'error': 'User not found'}), 404
+            return jsonify({'error': 'User not found  or active'}), 404
 
-        # validate if dishes exists for the user
-        cursor.execute("""
-            SELECT dish_id FROM dishes 
-            WHERE user_id = %s AND is_active = TRUE
-        """, (s_user_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({'error': 'No dishes found for the user.'}), 404
+        # # validate if dishes exists for the user
+        # cursor.execute("""
+        #     SELECT dish_id FROM dishes 
+        #     WHERE user_id = %s AND is_active = TRUE
+        # """, (s_user_id,))
+        # if not cursor.fetchone():
+        #     cursor.close()
+        #     conn.close()
+        #     return jsonify({'error': 'No dishes found for the user.'}), 404
 
         # Get all the dishes for the users
         cursor.execute("""
-            SELECT d.dish_id, r.recipe_id, r.name, r.portion_size, d.preparation_date, d.total_cost
-            FROM dishes d JOIN recipes r ON d.recipe_id = r.recipe_id
-            WHERE d.user_id = %s AND d.is_active = 1
+            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by
+            FROM dishes 
+            WHERE user_id = %s AND is_active = 1
         """,(s_user_id,))
         recipes = cursor.fetchall()
         cursor.close()
@@ -48,7 +48,7 @@ def get_dishes():
         return jsonify({'error': str(err)}), 500
 
 # Get dish details for selected dish
-@dishes_api_bp.route('/dishes/<int:dish_id>', methods=['GET'])
+@dishes_api_bp.route('/my_dishes/<int:dish_id>', methods=['GET'])
 @jwt_required()
 def get_dish_details(dish_id):
 
@@ -61,16 +61,16 @@ def get_dish_details(dish_id):
         cursor = conn.cursor(dictionary=True)
 
         # Validate user_id exists
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s", (s_user_id,))
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'error': 'User not found'}), 404
+            return jsonify({'error': 'User not found or active'}), 404
 
         # validate if dishes exists for the user
         cursor.execute("""
-            SELECT dish_id FROM dishes 
-            WHERE user_id = %s AND dish_id = %s AND is_active = TRUE
+            SELECT 1 FROM dishes 
+            WHERE user_id = %s AND dish_id = %s AND is_active = 1
         """, (s_user_id, dish_id))
         if not cursor.fetchone():
             cursor.close()
@@ -79,20 +79,18 @@ def get_dish_details(dish_id):
 
         # Get the details of the dish for the user
         cursor.execute("""
-            SELECT i.name, di.quantity, di.unit_name, di.total_ingredient_cost as cost, CONCAT(FORMAT(di.base_price, 2),'/',di.base_unit) as at
-            FROM dish_ingredients di 
-            JOIN ingredients i ON di.ingredient_id = i.ingredient_id
-            JOIN dishes d ON di.dish_id = d.dish_id
-            JOIN users u ON d.user_id = u.user_id
-            WHERE di.dish_id = %s AND u.user_id = %s
-        """,(dish_id, s_user_id))
+            SELECT component_display_order, component_text, ingredient_display_order, ingredient_id, ingredient_name, quantity,
+                unit_id, unit_name, cost, base_price, base_unit
+            FROM dish_ingredients
+            WHERE dish_id = %s AND is_active = 1
+        """,(dish_id,))
         dish_details = cursor.fetchall()
 
         cursor.execute("""
-            SELECT d.dish_id, r.recipe_id, r.name, r.portion_size, d.preparation_date, d.total_cost
-            FROM dishes d JOIN recipes r ON d.recipe_id = r.recipe_id
-            WHERE d.user_id = %s AND dish_id = %s AND d.is_active = 1
-        """,(s_user_id,dish_id))
+            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by
+            FROM dishes 
+            WHERE dish_id = %s is_active = 1
+        """,(dish_id,))
         dish = cursor.fetchone()
 
         cursor.close()
