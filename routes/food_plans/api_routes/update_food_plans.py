@@ -7,23 +7,47 @@ from .utils import (normalize_string, normalize_value, normalize_plan, normalize
 import re
 from datetime import date
 
-# Save food plan 
-@food_plans_api_bp.route('/', methods=['POST'])
+# Update food plan 
+@food_plans_api_bp.route('/update', methods=['PUT'])
 @jwt_required()
-def create_plan():
-
+def update_plan():
+    
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
-        
-    try:
+
+    try:           
         # ----------------------------- normalize and validate data ---------------------------            
         data = request.get_json()
+        food_plan_id = data.get('food_plan_id')
+        if not food_plan_id:
+            return jsonify({'error':'Update data incorrect. food plan id missing'}), 400
         data = normalize_plan(data)
-        
+
         error, recipe_ids = validate_food_plan(data, meals)
         if error:
             return jsonify({"error": error}), 400  
 
+        food_plan_day_id = []
+        food_plan_meal_id = []
+        food_plan_recipe_id =[]
+
+        for week in data['food_plan']:
+            for day in week['weekly_meals']:
+                if day.get('food_plan_day_id'):
+                    food_plan_day_id.append(day['food_plan_day_id'])
+                
+                for meal in day.get('daily_meals'):
+                    if meal.get('food_plan_meal_id'):
+                        food_plan_meal_id.append(meal['food_plan_meal_id'])
+                    
+                    for recipe in meal.get('recipes'):
+                        if recipe.get('food_plan_recipe_id'):
+                            food_plan_recipe_id.append(recipe['food_plan_recipe_id'])
+
+        print("Food plan id :", food_plan_id)
+        print("Food plan day ids :", food_plan_day_id)
+        print("Food plan meal ids :", food_plan_meal_id)
+        print("Food plan recipe ids :", food_plan_recipe_id)
         # --------------------------- connect db and verify data --------------------------
         # connect to db        
         conn = get_db_connection()
@@ -51,6 +75,37 @@ def create_plan():
                     'error': f'Recipe id {recipe_id} missing or not active or not owned',
                     'submitted_data': data
                     }), 409
+
+        # check food_plan_id valid for user 
+        cursor.execute("SELECT 1 FROM food_plans WHERE user_id = %s AND food_plan_id = %s AND is_active = 1",(s_user_id,food_plan_id))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Food plan not found.'}), 404
+
+        # check if food_plan_id and food_plan_day_id match in table
+        for value in food_plan_day_id:
+            cursor.execute("SELECT 1 FROM food_plan_days WHERE food_plan_day_id = %s AND food_plan_id = %s AND is_active = 1",(value, food_plan_id))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({'error': 'Combined Food plan id AND food plan day id not found.'}), 404
+
+        # check if food_plan_day_id and food_plan_meal_id match in table
+        for value in food_plan_meal_id:
+            cursor.execute("SELECT 1 FROM food_plan_meals WHERE food_plan_meal_id = %s AND food_plan_day_id IN %s AND is_active = 1",(value, food_plan_day_id))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({'error': 'Combined Food plan day id AND food plan meal id not found.'}), 404
+
+        # check if food_plan_meal_id and food_plan_recipe_id match in table
+        for value in food_plan_recipe_id:
+            cursor.execute("SELECT 1 FROM food_plan_recipes WHERE food_plan_recipe_id = %s AND food_plan_meal_id IN %s AND is_active = 1",(value, food_plan_meal_id))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({'error': 'Combined Food plan meal id AND food plan recipe id not found.'}), 404
 
         return jsonify({'error': 'data received in backend', 'submitted data': data}), 400
         # ------------------ Inserting data in db  ------------------------
