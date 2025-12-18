@@ -10,7 +10,7 @@ from datetime import date
 # Save food plan 
 @food_plans_api_bp.route('/', methods=['POST'])
 @jwt_required()
-def create_plan():
+def create_food_plan():
 
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
@@ -60,6 +60,7 @@ def create_plan():
         """,(s_user_id, total_weeks))
         food_plan_id = cursor.lastrowid
 
+        weeks = data.get('food_plan')
         for week in weeks:
             week_no = week['week_no']
             for week_meal in week['weekly_meals']:
