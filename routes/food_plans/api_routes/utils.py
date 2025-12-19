@@ -105,44 +105,60 @@ def normalize_recipes(recipes):
 
 def validate_food_plan(data, meals):
     if data.get('food_plan_id'):
-        id = data['food_plan_id']
-        if not isinstance(id, int) or id <= 0:
-            return f"Invalid food plan id ({id}): Should be positive integer", None
+        plan_id = data['food_plan_id']
+        if not isinstance(plan_id, int) or plan_id <= 0:
+            return f"Invalid food plan id ({plan_id}): Should be positive integer", None
             
     food_plan = data.get('food_plan',[])
     total_weeks_plan = len(food_plan)
     recipe_ids = []
 
-    if total_weeks_plan > 5 or total_weeks_plan <= 0:
+    if total_weeks_plan > 5 or total_weeks_plan == 0:
         return f"Cant be empty and Only 5 weeks of food planning is allowed.", None
     
     for week in food_plan:
+        if week.get('food_plan_week_id'):
+            food_plan_week_id = week['food_plan_week_id']
+            if not isinstance(food_plan_week_id, int) or food_plan_week_id <= 0:
+                return f"Invalid food plan week id ({food_plan_week_id}): Should be positive integer", None
+
         week_no = week.get('week_no')
         if not week_no or not isinstance(week_no, int) or week_no <= 0 or week_no > 5:
             return f"week number ({week_no}) required and should be positive int less than 6", None
         
         weekly_meals = week.get('weekly_meals',[])
         total_days = len(weekly_meals)
-        if total_days > 7 :
+        if total_days > 7 or total_days == 0:
             return f"Cant have {total_days} days in a week meals", None
 
         if not weekly_meals or not isinstance(weekly_meals, list):
             return f"invalid weekly meals: missing or not a list type", None
         
         for day in weekly_meals:
+            if day.get('food_plan_day_id'):
+                food_plan_day_id = day['food_plan_day_id']
+                if not isinstance(food_plan_day_id, int) or food_plan_day_id <= 0:
+                    return f"Invalid food plan day id ({food_plan_day_id}): Should be positive integer", None
+
             day_no = day.get('day_no')
             if not day_no or not isinstance(day_no, int) or day_no <= 0 or day_no > 7:
                 return f"Invalid day_no. Should be positive int and not more than 7", None
             
             daily_meals = day.get('daily_meals')
+            if not daily_meals or not isinstance(daily_meals, list):
+                return f" invalid daily meals: missing or not a list type", None
+            
             total_meals = len(daily_meals)
             if total_meals > len(meals):
                 return f"Can't have {total_meals} meals in a day", None
 
-            if not daily_meals or not isinstance(daily_meals, list):
-                return f" invalid daily meals: missing or not a list type", None
-            
             for meal in daily_meals:
+                if meal.get('food_plan_meal_id'):
+                    food_plan_meal_id = meal['food_plan_meal_id']
+                    if not isinstance(food_plan_meal_id, int) or food_plan_meal_id <= 0:
+                        return f"Invalid food plan meal id ({food_plan_meal_id}): Should be positive integer", None
+
+
                 meal_type = meal.get('meal_type')
                 if not meal_type or not isinstance(meal_type, str) or (meal_type not in meals):
                     return f"Invalid meal type ({meal_type}): missing, should be string and one of the saved meals", None
@@ -153,8 +169,10 @@ def validate_food_plan(data, meals):
                     return f"Invalid recipes: should be non empty list", None
                 
                 for recipe in recipes:
-                    if not isinstance(recipe, dict):
-                        return f"Recipe is not in proper format. should be dictionary", None
+                    if recipe.get('food_plan_recipe_id'):
+                        food_plan_recipe_id = recipe['food_plan_recipe_id']
+                        if not isinstance(food_plan_recipe_id, int) or food_plan_recipe_id <= 0:
+                            return f"Invalid food plan recipe id ({food_plan_recipe_id}): Should be positive integer", None
                     
                     recipe_id = recipe.get('recipe_id')
                     if not recipe_id or not isinstance(recipe_id, int) or recipe_id <= 0:

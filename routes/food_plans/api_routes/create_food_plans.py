@@ -63,18 +63,22 @@ def create_food_plan():
         weeks = data.get('food_plan')
         for week in weeks:
             week_no = week['week_no']
+            cursor.execute("""
+                INSERT INTO food_plan_weeks(food_plan_id, week_no)
+                VALUES (%s,%s)
+            """,(food_plan_id, week_no))
+            food_plan_week_id = cursor.lastrowid
+
             for week_meal in week['weekly_meals']:
                 day_no = week_meal['day_no']
-                
                 cursor.execute("""
-                    INSERT INTO food_plan_days(food_plan_id, week_no, day_no)
+                    INSERT INTO food_plan_days(food_plan_week_id, day_no)
                     VALUES (%s,%s)
-                """,(food_plan_id, week_no, day_no))
+                """,(food_plan_week_id, day_no))
                 food_plan_day_id = cursor.lastrowid
 
                 for day_meal in week_meal['daily_meals']:
                     meal_type = day_meal['meal_type']
-
                     cursor.execute("""
                         INSERT INTO food_plan_meals(food_plan_day_id, meal_type)
                         VALUES (%s,%s)
