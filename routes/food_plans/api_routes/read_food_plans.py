@@ -1,9 +1,10 @@
-from flask import request, jsonify
+from flask import jsonify
 from db import get_db_connection
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from . import food_plans_api_bp
 
 # Update food plan 
-@food_plans_api_bp.route('/food_plan', methods=['GET'])
+@food_plans_api_bp.route('/plan', methods=['GET'])
 @jwt_required()
 def get_food_plan():
 
@@ -28,16 +29,17 @@ def get_food_plan():
         # get the food_plan_id for the user
         cursor.execute("SELECT food_plan_id FROM food_plans WHERE user_id = %s AND is_active = 1", (s_user_id,))
         row = cursor.fetchone()
+        print("row is :", row)
         if row is None:
             cursor.close()
             conn.close()
             return jsonify({'error': 'Food plan not found for the user'}), 404
-        food_plan_id = row[0]
+        food_plan_id = row['food_plan_id']
 
         data['food_plan_id'] = food_plan_id
 
         # get the food_plan_week_ids of the food_plan_id
-        cursor.execute("SELECT food_plan_week_id, week_no FROM food_plan_weeks WHERE food_plan_id = %s ORDER BY week_no",(food_plan_id,))
+        cursor.execute("SELECT food_plan_week_id, week_no FROM food_plan_weeks WHERE food_plan_id = %s AND is_active = 1 ORDER BY week_no",(food_plan_id,))
         rows = cursor.fetchall()
         if not rows:
             cursor.close()
@@ -46,11 +48,11 @@ def get_food_plan():
         food_plan_week_rows = rows
 
         food_plan = []
-        for week_id, week_no in food_plan_week_rows:
+        for week in food_plan_week_rows:
             each_food_week_plan = {}
-            each_food_week_plan['food_plan_week_id'] = week_id
-            each_food_week_plan['week_no'] = week_no
-            cursor.execute("SELECT food_plan_day_id, day_no FROM food_plan_days WHERE food_plan_week_id = %s",(week_id,))
+            each_food_week_plan['food_plan_week_id'] = week['food_plan_week_id']
+            each_food_week_plan['week_no'] = week['week_no']
+            cursor.execute("SELECT food_plan_day_id, day_no FROM food_plan_days WHERE food_plan_week_id = %s AND is_active = 1 ORDER BY day_no",(week['food_plan_week_id'],))
             rows = cursor.fetchall()
             if not rows:
                 cursor.close()
@@ -59,11 +61,11 @@ def get_food_plan():
             food_plan_day_rows = rows
 
             weekly_meals = []
-            for day_id, day_no in food_plan_day_rows:
+            for day in food_plan_day_rows:
                 each_food_day_plan = {}
-                each_food_day_plan['food_plan_day_id'] = day_id
-                each_food_day_plan['day_no'] = day_no
-                cursor.execute("SELECT food_plan_meal_id, meal_type FROM food_plan_meals WHERE food_plan_day_id = %s",(day_id,))
+                each_food_day_plan['food_plan_day_id'] = day['food_plan_day_id']
+                each_food_day_plan['day_no'] = day['day_no']
+                cursor.execute("SELECT food_plan_meal_id, meal_type FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(day['food_plan_day_id'],))
                 rows = cursor.fetchall()
                 if not rows:
                     cursor.close()
@@ -72,11 +74,11 @@ def get_food_plan():
                 food_plan_meal_rows = rows
 
                 daily_meals = []
-                for meal_id, meal_type in food_plan_meal_rows:
+                for meal in food_plan_meal_rows:
                     each_food_meal_plan = {}
-                    each_food_meal_plan['food_plan_meal_id'] = meal_id
-                    each_food_meal_plan['meal_type'] = meal_type
-                    cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s ORDER BY display_order",(meal_id,))
+                    each_food_meal_plan['food_plan_meal_id'] = meal['food_plan_meal_id']
+                    each_food_meal_plan['meal_type'] = meal['meal_type']
+                    cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1 ORDER BY display_order",(meal['food_plan_meal_id'],))
                     rows = cursor.fetchall()
                     if not rows:
                         cursor.close()
@@ -85,19 +87,34 @@ def get_food_plan():
                     food_plan_recipe_rows = rows
 
                     recipes = []
-                    for food_plan_recipe_id, recipe_id, display_order in food_plan_recipe_rows:
+                    for recipe in food_plan_recipe_rows:
                         each_food_recipe_plan = {}
-                        # Check is recipe exist and is active. if NOT active then continue
-                        cursor.execute("SELECT name FROM recipes WHERE recipe_id = %s AND is_active = 1",(recipe_id,))
+                        # Check is recipe exist, calculate price of recipe and is active. if NOT active then continue                        
+                        cursor.execute("""
+                            SELECT r.name AS recipe_name, COALESCE(SUM(ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor),0) AS price    
+                            FROM recipes r 
+                            JOIN recipe_ingredients ri ON r.recipe_id = ri.recipe_id 
+                            JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+                            JOIN units u ON ri.unit_id = u.unit_id
+                            LEFT JOIN user_prices up ON up.user_id = %s 
+                                AND up.ingredient_id = i.ingredient_id 
+                                AND up.is_active = 1
+                            WHERE ri.recipe_id = %s
+                            AND ri.is_active = 1
+                            AND r.is_active = 1
+                        """,(s_user_id, recipe['recipe_id']))
                         row = cursor.fetchone()
                         if row is None:
                             continue
-                        recipe_name = row[0]
+                        recipe_name = row['recipe_name']
+                        cost = row['price']
+                        
                         each_food_recipe_plan = {
-                            'food_plan_recipe_id': food_plan_recipe_id,
-                            'recipe_id': recipe_id,
+                            'food_plan_recipe_id': recipe['food_plan_recipe_id'],
+                            'recipe_id': recipe['recipe_id'],
                             'recipe_name': recipe_name,
-                            'display_order': display_order
+                            'cost': cost,
+                            'display_order': recipe['display_order']
                         }
 
                         recipes.append(each_food_recipe_plan)
@@ -110,7 +127,9 @@ def get_food_plan():
             each_food_week_plan['weekly_meals'] = weekly_meals
             food_plan.append(each_food_week_plan)
 
-        data['food_plan'] = food_plan       
+        data['food_plan'] = food_plan   
+
+        return jsonify({'plan': data}), 200    
 
     except Error as err:
         conn.rollback()

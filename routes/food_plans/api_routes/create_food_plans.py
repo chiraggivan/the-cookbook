@@ -8,9 +8,10 @@ import re
 from datetime import date
 
 # Save food plan 
-@food_plans_api_bp.route('/', methods=['POST'])
+@food_plans_api_bp.route('/old', methods=['POST'])
 @jwt_required()
 def create_food_plan():
+    return jsonify({"error": "This endpoint is deprecated and no longer available."}), 410
 
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
@@ -38,6 +39,13 @@ def create_food_plan():
             conn.close()
             return jsonify({'error': 'User not found'}), 404
 
+        # check if there is already food_plan_id assigned to the user
+        cursor.execute("SELECT 1 from food_plans WHERE user_id = %s",(s_user_id,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'food plan already exist. Cant create new food plan.'}), 404
+        
         # print(" recipe_ids : ", recipe_ids)
         # check recipe_id is valid, is_active and owned by user
         for recipe_id in recipe_ids:
@@ -52,7 +60,7 @@ def create_food_plan():
                     'submitted_data': data
                     }), 409
 
-        return jsonify({'error': 'data received in backend', 'submitted data': data}), 400
+        # return jsonify({'error': 'data received in backend', 'submitted data': data}), 400
         # ------------------ Inserting data in db  ------------------------
         cursor.execute("""
             INSERT INTO food_plans (user_id, total_weeks)
@@ -96,6 +104,50 @@ def create_food_plan():
         conn.close()
         return jsonify({'message': f'Food Plan created successfully!!!!!'}), 201
     
+    except Error as err:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return jsonify({'error': str(err)}), 500
+
+@food_plans_api_bp.route('/', methods=['GET'])
+@jwt_required()
+def create_food_plan_id():
+
+    s_user_id = get_jwt_identity()
+    print("logged in user id : ",s_user_id)
+        
+    try:
+        # --------------------------- connect db and verify data --------------------------
+        # connect to db        
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        # check user is valid and active
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+
+        # check if there is already food_plan_id assigned to the user
+        cursor.execute("SELECT 1 from food_plans WHERE user_id = %s",(s_user_id,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'food plan already exist. Cant create new food plan.'}), 404
+        
+        # ------------------ Inserting data in db  ------------------------
+        cursor.execute("""
+            INSERT INTO food_plans (user_id, total_weeks)
+            VALUES (%s,%s)
+        """,(s_user_id, total_weeks))
+        food_plan_id = cursor.lastrowid
+
+        return jsonify({'data' : food_plan_id}), 200
+
     except Error as err:
         conn.rollback()
         cursor.close()

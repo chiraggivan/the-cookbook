@@ -113,8 +113,8 @@ def validate_food_plan(data, meals):
     total_weeks_plan = len(food_plan)
     recipe_ids = []
 
-    if total_weeks_plan > 5 or total_weeks_plan == 0:
-        return f"Cant be empty and Only 5 weeks of food planning is allowed.", None
+    if total_weeks_plan > 1 or total_weeks_plan == 0:
+        return f"Cant be empty and Only 1 week of food planning is allowed.", None
     
     for week in food_plan:
         if week.get('food_plan_week_id'):
@@ -128,8 +128,8 @@ def validate_food_plan(data, meals):
         
         weekly_meals = week.get('weekly_meals',[])
         total_days = len(weekly_meals)
-        if total_days > 7 or total_days == 0:
-            return f"Cant have {total_days} days in a week meals", None
+        if total_days > 1 or total_days == 0:
+            return f"Cant be empty and Only 1 day of food planning is allowed.", None
 
         if not weekly_meals or not isinstance(weekly_meals, list):
             return f"invalid weekly meals: missing or not a list type", None

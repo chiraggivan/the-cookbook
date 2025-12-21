@@ -13,8 +13,9 @@ def create_dish():
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
     # return jsonify({'error': 'data received in backend', 'submitted data': request.get_json()}), 400
+
     try:
-        
+        # ----------------------------- normalize and validate data ---------------------------            
         def normalize_ingredient_data(data):
             cleaned = {}
 
@@ -217,7 +218,7 @@ def create_dish():
             return jsonify({"error": error, "submitted_data": data}), 400  
 
         # ---------------------- data normalised and validated  ---------------------------------
-        return jsonify({'error': 'data received in backend', 'submitted data': data}), 400        
+            
         recipe_details = data
         recipe_id = recipe_details['recipe_id']
         recipe_name = recipe_details['recipe_name']
@@ -233,7 +234,7 @@ def create_dish():
         comment = recipe_details['comment']
 
         # ingredients_details = data.get('ingredients',[])
-
+        # --------------------------- connect db and verify data --------------------------
         # connect to db
         conn = get_db_connection()
         if conn is None:
@@ -264,6 +265,7 @@ def create_dish():
                     conn.close()
                     return jsonify({'error': f"Unit ID {ing['unit_id']} not matching with unit name- {ing['unit_name']}, ingredient ID {ing['ingredient_id']}, name - {ing['name']}"}), 400   
         
+        return jsonify({'error': 'data received in backend', 'submitted data': data}), 400    
         # --------------  Data checked against DB rules and about to be inserted in db  ---------------------
         # insert data into dishes table
         cursor.execute("""
