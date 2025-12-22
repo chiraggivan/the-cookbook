@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Recipes</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+  <div class="nav-container">
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+    <a href="/recipes/my" class="my-recipes">My Recipes</a>
+  </div>
+  <h2>All Recipes</h2>
+  <table id="recipeList">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>By</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <a href="/recipes/create_recipe" class="create-recipe-btn">Create New Recipe</a>
+  <div id="error"></div>
+
+
+</body>
+</html>

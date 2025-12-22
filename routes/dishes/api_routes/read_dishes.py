@@ -39,6 +39,7 @@ def get_dishes():
             SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by
             FROM dishes 
             WHERE user_id = %s AND is_active = 1
+            ORDER BY created_at DESC
         """,(s_user_id,))
         recipes = cursor.fetchall()
         cursor.close()
@@ -48,7 +49,7 @@ def get_dishes():
         return jsonify({'error': str(err)}), 500
 
 # Get dish details for selected dish
-@dishes_api_bp.route('/my_dishes/<int:dish_id>', methods=['GET'])
+@dishes_api_bp.route('/my_dish/<int:dish_id>', methods=['GET'])
 @jwt_required()
 def get_dish_details(dish_id):
 
