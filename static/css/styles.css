@@ -67,6 +67,11 @@ body {
   margin-bottom: 1rem;
 }
 
+.user-links {
+  display: flex;
+  gap: 1rem;
+}
+
 .admin-options {
   display: none; /* Hidden by default */
   gap: 1rem;
@@ -119,9 +124,6 @@ body {
 }
 
 .my-recipes {
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
   color: #4CAF50;
   text-decoration: none;
   font-weight: bold;
@@ -441,6 +443,15 @@ body {
 .delete-btn:hover {
   background-color: #791008;
 }
+
+.dish-created-btn {
+  background-color: #fddf4b;
+}
+
+.dish-created-btn:hover {
+  background-color: #d5b201;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0; left: 0;

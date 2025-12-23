@@ -17,10 +17,16 @@
   <p id="recipe-total-cost" style="text-align: right; font-weight: bold; margin-top: 0.25rem;"></p>
 
   <!-- show the below buttons only if logged in user and recipe owner same-->
-  <div id="recipe-buttons" style="margin-top: 2rem; display: none;">
-    <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
-    <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
+  <div class="nav-container">
+    <div id="recipe-buttons" style="display: none;">
+      <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
+      <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
+    </div>
+    <div>
+      <button id="dish-created-btn" class="action-btn dish-created-btn">Dish Created Now</button>
+    </div>
   </div>
+  
 
   <h2>Ingredients</h2>
   <table id="ingredients-table">
@@ -84,7 +90,9 @@
 
         const data = await res.json(); //console.log("data from backend: ", data);
         const recipe = data.recipe;
+        console.log("recipe data is: ",recipe);
         const ingredients = data.ingredients;
+        console.log("ingredients data is :", ingredients);
         const steps = data.steps;
         const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
         const isOwner = (loggedInUserId === recipeOwnerId); // console.log("isOwner:", isOwner);
