@@ -7,7 +7,7 @@
 </head>
 <body class="recipes-page">
   <a href="/recipes/" class="back-link">← All Recipes</a>
-  <h1 id="recipe-name">Recipe Name</h1>
+  <h1 id="recipe-name"></h1>
   <p id="recipe-info" style="display: flex; justify-content: space-between; align-items: center;">
     <span id="recipe-meta"></span>
     <span id="recipe-actions"></span>
@@ -73,10 +73,11 @@
             return null;
         }
     }
-    const decoded = parseJwt(token); //console.log("decoded : ",decoded)
+    const decoded = parseJwt(token); //
+    console.log("decoded : ",decoded);
     const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
     const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
-    
+    dish_data = {}
     //load the data of recipe from the db to html page
     async function loadRecipeDetails() {
       try {
@@ -88,14 +89,36 @@
           throw new Error("Failed to load recipe details");
         }
 
-        const data = await res.json(); //console.log("data from backend: ", data);
+        const data = await res.json(); //
+        console.log("data from backend: ", data);
         const recipe = data.recipe;
         console.log("recipe data is: ",recipe);
         const ingredients = data.ingredients;
         console.log("ingredients data is :", ingredients);
         const steps = data.steps;
         const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
-        const isOwner = (loggedInUserId === recipeOwnerId); // console.log("isOwner:", isOwner);
+        const isOwner = (loggedInUserId === recipeOwnerId); //console.log("isOwner:", isOwner);
+
+        // data for dishes created
+        
+        if (true) {
+          const createdAt = new Date(recipe.created_at);  // Convert string to Date object
+          const dateOnly = createdAt.toLocaleDateString('en-GB');  // "24/12/2025" (UK format)
+          const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          dish_data['recipe_id'] = recipe.recipe_id;
+          dish_data['recipe_name'] = recipe.name;
+          dish_data['portion_size'] = recipe.portion_size;
+          dish_data['preparation_date'] = dateOnly;
+          dish_data['time_prepared'] = timeOnly;
+          // dish_data['total_cost'] = ;
+          dish_data['meal'] = 'lunch';
+          dish_data['recipe_by'] = recipe.user_id;
+          dish_data['comment'] = '';
+        }
+
 
         // Title + Meta + Description
         document.getElementById("recipe-name").textContent = recipe.name;
@@ -165,12 +188,19 @@
 
         // Get unique component_display_order values
         const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
+        
 
         // Iterate through each component_display_order
+        dish_data_components = []
         uniqueComponents.forEach(order => {
           // Get the component_text for the first item of this component_display_order
           const component = ingredients.find(item => item.component_display_order === order);
           const componentText = component.component_text ? component.component_text.trim() : "";
+          // attached for dish_data
+          dish_component = {};
+          dish_component['component_text'] = componentText;
+          dish_component['display_order'] = order;
+
           // Only create a component row if component_text is non-empty
           if (componentText) {
             const componentRow = document.createElement("tr");
@@ -188,6 +218,7 @@
             .filter(item => item.component_display_order === order)
             .sort((a, b) => a.ingredient_display_order - b.ingredient_display_order);
 
+          dish_data_ingredients = [];
           // Create ingredient rows for this component
           componentIngredients.forEach(i => {
             const ingredientRow = document.createElement("tr");
@@ -200,11 +231,29 @@
               <td>${i.unit}</td>
               <td>${Number(i.cost).toFixed(2)}</td>
             `;
-            tbody.appendChild(ingredientRow);
-          });
-        });
 
+            //attach for dish_data
+            dish_ingredient = {};
+            dish_ingredient['base_price'] = i.cost;
+            dish_ingredient['ingredient_id'] = i.ingredient_id;
+            dish_ingredient['name'] = i.name;
+            dish_ingredient['cost'] = i.price;
+            dish_ingredient['quantity'] = i.quantity;
+            dish_ingredient['base_unit'] = i.unit;
+            dish_ingredient['unit_id'] = i.unit_id;
+            dish_ingredient['unit_name'] = i.unit_name;
+            dish_ingredient['display_order'] = i.ingredient_display_order;
+
+            tbody.appendChild(ingredientRow);
+            dish_data_ingredients.push(dish_ingredient);
+          });
+          dish_component['ingredients'] = dish_data_ingredients;
+          dish_data_components.push(dish_component);
+        });
+        dish_data['components'] = dish_data_components
+         
         updateTotalRecipeCost(); // get total cost of recipe.
+        console.log("dish data is :", dish_data);
 
         // Steps (numbered list)
         const stepsContainer = document.getElementById("steps-container");
@@ -237,7 +286,7 @@
         const value = parseFloat(cell.textContent.replace(/,/g, "")) || 0;
         total += value;
       });
-
+      dish_data['total_cost'] = total;
       const totalCostEl = document.getElementById("recipe-total-cost");
       if (totalCostEl) {
         totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
