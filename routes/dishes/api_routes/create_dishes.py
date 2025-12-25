@@ -3,7 +3,46 @@ from db import get_db_connection
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import dishes_api_bp
 import re
-from datetime import date
+from datetime import date, datetime
+
+# get latest date for dish created previously 
+@dishes_api_bp.route('/last_record/<int:recipe_id>', methods=['GET'])
+@jwt_required()
+def last_record(recipe_id):
+
+    s_user_id = get_jwt_identity()
+    print("logged in user id : ",s_user_id)
+
+    try:
+        # connect to db
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        #check the date 
+        cursor.execute("SELECT preparation_date, time_prepared, created_at FROM dishes WHERE recipe_id =  %s AND user_id = %s AND is_active = 1 ORDER BY created_at DESC LIMIT 1", (recipe_id, s_user_id))
+        row = cursor.fetchone()
+        if row is None:
+            date_prepared = ""
+            time_prepared = ""
+            created_at = ""
+        else:
+            date_prepared = row['preparation_date'].strftime("%Y-%m-%d")
+            created_at = row['created_at']
+            td = row['time_prepared']
+            time_prepared = f"{td.seconds//3600:02d}:{(td.seconds%3600)//60:02d}:{td.seconds%60:02d}"
+        
+        cursor.close()
+        conn.close()
+        return jsonify ({'date_prepared' : date_prepared, 'time_prepared' : time_prepared, 'created_at': created_at}), 200
+    
+    except Error as err:
+        cursor.close()
+        conn.close()
+        return jsonify({'error': str(err)}), 500
+
+
 
 # Save recipe as dish
 @dishes_api_bp.route('/', methods=['POST'])
@@ -126,7 +165,6 @@ def create_dish():
             total_ingredients = 0
             for component in components:
                 total_ingredients = total_ingredients + len(component['ingredients'])
-            print("total ingredients are : ", total_ingredients)
 
             for component in components:
                 # --- component_text ---
@@ -228,7 +266,13 @@ def create_dish():
         preparation_date = recipe_details['preparation_date']
         if preparation_date is None:
             preparation_date = date.today()
-        time_perpared = recipe_details['time_perpared']
+        # Convert to Python date
+        preparation_date = datetime.strptime(preparation_date, "%d/%m/%Y").date()
+
+        time_prepared = recipe_details['time_prepared']
+        # Convert to Python time
+        time_prepared = datetime.strptime(time_prepared, "%H:%M").time()
+
         meal = recipe_details['meal']
         total_cost = recipe_details['total_cost']
         comment = recipe_details['comment']
@@ -265,7 +309,7 @@ def create_dish():
                     conn.close()
                     return jsonify({'error': f"Unit ID {ing['unit_id']} not matching with unit name- {ing['unit_name']}, ingredient ID {ing['ingredient_id']}, name - {ing['name']}"}), 400   
         
-        return jsonify({'error': 'data received in backend', 'submitted data': data}), 400    
+        # return jsonify({'error': 'data received in backend', 'submitted data': data}), 400    
         # --------------  Data checked against DB rules and about to be inserted in db  ---------------------
         # insert data into dishes table
         cursor.execute("""
@@ -277,7 +321,7 @@ def create_dish():
         # insert data into dish_ingredients table
         for component in components:
             component_text = component['component_text']
-            comp_display_order = component['display_order']
+            component_display_order = component['display_order']
 
             for ing in component['ingredients']:
                 cursor.execute("""
@@ -288,10 +332,22 @@ def create_dish():
                 """,(dish_id, component_text, component_display_order, ing['ingredient_id'], ing['name'], 
                     ing['display_order'], ing['quantity'], ing['unit_id'], ing['unit_name'], ing['cost'], ing['base_price'], ing['base_unit']))
         
+        # send created date to font end 
+        cursor.execute("SELECT preparation_date, time_prepared, created_at FROM dishes WHERE dish_id = %s",(dish_id,))
+        row = cursor.fetchone()
+        if row is None:
+            date_prepared = ""
+            time_prepared = ""
+        else:
+            date_prepared = row['preparation_date'].strftime("%Y-%m-%d")
+            created_at = row['created_at']
+            td = row['time_prepared']
+            time_prepared = f"{td.seconds//3600:02d}:{(td.seconds%3600)//60:02d}:{td.seconds%60:02d}"
+
         conn.commit()
         cursor.close()
         conn.close()        
-        return jsonify({"message": 'Successfully save in dishes prepared'}), 200
+        return jsonify({"message": 'Successfully save in dishes prepared', "date_prepared": date_prepared, "time_prepared": time_prepared}), 200
         
     except Error as err:
         conn.rollback()

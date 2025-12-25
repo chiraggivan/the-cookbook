@@ -452,6 +452,19 @@ body {
   background-color: #d5b201;
 }
 
+.dish-created-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.dish-created-info {
+  min-height: 1.2rem;     
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #777;
+  /* visibility: hidden;    */
+}
+
 .modal-overlay {
   position: fixed;
   top: 0; left: 0;
