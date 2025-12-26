@@ -36,20 +36,25 @@ def get_dishes():
 
         # Get all the dishes for the users
         cursor.execute("""
-            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by
+            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by, created_at
             FROM dishes 
             WHERE user_id = %s AND is_active = 1
             ORDER BY created_at DESC
         """,(s_user_id,))
-        recipes = cursor.fetchall()
+        dishes = cursor.fetchall()
+        for dish in dishes:
+            dish['preparation_date'] = dish['preparation_date'].isoformat()
+            dish["created_at"] = dish["created_at"].isoformat()
+            dish['time_prepared'] =  str(dish['time_prepared'])
+            dish['total_cost'] = float(dish['total_cost'])
         cursor.close()
         conn.close()
-        return jsonify(recipes)
+        return jsonify(dishes), 200
     except Error as err:
         return jsonify({'error': str(err)}), 500
 
 # Get dish details for selected dish
-@dishes_api_bp.route('/my_dish/<int:dish_id>', methods=['GET'])
+@dishes_api_bp.route('/dish/<int:dish_id>', methods=['GET'])
 @jwt_required()
 def get_dish_details(dish_id):
 
@@ -77,7 +82,7 @@ def get_dish_details(dish_id):
             cursor.close()
             conn.close()
             return jsonify({'error': 'No dishes found for the user.'}), 404
-
+        
         # Get the details of the dish for the user
         cursor.execute("""
             SELECT component_display_order, component_text, ingredient_display_order, ingredient_id, ingredient_name, quantity,
@@ -86,13 +91,21 @@ def get_dish_details(dish_id):
             WHERE dish_id = %s AND is_active = 1
         """,(dish_id,))
         dish_details = cursor.fetchall()
-
+        for detail in dish_details:
+            detail['base_price'] = float(detail['base_price'])
+            detail['quantity'] = float(detail['quantity'])
+            detail['cost'] = float(detail['cost'])
+        
         cursor.execute("""
-            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by
+            SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by, created_at
             FROM dishes 
-            WHERE dish_id = %s is_active = 1
+            WHERE dish_id = %s AND is_active = 1
         """,(dish_id,))
         dish = cursor.fetchone()
+        dish['preparation_date'] = dish['preparation_date'].isoformat()
+        dish["created_at"] = dish["created_at"].isoformat()
+        dish['time_prepared'] =  str(dish['time_prepared'])
+        dish['total_cost'] = float(dish['total_cost'])
 
         cursor.close()
         conn.close()

@@ -42,8 +42,6 @@ def last_record(recipe_id):
         conn.close()
         return jsonify({'error': str(err)}), 500
 
-
-
 # Save recipe as dish
 @dishes_api_bp.route('/', methods=['POST'])
 @jwt_required()
