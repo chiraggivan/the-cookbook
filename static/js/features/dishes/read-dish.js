@@ -1,5 +1,5 @@
 import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js"; 
-
+import { recipePreparedDateInfo } from "./helpers/dish_utils.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
 const decoded = parseJwt(token); // console.log("decoded : ",decoded);
@@ -24,7 +24,6 @@ function parseJwt(token) {
     }
 }
 
-//load the data of recipe from the db to html page
 async function loadDishDetails() {
   try {
     const res = await fetch(`/dishes/api/dish/${dishId}`, {
@@ -38,14 +37,22 @@ async function loadDishDetails() {
     console.log("data from backend: ", data);
     const dish = data.dish;
     const dish_ingredients = data.dish_details;
+    const recipeId = dish.recipe_id;
     const recipeOwnerId = dish.recipe_by; //console.log(" recipe user id : ", recipe_user_id)
     const isOwner = (loggedInUserId === recipeOwnerId); //console.log("isOwner:", isOwner);
-
+    
     // Title + Meta + Description
     document.getElementById("recipe-name").textContent = dish.recipe_name;
 
-    document.getElementById("recipe-meta").innerHTML = `
+    const display_text = recipePreparedDateInfo(dish.preparation_date, dish.time_prepared);
+    document.getElementById("dish-created-at").textContent = display_text;
+
+    document.getElementById("dish-meta").innerHTML = `
       <strong>Portion Size:</strong> ${dish.portion_size}
+    `;
+
+    document.getElementById("dish-meal").innerHTML = `
+      <strong>Prepared for :</strong> ${dish.meal}
     `;
 
     document.getElementById("recipe-description").innerHTML = `
@@ -55,56 +62,12 @@ async function loadDishDetails() {
     const totalCostEl = document.getElementById("recipe-total-cost");
     totalCostEl.textContent = `Total Cost: £${dish.total_cost.toFixed(2).replace(/\.00$/, "")}`;
 
-    // Show Buttons - check logged in user and recipe owner same or not and show BUTTONS accordingly (toggle switch + buttons)
-    const actionsEl = document.getElementById("recipe-actions");
-    // if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
-    //   document.getElementById('recipe-buttons').style.display = 'block';
-    //   actionsEl.innerHTML = `
-    //     <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-    //       <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Private"}</span>
-    //       <label class="switch">
-    //         <input type="checkbox" id="privacy-toggle" ${recipe.privacy === "private" ? "checked" : ""}>
-    //         <span class="slider round"></span>
-    //       </label>
-    //     </span>
-    //   `;
-
-    //   // Bind toggle logic only when toggle exists
-    //   const privacyToggle = document.getElementById("privacy-toggle");
-    //   const privacyLabel = document.getElementById("privacy-label");
-
-    //   privacyToggle.addEventListener("change", async () => {
-    //     const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
-    //     //privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
-        
-    //     try {
-    //       const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
-    //         method: "PUT",
-    //         headers: {
-    //           "Authorization": `Bearer ${token}`,
-    //           "Content-Type": "application/json"
-    //         },
-    //         body: JSON.stringify({ privacy: newPrivacy })
-    //       });
-    //       const result = await response.json(); //console.log("privacy update response:", result);
-
-    //       if (!response.ok) {
-    //         showAlert(result.error || "Failed to update privacy.", true);
-    //       } else {
-    //         //showAlert(result.message || "Privacy updated successfully!");
-    //       }
-    //     } catch (err) {
-    //       //console.error("Error updating privacy:", err);
-    //       showAlert("Something went really wrong.", true);
-    //     }
-    //   });
-    // } 
-    // else { //console.log("Rendering 'By' section for viewer...");
-    //   document.getElementById('recipe-buttons').style.display = 'none';
-    //   actionsEl.innerHTML = `
-    //     <span><strong>By:</strong> ${recipe.username}</span>
-    //   `;
-    // }
+    if(!isOwner){
+      document.getElementById("recipe-by").style.display = 'block';
+      document.getElementById("recipe-by").innerHTML = `
+      <strong> Recipe by : </strong> ${dish.recipe_by_name}
+      `
+    }
 
     // Ingredients Table
     const tbody = document.querySelector("#ingredients-table tbody");
@@ -177,33 +140,16 @@ async function loadDishDetails() {
   }
 }
 
-// calculate the total cost of recipe 
-function updateTotalRecipeCost() {
-  const priceCells = document.querySelectorAll(".ingredient-price");
-  let total = 0;
-
-  priceCells.forEach(cell => {
-    const value = parseFloat(cell.textContent.replace(/,/g, "")) || 0;
-    total += value;
-  });
-  
-  const totalCostEl = document.getElementById("recipe-total-cost");
-  if (totalCostEl) {
-    totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
 
-
-  const deleteBtn = document.getElementById("delete-recipe-btn");
+  const deleteBtn = document.getElementById("dish-delete-btn");
   deleteBtn.addEventListener("click", async () => {
     //use custom modal confirm instead of native confirm
-    const confirmed = await showConfirm("Are you sure you want to delete this recipe?");
+    const confirmed = await showConfirm("Are you sure you want to delete this dish record?");
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/recipes/api/delete_recipe/${recipeId}`, {
+      const response = await fetch(`/dishes/api/delete_dish/${dishId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -213,13 +159,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json(); //console.log("data is : ", data);
 
       if (response.ok) {
-        showAlert(data.message || "Recipe deleted successfully!");
-        setTimeout(() => { window.location.href = "/recipes"; }, 2500);
+        showAlert(data.message || "Dish deleted successfully!");
+        setTimeout(() => { window.location.href = "/dishes"; }, 2500);
       } else {
         showAlert(data.error || "Failed to delete recipe.", true);
       }
     } catch (err) {
-        console.error("Error deleting recipe:", err);
+        console.error("Error deleting dish:", err);
         showAlert("Something went wrong.", true);
     }
   });   
@@ -340,3 +286,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
 //     }
 //   });
+
+
+// calculate the total cost of recipe 
+// function updateTotalRecipeCost() {
+//   const priceCells = document.querySelectorAll(".ingredient-price");
+//   let total = 0;
+
+//   priceCells.forEach(cell => {
+//     const value = parseFloat(cell.textContent.replace(/,/g, "")) || 0;
+//     total += value;
+//   });
+  
+//   const totalCostEl = document.getElementById("recipe-total-cost");
+//   if (totalCostEl) {
+//     totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
+//   }
+// }
+
+// function recipePreparedDateInfo(createdDate,createdTime){
+//   // Combine into one string in ISO format
+//   const [year, month, day] = createdDate.split("-").map(Number);
+//   const [hour, minute, second] = createdTime.split(":").map(Number);
+
+//   const createdAt = new Date(year, month - 1, day, hour, minute, second);
+//   const now = new Date();
+
+//   const diffInMillis = now - createdAt;           // difference in milliseconds
+//   const diffInMinutes = diffInMillis / (1000 * 60);
+//   const diffInHours = diffInMillis / (1000 * 60 * 60);
+
+//   let displayText = "";
+//   if (diffInMinutes < 60) {
+//     displayText = `Prepared Now at ${formatTime(createdAt)}`; 
+//   } 
+//   else if (isSameDay(createdAt, now)) {
+//     displayText = `Prepared Today at ${formatTime(createdAt)}`; 
+//   } 
+//   else if (isYesterday(createdAt)) {
+//     displayText = `Prepared Yesterday at ${formatTime(createdAt)}`;
+//   } 
+//   else {
+//     displayText = `Prepared on ${formatDate(createdAt)}`;
+//   }
+
+//   const currentlyCreated = document.getElementById("dish-created-at");
+//   currentlyCreated.textContent = displayText;
+// }
+
+//load the data of recipe from the db to html page

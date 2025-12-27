@@ -7,10 +7,14 @@
 </head>
 <body class="recipes-page">
   <a href="/dishes/" class="back-link">← All Dishes</a>
-  <h1 id="recipe-name"></h1>
+  <div id="recipe-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 id="recipe-name"></h1>
+    <h2 id="dish-created-at"></h2>
+  </div>
+  
   <p id="recipe-info" style="display: flex; justify-content: space-between; align-items: center;">
-    <span id="recipe-meta"></span>
-    <span id="recipe-actions"></span>
+    <span id="dish-meta"></span>
+    <span id="dish-meal"></span>
   </p>
 
   <p id="recipe-description"></p>
@@ -18,15 +22,12 @@
 
   <!-- show the below buttons only if logged in user and recipe owner same-->
   <div class="nav-container">
-    <div id="recipe-buttons" style="display: none;">
-      <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
-      <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
-    </div>
     <div class="dish-created-wrapper">
-      <button id="dish-created-btn" class="action-btn dish-created-btn">Dish Created Now</button>
-      <div id="dish-created-info" class="dish-created-info">
-        
+      <button id="dish-delete-btn" class="action-btn delete-btn">Delete Record</button>
+      <div id="dish-created-info" class="dish-created-info">      
       </div>
+    </div>
+    <div id="recipe-by" style="display: none;">
     </div>
   </div>
   

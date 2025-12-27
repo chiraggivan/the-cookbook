@@ -1,5 +1,5 @@
 import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js"; 
-
+import { recipePreparedDateInfo } from "../dishes/helpers/dish_utils.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
 const decoded = parseJwt(token); // console.log("decoded : ",decoded);
@@ -135,10 +135,11 @@ async function loadRecipeDetails() {
       if (response.ok) {
         const createdDate = data.date_prepared; 
         const createdTime = data.time_prepared;
-  
+        
         if(createdDate !== "" && createdTime !== ""){
           let createDishBtnPressed = false;
-          addInfoBelowCreateDish(createdDate, createdTime, createDishBtnPressed);
+          const display_text = `Last ${recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed)}`;
+          document.getElementById("dish-created-info").textContent = display_text;
         }
       }
     } catch(err){
@@ -255,125 +256,6 @@ function updateTotalRecipeCost() {
   }
 }
 
-function isSameDay(d1, d2) {
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
-}
-
-function isYesterday(date) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return isSameDay(date, yesterday);
-}
-
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(date) {
-  return date.toLocaleDateString([], { day: 'numeric', month: 'long' });
-}
-
-// function showAlert(message, isError = false, autoClose = true) {
-//   const overlay = document.getElementById("modal-overlay");
-//   const alertBox = document.getElementById("alert-box");
-//   const alertMessage = document.getElementById("alert-message");
-//   const alertActions = document.getElementById("alert-actions");
-
-//   alertMessage.textContent = message;
-//   alertBox.className = "alert-box" + (isError ? " error" : " success");
-//   overlay.style.display = "flex";
-//   alertActions.style.display = "none"; // hide OK button if autoclose
-
-//   if (autoClose) {
-//     setTimeout(() => {
-//       overlay.style.display = "none";
-//     }, 2000); // hide after 2s
-//   } else {
-//     alertActions.style.display = "block"; // show OK button
-//     document.getElementById("alert-ok").onclick = () => {
-//       overlay.style.display = "none";
-//     };
-//   }
-// }
-
-// function showConfirm(message) {
-//   return new Promise((resolve) => {
-//     const overlay = document.getElementById("modal-overlay");
-//     const alertBox = document.getElementById("alert-box");
-//     const alertMessage = document.getElementById("alert-message");
-//     const alertActions = document.getElementById("alert-actions");
-
-//     alertMessage.textContent = message;
-//     alertBox.className = "alert-box";
-//     overlay.style.display = "flex";
-
-//     // Replace actions with Yes/No buttons
-//     alertActions.innerHTML = `
-//       <button id="confirm-yes">Yes</button>
-//       <button id="confirm-no" style="background:#f44336;">No</button>
-//     `;
-//     alertActions.style.display = "block";
-
-//     document.getElementById("confirm-yes").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(true);
-//     };
-//     document.getElementById("confirm-no").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(false);
-//     };
-//   });
-// }
-
-function addInfoBelowCreateDish(createdDate,createdTime, isButtonPressed){
-  // Combine into one string in ISO format
-  const newCombined = `${createdDate}T${createdTime}`; 
-  
-  // Create a Date object
-  const createdAt = new Date(newCombined);
-  const now = new Date();
-
-  const diffInMillis = now - createdAt;           // difference in milliseconds
-  const diffInMinutes = diffInMillis / (1000 * 60);
-  const diffInHours = diffInMillis / (1000 * 60 * 60);
-
-  let displayText = "";
-  if (diffInMinutes < 60) {
-    if (isButtonPressed){
-      displayText = `Record created now at ${formatTime(createdAt)}`;
-    }else{
-      displayText = `Last created recently at ${formatTime(createdAt)}`;
-    }
-  } 
-  else if (isSameDay(createdAt, now)) {
-    if (isButtonPressed){
-      displayText = `Record created for today at ${formatTime(createdAt)}`;
-    }else{
-      displayText = `Last created today at ${formatTime(createdAt)}`;
-    } 
-  } 
-  else if (isYesterday(createdAt)) {
-    if(isButtonPressed){
-      displayText = `Record created for yesterday at ${formatTime(createdAt)}`;
-    }else{
-      displayText = `Last created yesterday at ${formatTime(createdAt)}`;
-    }
-  } 
-  else {
-    if(isButtonPressed){
-      displayText = `Record created for ${formatDate(createdAt)}`;
-    }
-      displayText = `Last created at  ${formatDate(createdAt)}`;
-  }
-
-  const currentlyCreated = document.getElementById("dish-created-info");
-  currentlyCreated.textContent = displayText;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const editBtn = document.getElementById("edit-recipe-btn");
   editBtn.addEventListener("click", async () => {
@@ -431,7 +313,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if(createdDate !== "" && createdTime !== ""){
           let createDishBtnPressed = true;
-          addInfoBelowCreateDish(createdDate, createdTime, createDishBtnPressed);
+          const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
+          document.getElementById("dish-created-info").textContent = display_text
         }
       } else {
         showAlert(data.error || "Failed to create dish.", true);
@@ -461,4 +344,58 @@ document.addEventListener("DOMContentLoaded", () => {
 //   localStorage.removeItem("access_token");
 //   document.getElementById("error").textContent = "Please log in to view recipe details.";
 //   setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
+// }
+
+
+
+// function showAlert(message, isError = false, autoClose = true) {
+//   const overlay = document.getElementById("modal-overlay");
+//   const alertBox = document.getElementById("alert-box");
+//   const alertMessage = document.getElementById("alert-message");
+//   const alertActions = document.getElementById("alert-actions");
+
+//   alertMessage.textContent = message;
+//   alertBox.className = "alert-box" + (isError ? " error" : " success");
+//   overlay.style.display = "flex";
+//   alertActions.style.display = "none"; // hide OK button if autoclose
+
+//   if (autoClose) {
+//     setTimeout(() => {
+//       overlay.style.display = "none";
+//     }, 2000); // hide after 2s
+//   } else {
+//     alertActions.style.display = "block"; // show OK button
+//     document.getElementById("alert-ok").onclick = () => {
+//       overlay.style.display = "none";
+//     };
+//   }
+// }
+
+// function showConfirm(message) {
+//   return new Promise((resolve) => {
+//     const overlay = document.getElementById("modal-overlay");
+//     const alertBox = document.getElementById("alert-box");
+//     const alertMessage = document.getElementById("alert-message");
+//     const alertActions = document.getElementById("alert-actions");
+
+//     alertMessage.textContent = message;
+//     alertBox.className = "alert-box";
+//     overlay.style.display = "flex";
+
+//     // Replace actions with Yes/No buttons
+//     alertActions.innerHTML = `
+//       <button id="confirm-yes">Yes</button>
+//       <button id="confirm-no" style="background:#f44336;">No</button>
+//     `;
+//     alertActions.style.display = "block";
+
+//     document.getElementById("confirm-yes").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(true);
+//     };
+//     document.getElementById("confirm-no").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(false);
+//     };
+//   });
 // }

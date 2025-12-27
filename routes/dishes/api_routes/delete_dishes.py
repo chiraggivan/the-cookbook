@@ -5,7 +5,7 @@ from flask_jwt_extended import JWTManager, jwt_required, create_access_token, ge
 from . import dishes_api_bp
 
 # Delete dishes prepared by user
-@dishes_api_bp.route('/dishes/<int:dish_id>', methods=['DELETE'])
+@dishes_api_bp.route('/delete_dish/<int:dish_id>', methods=['DELETE'])
 @jwt_required()
 def delete_dishes(dish_id):
 
@@ -32,11 +32,17 @@ def delete_dishes(dish_id):
         if not cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'error': 'No particular dish found for the user.'}), 404
+            return jsonify({'error': 'No particular active dish found for the user.'}), 404
 
-        # Delete dish for the user
+        # Update dish, make is_active = 0
         cursor.execute("""
             UPDATE dishes
+            SET is_active = 0, end_date = CURRENT_TIMESTAMP
+            WHERE dish_id = %s
+        """,(dish_id,))
+
+        cursor.execute("""
+            UPDATE dish_ingredients
             SET is_active = 0, end_date = CURRENT_TIMESTAMP
             WHERE dish_id = %s
         """,(dish_id,))
