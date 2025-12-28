@@ -1,3 +1,5 @@
+import { showAlert } from "../../core/utils.js";
+
 const token = localStorage.getItem("access_token");
 
 // check if user is admin and display menu accordingly

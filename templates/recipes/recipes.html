@@ -38,22 +38,29 @@
     const token = localStorage.getItem("access_token");
 
     // Function to decode JWT and check role
-    function getUserRole(token) {
+    function getUserFromToken(token) {
       try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
-        return JSON.parse(jsonPayload).role;
+        const payload = JSON.parse(jsonPayload);
+
+        return {
+          user_id: payload.sub,  
+          role: payload.role
+        };
       } catch (e) {
         return null;
       }
     }
 
+    const data = getUserFromToken(token);
+    const role = data.role;
+    const userId = parseInt(data.user_id);
     // Show admin options if user is admin
     if (token) {
-      const role = getUserRole(token);
       if (role === 'admin') {
         document.querySelector('.admin-options').style.display = 'inline-flex';
       }
@@ -62,7 +69,7 @@
       document.getElementById("error").textContent = "Please log in to view recipes.";
       setTimeout(() => { window.location.href = "auth/login"; }, 1000);
     }
-
+    
     async function loadRecipes() {
       try {
         const res = await fetch("/recipes/api/all_recipes", {
@@ -75,12 +82,18 @@
         const tbody = document.querySelector("#recipeList tbody");
         tbody.innerHTML = "";
         data.forEach(r => {
+          let user;
+          if (r.user_id === userId){
+            user = "You"
+          }else {
+            user = r.username
+          }
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${r.recipe_id}</td>
             <td><a href="/recipes/details/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
             <td>${r.description}</td>
-            <td><a href="/recipes/user/${r.user_id}" class="recipe-link">${r.user_id}</a></td>
+            <td><a href="/recipes/user/${r.user_id}" class="recipe-link">${user}</a></td>
           `;
           tbody.appendChild(tr);
         });

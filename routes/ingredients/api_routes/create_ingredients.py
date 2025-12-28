@@ -112,10 +112,11 @@ def create_ingredient():
             # --- cup_equivalent_weight  and cup_equivalent_unit---
             cup_equivalent_weight = data.get("cup_equivalent_weight")
             cup_equivalent_unit = data.get("cup_equivalent_unit")
+            print("cup_equivalent_weight : ", cup_equivalent_weight, "cup_equivalent_unit : ", cup_equivalent_unit)
 
             # Check if both are either empty or filled
-            if (cup_equivalent_weight in (None, '') and cup_equivalent_unit not in (None, '')) \
-            or (cup_equivalent_weight not in (None, '') and cup_equivalent_unit in (None, '')):
+            if (cup_equivalent_weight in (0, None, '') and cup_equivalent_unit not in (None, '')) \
+            or (cup_equivalent_weight not in (0, None, '') and cup_equivalent_unit in (None, '')):
                 return "Both cup_equivalent_weight and cup_equivalent_unit must be provided together or left empty"
 
             # --- cup_equivalent_weight --- if present

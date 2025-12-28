@@ -21,7 +21,7 @@ def last_record(recipe_id):
         cursor = conn.cursor(dictionary=True)
 
         #check the date 
-        cursor.execute("SELECT preparation_date, time_prepared, created_at FROM dishes WHERE recipe_id =  %s AND user_id = %s AND is_active = 1 ORDER BY created_at DESC LIMIT 1", (recipe_id, s_user_id))
+        cursor.execute("SELECT preparation_date, time_prepared, created_at FROM dishes WHERE recipe_id =  %s AND user_id = %s AND is_active = 1 ORDER BY preparation_date DESC LIMIT 1", (recipe_id, s_user_id))
         row = cursor.fetchone()
         if row is None:
             date_prepared = ""
@@ -265,7 +265,7 @@ def create_dish():
         if preparation_date is None:
             preparation_date = date.today()
         # Convert to Python date
-        preparation_date = datetime.strptime(preparation_date, "%d/%m/%Y").date()
+        preparation_date = datetime.strptime(preparation_date, "%Y-%m-%d").date()
 
         time_prepared = recipe_details['time_prepared']
         # Convert to Python time
@@ -330,7 +330,7 @@ def create_dish():
                 """,(dish_id, component_text, component_display_order, ing['ingredient_id'], ing['name'], 
                     ing['display_order'], ing['quantity'], ing['unit_id'], ing['unit_name'], ing['cost'], ing['base_price'], ing['base_unit']))
         
-        # send created date to font end 
+        # send created date to front end 
         cursor.execute("SELECT preparation_date, time_prepared, created_at FROM dishes WHERE dish_id = %s",(dish_id,))
         row = cursor.fetchone()
         if row is None:

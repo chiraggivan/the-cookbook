@@ -15,15 +15,18 @@ def get_recipes():
     if not s_user_id:
         return jsonify({'error': 'No user identity found in token'}), 401
     try:
+        # connect to db
         conn = get_db_connection()
         if conn is None:
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
+
+        #fetch all the recipes of the users as well as public recipes of other users
         cursor.execute("""
-        SELECT recipe_id, name, user_id, portion_size, description 
-        FROM recipes 
-        WHERE is_active = TRUE
-        AND (user_id = %s OR privacy = 'public') """,(s_user_id,))
+        SELECT r.recipe_id, r.name, r.user_id, r.portion_size, r.description, u.username 
+        FROM recipes r JOIN users u ON r.user_id = u.user_id
+        WHERE r.is_active = TRUE
+        AND (r.user_id = %s OR r.privacy = 'public') """,(s_user_id,))
         recipes = cursor.fetchall()
         cursor.close()
         conn.close()

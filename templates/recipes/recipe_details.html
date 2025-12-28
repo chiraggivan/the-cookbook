@@ -55,12 +55,68 @@
     <button id="edit-recipe-btn" class="action-btn edit-btn">Edit Recipe</button>
     <button id="delete-recipe-btn" class="action-btn delete-btn">Delete Recipe</button>
   </div>
+  <!-- Modal overlay for showing alert for delete recipe  -->
   <div id="modal-overlay" class="modal-overlay" style="display:none;">
     <div id="alert-box" class="alert-box">
       <p id="alert-message"></p>
       <div id="alert-actions" style="display:none;">
         <button id="alert-ok">OK</button>
       </div>
+    </div>
+  </div>
+
+  <!-- modal Overlay for creating record of dish -->
+  <div id="wizard-overlay" class="modal-overlay hidden">
+    <div class="modal">
+
+      <!-- STEP 1: Meal -->
+      <div class="step active" data-step="1">
+        <h3>Select Meal</h3>
+
+        <select id="mealSelect">
+          <option value="">-- Select meal --</option>
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+        </select>
+
+        <div class="modal-actions">
+          <button class="btn cancel">Cancel</button>
+          <button class="btn next" disabled>Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Date & Time -->
+      <div id="date-time" class="step" data-step="2">
+        <h3>Date & Time</h3>
+
+        <div class="row">
+          <input type="date" id="dateInput">
+          <input type="time" id="timeInput">
+        </div>
+
+        <p class="hint">Press next if this is for today</p>
+
+        <div class="modal-actions">
+          <button class="btn cancel">Cancel</button>
+          <button class="btn back">Back</button>
+          <button class="btn next">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Comment -->
+      <div class="step" data-step="3">
+        <h3>Comment</h3>
+
+        <textarea id="commentInput" maxlength="50" placeholder="Optional: Made for Birthday, Family visit, etc.,"></textarea>
+
+        <div class="modal-actions">
+          <button class="btn cancel">Cancel</button>
+          <button class="btn back">Back</button>
+          <button class="btn save">Save</button>
+        </div>
+      </div>
+
     </div>
   </div>
 

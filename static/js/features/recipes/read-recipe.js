@@ -53,9 +53,9 @@ async function loadRecipeDetails() {
       dish_data['recipe_id'] = recipe.recipe_id;
       dish_data['recipe_name'] = recipe.name;
       dish_data['portion_size'] = recipe.portion_size;
-      dish_data['preparation_date'] = dateOnly;
-      dish_data['time_prepared'] = timeOnly;
-      dish_data['meal'] = 'lunch';
+      // dish_data['preparation_date'] = dateOnly;
+      // dish_data['time_prepared'] = timeOnly;
+      // dish_data['meal'] = 'lunch';
       dish_data['recipe_by'] = recipe.user_id;
       dish_data['comment'] = '';
     }
@@ -256,6 +256,9 @@ function updateTotalRecipeCost() {
   }
 }
 
+
+
+
 document.addEventListener("DOMContentLoaded", () => {
   const editBtn = document.getElementById("edit-recipe-btn");
   editBtn.addEventListener("click", async () => {
@@ -294,36 +297,236 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // const dishCreatedBtn = document.getElementById("dish-created-btn"); 
+  // dishCreatedBtn.addEventListener("click", async () => {
+  //   try {
+  //     const response = await fetch(`/dishes/api/`,{
+  //       method: "POST",
+  //       headers: {
+  //         "Authorization": `Bearer ${token}`,
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify(dish_data)
+  //     }); //console.log("response is :" , response);
+      
+  //     const data = await response.json(); //console.log("data received :",data);
+  //     if (response.ok) {
+  //       const createdDate = data.date_prepared; 
+  //       const createdTime = data.time_prepared;
+
+  //       if(createdDate !== "" && createdTime !== ""){
+  //         let createDishBtnPressed = true;
+  //         const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
+  //         document.getElementById("dish-created-info").textContent = display_text
+  //       }
+  //     } else {
+  //       showAlert(data.error || "Failed to create dish.", true);
+  //     }
+  //   } catch(err){
+  //     showAlert("Something went wrong.", true);
+  //   }
+  // });  
+  
   const dishCreatedBtn = document.getElementById("dish-created-btn"); 
   dishCreatedBtn.addEventListener("click", async () => {
-    try {
-      const response = await fetch(`/dishes/api/`,{
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(dish_data)
-      }); //console.log("response is :" , response);
-      
-      const data = await response.json(); //console.log("data received :",data);
-      if (response.ok) {
-        const createdDate = data.date_prepared; 
-        const createdTime = data.time_prepared;
 
-        if(createdDate !== "" && createdTime !== ""){
-          let createDishBtnPressed = true;
-          const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
-          document.getElementById("dish-created-info").textContent = display_text
-        }
-      } else {
-        showAlert(data.error || "Failed to create dish.", true);
-      }
-    } catch(err){
-      showAlert("Something went wrong.", true);
+    const overlay = document.getElementById("wizard-overlay");
+    const steps = document.querySelectorAll(".step");
+    const mealSelect = document.getElementById("mealSelect");
+    const dateInput = document.getElementById("dateInput");
+    const timeInput = document.getElementById("timeInput");
+    const commentInput = document.getElementById("commentInput");
+    let currentStep = 1;
+
+    // Open modal
+    function openWizard() {
+      overlay.classList.remove("hidden");
     }
-  });     
+
+    // Close modal
+    function closeWizard() {
+      overlay.classList.add("hidden");
+    }
+
+    // Show step
+    function showStep(step) {
+      currentStep = step;
+      steps.forEach(s => s.classList.remove("active"));
+      document.querySelector(`[data-step="${step}"]`).classList.add("active");
+    }
+
+    openWizard();
+
+    // Enable Next only when meal selected
+    mealSelect.addEventListener("change", () => {
+      const nextBtn = overlay.querySelector('[data-step="1"] .next');
+      nextBtn.disabled = mealSelect.value === "";
+      dish_data['meal'] = mealSelect.value;
+    });
+
+    // Button handling
+    overlay.addEventListener("click", async (e) => {
+      if (e.target.classList.contains("cancel")) {
+        closeWizard();
+      }
+
+      if (e.target.classList.contains("next")) {
+        console.log("dish data is: ", dish_data);
+        console.log("date is : ", dateInput.value);
+        console.log("time is : ", timeInput.value);
+        const createdAt = new Date();  // Convert string to Date object
+        const dateOnly = createdAt.toISOString().split("T")[0];  // "2025-12-24" (UK format)
+        const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+
+        if (dateInput.value){
+          dish_data['preparation_date'] = dateInput.value;
+        }else {
+          dish_data['preparation_date'] = dateOnly
+        }
+
+        if (timeInput.value){
+          dish_data['time_prepared'] = timeInput.value;
+        }else {
+          dish_data['time_prepared'] = timeOnly 
+        }
+        
+
+        showStep(currentStep + 1);
+      }
+
+      if (e.target.classList.contains("back")) {
+        showStep(currentStep - 1);
+      }
+
+      if (e.target.classList.contains("save")) {
+        dish_data['comment'] = commentInput.value;
+        try {
+          const response = await fetch(`/dishes/api/`,{
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(dish_data)
+          }); //console.log("response is :" , response);
+          
+          const data = await response.json(); //console.log("data received :",data);
+          if (response.ok) {
+            const createdDate = data.date_prepared; 
+            const createdTime = data.time_prepared;
+
+            if(createdDate !== "" && createdTime !== ""){
+              let createDishBtnPressed = true;
+              const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
+              document.getElementById("dish-created-info").textContent = display_text
+            }
+          } else {
+            showAlert(data.error || "Failed to create dish.", true);
+          }
+        } catch(err){
+          showAlert("Something went wrong.", true);
+        }
+        
+        closeWizard();
+      }
+    });
+
+  });
 });
+
+
+
+// const overlay = document.getElementById("wizard-overlay");
+// const steps = document.querySelectorAll(".step");
+
+// const mealSelect = document.getElementById("mealSelect");
+// const dateInput = document.getElementById("dateInput");
+// const timeInput = document.getElementById("timeInput");
+// const commentInput = document.getElementById("commentInput");
+
+// let currentStep = 1;
+
+// // Open modal
+// function openWizard() {
+//   overlay.classList.remove("hidden");
+//   showStep(1);
+
+//   // Defaults
+//   const now = new Date();
+//   dateInput.value = now.toISOString().split("T")[0];
+//   timeInput.value = now.toTimeString().slice(0,5);
+// }
+
+// // Close modal
+// function closeWizard() {
+//   overlay.classList.add("hidden");
+// }
+
+// // Show step
+// function showStep(step) {
+//   currentStep = step;
+//   steps.forEach(s => s.classList.remove("active"));
+//   document.querySelector(`[data-step="${step}"]`).classList.add("active");
+// }
+
+// // Enable Next only when meal selected
+// mealSelect.addEventListener("change", () => {
+//   const nextBtn = document.querySelector('[data-step="1"] .next');
+//   nextBtn.disabled = mealSelect.value === "";
+// });
+
+// // Button handling
+// overlay.addEventListener("click", (e) => {
+//   if (e.target.classList.contains("cancel")) {
+//     closeWizard();
+//   }
+
+//   if (e.target.classList.contains("next")) {
+//     showStep(currentStep + 1);
+//   }
+
+//   if (e.target.classList.contains("back")) {
+//     showStep(currentStep - 1);
+//   }
+
+//   if (e.target.classList.contains("save")) {
+//     const payload = {
+//       meal: mealSelect.value,
+//       date: dateInput.value,
+//       time: timeInput.value,
+//       comment: commentInput.value
+//     };
+
+//     console.log("Saved data:", payload);
+//     closeWizard();
+//   }
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

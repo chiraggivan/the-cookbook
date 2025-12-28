@@ -39,7 +39,7 @@ def get_dishes():
             SELECT dish_id, recipe_id, recipe_name, portion_size, preparation_date, total_cost, comment, time_prepared, meal, recipe_by, created_at
             FROM dishes 
             WHERE user_id = %s AND is_active = 1
-            ORDER BY created_at DESC
+            ORDER BY preparation_date DESC
         """,(s_user_id,))
         dishes = cursor.fetchall()
         for dish in dishes:
