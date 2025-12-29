@@ -702,3 +702,83 @@ input[type=number]::-webkit-inner-spin-button {
   outline: 1px solid #ccc;
   background: #fff;
 }
+
+/* for create food plan page */
+.center-content {
+  height: calc(100vh - 120px); /* adjust if nav height differs */
+  display: flex;
+  justify-content: center;
+  align-items: center;    /* vertical center */
+}
+
+.plan-btn {
+  font-size: 5rex;
+}
+
+.week-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.box {
+  flex: 1;                     /* all boxes equal width */
+  height: 140px;
+  border: 2px solid #ccc;
+  background: #fff;
+  border-radius: 8px;
+  position: relative;
+}
+
+/* WEEK box */
+.week-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+/* DAY boxes */
+.day-box {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  padding-top: 8px;            /* space from top */
+}
+
+.week-row {
+  overflow-x: auto;
+}
+
+.box:hover {
+  border-color: #38873c;
+}
+
+.day-box {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.day-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(128, 128, 128, 0.5); /* 50% grey */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.day-box:hover::after {
+  content: "EDIT";
+  opacity: 1;
+}
