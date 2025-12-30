@@ -149,6 +149,26 @@ export function isTokenValid(token) {
     }
 }
 
+// Function to decode JWT, check role and get user_i
+export function getUserFromToken(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    const payload = JSON.parse(jsonPayload);
+
+    return {
+      user_id: payload.sub,  
+      role: payload.role
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+
 // --- Hybrid global compatibility (for non-module scripts) ---
 if (typeof window !== "undefined") {
   window.isTokenValid = isTokenValid;

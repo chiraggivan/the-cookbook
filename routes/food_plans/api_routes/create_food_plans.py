@@ -138,15 +138,57 @@ def create_food_plan_id():
             cursor.close()
             conn.close()
             return jsonify({'error': 'food plan already exist. Cant create new food plan.'}), 404
-        
+        # return jsonify({'message': 'About to insert', 'plan_id' : 2}), 200
         # ------------------ Inserting data in db  ------------------------
         cursor.execute("""
             INSERT INTO food_plans (user_id, total_weeks)
             VALUES (%s,%s)
         """,(s_user_id, total_weeks))
         food_plan_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'New food plan created successfully!!!', 'plan_id' : food_plan_id}), 200
 
-        return jsonify({'data' : food_plan_id}), 200
+    except Error as err:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return jsonify({'error': str(err)}), 500
+
+@food_plans_api_bp.route('/check-user', methods=['GET'])
+@jwt_required()
+def check_user_has_plan():
+
+    s_user_id = get_jwt_identity()
+    print("logged in user id : ",s_user_id)
+        
+    try:
+        # --------------------------- connect db and verify data --------------------------
+        # connect to db        
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        # check user is valid and active
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+
+        # check if there is already food_plan_id assigned to the user
+        cursor.execute("SELECT food_plan_id from food_plans WHERE user_id = %s",(s_user_id,))
+        row = cursor.fetchone()
+        if not row or row.get('food_plan_id') is None:
+            cursor.close()
+            conn.close()
+            return jsonify({'message': 'user doesnt have food plan', 'userExist': False }), 200
+
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'user has a food plan', 'userExist': True, 'plan_id': row.get('food_plan_id') }), 200
 
     except Error as err:
         conn.rollback()

@@ -37,7 +37,7 @@
   <script>
     const token = localStorage.getItem("access_token");
 
-    // Function to decode JWT and check role
+    // Function to decode JWT, check role and get user_i
     function getUserFromToken(token) {
       try {
         const base64Url = token.split('.')[1];
