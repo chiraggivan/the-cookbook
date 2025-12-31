@@ -760,6 +760,7 @@ input[type=number]::-webkit-inner-spin-button {
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  padding: 10px 12px;
 }
 
 .day-box::after {
@@ -782,3 +783,25 @@ input[type=number]::-webkit-inner-spin-button {
   content: "EDIT";
   opacity: 1;
 }
+
+.meal-type {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.recipe-row {
+  display: flex;
+  font-size: x-small;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recipe-name {
+  text-align: left;
+}
+
+.recipe-cost {
+  text-align: right;
+  font-weight: 600;
+}
+

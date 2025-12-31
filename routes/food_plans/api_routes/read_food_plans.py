@@ -107,7 +107,7 @@ def get_food_plan():
                         if row is None:
                             continue
                         recipe_name = row['recipe_name']
-                        cost = row['price']
+                        cost = round(float(row['price']),2)
                         
                         each_food_recipe_plan = {
                             'food_plan_recipe_id': recipe['food_plan_recipe_id'],
