@@ -27,13 +27,13 @@
 
   <div id="week-1" class="week-row" style="display: none;">
     <div id="w1" class="box week-box">Week 1</div>
-    <div id="d11" class="box day-box">Day 1</div>
-    <div id="d12" class="box day-box">Day 2</div>
-    <div id="d13" class="box day-box">Day 3</div>
-    <div id="d14" class="box day-box">Day 4</div>
-    <div id="d15" class="box day-box">Day 5</div>
-    <div id="d16" class="box day-box">Day 6</div>
-    <div id="d17" class="box day-box">Day 7</div>
+    <div id="week-1-day-1" class="box day-box">Day 1</div>
+    <div id="week-1-day-2" class="box day-box">Day 2</div>
+    <div id="week-1-day-3" class="box day-box">Day 3</div>
+    <div id="week-1-day-4" class="box day-box">Day 4</div>
+    <div id="week-1-day-5" class="box day-box">Day 5</div>
+    <div id="week-1-day-6" class="box day-box">Day 6</div>
+    <div id="week-1-day-7" class="box day-box">Day 7</div>
   </div>
 
   <div id="error"> </div>
@@ -48,6 +48,63 @@
     </div>
   </div>
 
+  <!-- Modal for showing edit day page -->
+  <div id="meal-modal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+
+      <!-- Modal header -->
+      <div class="modal-header">
+        <h3>Add Meal</h3>
+        <button class="close-btn">&times;</button>
+      </div>
+
+      <!-- Modal body -->
+      <div class="modal-body">
+
+        <!-- LEFT COLUMN -->
+        <div class="modal-left">
+
+          <!-- Row 1: Meal type dropdown -->
+          <div class="modal-row">
+            <label for="meal-type">Meal Type</label>
+            <select id="meal-type">
+              <option value="">Select meal</option>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+            </select>
+          </div>
+
+          <!-- Row 2: Recipe search input -->
+          <div class="modal-row">
+            <label for="recipe-search">Recipe</label>
+            <input
+              type="text"
+              id="recipe-search"
+              placeholder="Search recipe..."
+            />
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div id="modal-meal-list" class="modal-right">
+          <!-- Empty for now -->
+          <p class="placeholder-text">
+            Selected meals will appear here
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <button class="btn-secondary">Cancel</button>
+        <button class="btn-primary">Save</button>
+      </div>
+
+    </div>
+  </div>
 
 
   <script type="module"  src="/static/js/features/food_plans/create-plans.js" defer></script>

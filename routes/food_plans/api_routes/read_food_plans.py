@@ -29,7 +29,6 @@ def get_food_plan():
         # get the food_plan_id for the user
         cursor.execute("SELECT food_plan_id FROM food_plans WHERE user_id = %s AND is_active = 1", (s_user_id,))
         row = cursor.fetchone()
-        print("row is :", row)
         if row is None:
             cursor.close()
             conn.close()

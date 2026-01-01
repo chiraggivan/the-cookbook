@@ -795,6 +795,9 @@ input[type=number]::-webkit-inner-spin-button {
   justify-content: space-between;
   align-items: center;
 }
+.recipe-row {
+  transition: opacity 0.2s ease;
+}
 
 .recipe-name {
   text-align: left;
@@ -805,3 +808,110 @@ input[type=number]::-webkit-inner-spin-button {
   font-weight: 600;
 }
 
+/* modal for updating food plan for a day */
+/* Header */
+.modal-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* Body layout */
+.modal-body {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* Left column */
+.modal-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Right column */
+.modal-right {
+  flex: 1;
+  border-left: 1px solid #eee;
+  padding-left: 16px;
+}
+
+/* Rows */
+.modal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-row label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Inputs */
+.modal-row select,
+.modal-row input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* Placeholder */
+.placeholder-text {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* Footer */
+.modal-footer {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #eee;
+}
+
+/* Buttons */
+.btn-primary {
+  background: #38873c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #e0e0e0;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.recipe-actions {
+  display: flex;
+  align-items: center;
+}
+
+.recipe-delete {
+  margin-left: 0.5rem; /* ≈ two spaces */
+  font-weight: bold;
+  cursor: pointer;
+  color: #999;
+}
+
+.recipe-delete:hover {
+  color: #d00;
+}
