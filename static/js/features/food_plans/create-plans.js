@@ -14,12 +14,15 @@ const role = data.role;
 
 const newPlanBtn = document.getElementById("plan-btn");
 const weekOne = document.getElementById("week-1");
+const inputRecipe = document.getElementById("recipe-search");
 const dayBoxes = weekOne.querySelectorAll(".day-box");
+const mealType = document.getElementById("meal-type");
+const suggestionBox = document.getElementById("recipe-suggestion-box");
 const errorBox = document.getElementById("error");
 
-let foodPlanData = null;
-let foodPlanId = null;
-let modalDayData = null;
+let foodPlanData = null; // whole food plan data of the user
+let foodPlanId = null; // food_plan_id of the user
+let modalDayData = null; // food plan of the particular day selected and shown in modal
 let food_plan_id;
 
 // get food plan of the user
@@ -61,7 +64,7 @@ async function getUserFoodPlan(){
         const food_plan_day_id = day.food_plan_day_id;
         let modal_day_id ='';
         modal_day_id += `${modal_week_id}day-${day.day_no}`
-        let dayHTML =``;
+        let dayHTML =`Day ${day.day_no}`;
         const meals = day.daily_meals;  
 
         meals.forEach(meal =>{
@@ -101,9 +104,7 @@ async function getUserFoodPlan(){
 
 // Convert long text to short one with dots at the end. eg:  Creamy Butter Garlic mushroom - to - Creamy Butter Garlic Mus...
 function truncateName(name, max = 18) {
-  return name.length > max
-    ? name.slice(0, 15) + "..."
-    : name;
+  return (name.length > max ? name.slice(0, 15) + "..." : name);
 }
 
 // get the week and day number from the id 
@@ -113,6 +114,36 @@ function getWeekAndDayNumber(id) {
     week: Number(parts[1]),
     day: Number(parts[3])
   };
+}
+
+// Open modal on screan
+function openMealModal(weekNo, dayNo, isOldData) {
+  const modal = document.getElementById("meal-modal");
+  modal.querySelector(".modal-header h3").textContent = `Week ${weekNo} — Day ${dayNo}`;
+
+  //get day data
+  if(isOldData){
+    const dayData = getDayData(weekNo, dayNo); //
+    console.log("Modal day data:", dayData);
+
+    // create a clone
+    modalDayData = structuredClone(dayData);
+
+    //store context for later use
+    modal.dataset.foodPlanId = foodPlanId;
+    modal.dataset.weekId = dayData.food_plan_week_id;
+    modal.dataset.dayId = dayData.food_plan_day_id;
+    modal.dataset.weekNo = weekNo;
+    modal.dataset.dayNo = dayNo;
+
+    // render day data
+    renderModalMeals(dayData);
+  } else {
+    const dayData = null;
+    renderModalMeals(dayData);
+  }
+
+  modal.style.display = "flex";
 }
 
 // get the day data to be rendered for modal 
@@ -126,8 +157,7 @@ function getDayData(weekNo, dayNo) {
   if (!day) return null;
 
   // attach week id for convenience
-  day.food_plan_week_id = week.food_plan_week_id;
-
+  day.food_plan_week_id = week.food_plan_week_id; //console.log(" day data from getDayData", day);
   return day;
 }
 
@@ -166,34 +196,38 @@ function renderModalMeals(dayData) {
   });
 }
 
-// Open modal on screan
-function openMealModal(weekNo, dayNo, isOldData) {
-  const modal = document.getElementById("meal-modal");
-  modal.querySelector(".modal-header h3").textContent = `Week ${weekNo} — Day ${dayNo}`;
+//update Recipe from Modal
+function removeRecipeFromModal(recipeId, mealType) {
+  const meal = modalDayData.daily_meals.find(
+    m => m.meal_type === mealType
+  );
+  if (!meal) return;
 
-  //get day data
-  if(isOldData){
-    const dayData = getDayData(weekNo, dayNo);
-    console.log("Modal day data:", dayData);
+  meal.recipes = meal.recipes.filter(
+    r => r.recipe_id !== recipeId
+  );
 
-    // create a clone
-    modalDayData = structuredClone(dayData);
-
-    //store context for later use
-    modal.dataset.foodPlanId = foodPlanId;
-    modal.dataset.weekId = dayData.food_plan_week_id;
-    modal.dataset.dayId = dayData.food_plan_day_id;
-    modal.dataset.weekNo = weekNo;
-    modal.dataset.dayNo = dayNo;
-
-    // render day data
-    renderModalMeals(dayData);
-  } else {
-    const dayData = null;
-    renderModalMeals(dayData);
+  if (meal.recipes.length === 0) {
+    modalDayData.daily_meals = modalDayData.daily_meals.filter(
+      m => m.meal_type !== mealType
+    );
   }
+  renderModalMeals(modalDayData);
+}
 
-  modal.style.display = "flex";
+// final save button function
+function commitModalChanges() {
+  const modal = document.getElementById("meal-modal");
+  const weekNo = Number(modal.dataset.weekNo);
+  const dayNo = Number(modal.dataset.dayNo);
+
+  const week = foodPlanData.find(w => w.week_no === weekNo);
+  const index = week.weekly_meals.findIndex(d => d.day_no === dayNo);
+
+  week.weekly_meals[index] = modalDayData;
+
+  modalDayData = null;
+  modal.style.display = "none";
 }
 
 // build payload to send the data to backend
@@ -212,7 +246,8 @@ function buildFoodPlanPayload(modal) {
       meal_type: meal.meal_type,
       recipes: meal.recipes.map((recipe, index) => ({
         recipe_id: recipe.recipe_id,
-        display_order: index + 1
+        display_order: index + 1,
+        ...(recipe.food_plan_recipe_id && {food_plan_recipe_id: recipe.food_plan_recipe_id})
       }))
     };
 
@@ -248,40 +283,114 @@ function buildFoodPlanPayload(modal) {
   };
 }
 
-//update Recipe from Modal
-function removeRecipeFromModal(recipeId, mealType) {
-  const meal = modalDayData.daily_meals.find(
-    m => m.meal_type === mealType
-  );
-  if (!meal) return;
+// send payload to api display message of success of failure
+async function sendPayloadToAPI(payload){
+  try{
+  const response = await fetch("/food_plans/api/update", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
 
-  meal.recipes = meal.recipes.filter(
-    r => r.recipe_id !== recipeId
-  );
-
-  if (meal.recipes.length === 0) {
-    modalDayData.daily_meals = modalDayData.daily_meals.filter(
-      m => m.meal_type !== mealType
-    );
+  const data = await response.json();//console.log("returned data :", data);
+  if (!response.ok) {
+    errorBox.textContent = data.error || "Something went wrong while fetch checking for user food plan.";
+    return;
+  }else{
+    showAlert(data.message || "Plan updated successfully!");
+    setTimeout(() => { window.location.href = "/plans"; }, 2500);
   }
 
+  
+} catch (err){
+    errorBox.textContent = err.message;
+}
+}
+
+
+
+
+
+
+
+
+// Highlight suggestion item
+function highlightItem(items, idx) {
+    items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
+    if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// Select an recipe and populate fields
+function selectRecipe(recipe) {
+  const mealType = document.getElementById("meal-type").value;
+
+  if (!mealType) {
+    alert("Please select a meal type first");
+    return;
+  }
+
+  //Find meal object (breakfast / lunch / dinner)
+  let mealObj = modalDayData.daily_meals.find(
+    meal => meal.meal_type === mealType
+  );
+
+  //If meal does not exist yet, create it
+  if (!mealObj) {
+    mealObj = {
+      meal_type: mealType,
+      recipes: []
+    };
+    modalDayData.daily_meals.push(mealObj);
+  }
+
+  //Prevent duplicate recipe in the same meal
+  const alreadyExists = mealObj.recipes.some(
+    r => r.recipe_id === recipe.recipe_id
+  );
+
+  if (alreadyExists) {
+    alert("Recipe already added to this meal");
+    return;
+  }
+
+  //Calculate display order
+  const displayOrder = mealObj.recipes.length + 1;
+
+  //Add NEW recipe (NO food_plan_recipe_id)
+  mealObj.recipes.push({
+    recipe_id: recipe.recipe_id,
+    recipe_name: recipe.recipe_name,
+    cost: recipe.price,          // comes from API
+    display_order: displayOrder
+  });
+
+  //UI cleanup
+  document.getElementById("recipe-search").value = "";
+  suggestionBox.style.display = "none";
+
+  //Re-render UI
   renderModalMeals(modalDayData);
 }
 
-// final save button function
-function commitModalChanges() {
-  const modal = document.getElementById("meal-modal");
-  const weekNo = Number(modal.dataset.weekNo);
-  const dayNo = Number(modal.dataset.dayNo);
 
-  const week = foodPlanData.find(w => w.week_no === weekNo);
-  const index = week.weekly_meals.findIndex(d => d.day_no === dayNo);
 
-  week.weekly_meals[index] = modalDayData;
 
-  modalDayData = null;
-  modal.style.display = "none";
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Initialize page functionality on load
 document.addEventListener("DOMContentLoaded", async function () {
@@ -363,7 +472,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         dayNo = WeeknDay.day;
         isOldData = false;
       }
-      console.log("is old data : ", isOldData);
       openMealModal(weekNo, dayNo, isOldData);
     });
   });
@@ -371,7 +479,69 @@ document.addEventListener("DOMContentLoaded", async function () {
   // close button on the modal on top right
   document.querySelector(".close-btn").addEventListener("click", () => {
     document.getElementById("meal-modal").style.display = "none";
+    document.getElementById("recipe-search").value = "";
+    document.getElementById("recipe-suggestion-box").style.display = "none";
   });
+
+  // getting all the recipes for search when typed in input box
+  document.getElementById("recipe-search").addEventListener("input", async function () {
+    const query = this.value.trim().toLowerCase();
+    let activeIndex = -1;
+    // Clear suggestions and hide box
+    suggestionBox.innerHTML = "";
+    suggestionBox.style.display = "none";
+
+    // Fetch ingredient suggestions from API
+    if (query.length > 2){
+        try {
+        const res = await fetch(`/food_plans/api/recipes/search?q=${encodeURIComponent(query)}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch ingredients");
+
+        const data = await res.json(); // 
+        console.log(" list of recipes :", data);
+        // return;
+        // ingredientData = data;
+        // fetchedIngredients = data.map(item => item.name.toLowerCase());
+
+        // Hide suggestions if no results
+        if (data.length === 0) {
+          suggestionBox.style.display = "none";
+          return;
+        }
+
+        // Display suggestion items
+        data.forEach(recipe => {
+          const div = document.createElement("div");
+          div.dataset.id = recipe.recipe_id;
+          div.dataset.cost = recipe.price;
+          div.textContent = recipe.recipe_name;
+          div.classList.add("suggestion-item");
+          div.addEventListener("click", () => selectRecipe(recipe));
+          suggestionBox.appendChild(div);
+        });
+
+        suggestionBox.style.display = "block";
+        
+        // Highlight the first suggestion if available
+        suggestionBox.style.display = "block";
+        activeIndex = data.length > 0 ? 0 : -1;
+        const items = suggestionBox.querySelectorAll(".suggestion-item");
+        if (items.length > 0) {
+          highlightItem(items, activeIndex);
+        }
+
+      } catch (err) {
+        console.error("Error fetching ingredients:", err);
+      }
+    }
+  })
 
   // remove recipe from the list of plans
   document.getElementById("modal-meal-list").addEventListener("click", e => {
@@ -387,8 +557,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // clicking cancel button
   document.querySelector(".btn-secondary").addEventListener("click", () => {
-    modalDayData = null;
+    // modalDayData = null;
     document.getElementById("meal-modal").style.display = "none";
+    document.getElementById("recipe-search").value = "";
+    document.getElementById("recipe-suggestion-box").style.display = "none";
   });
 
   // save button pressed
@@ -400,8 +572,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const payload = buildFoodPlanPayload(modal);
     console.log("Payload to send:", payload);
 
-    // later:
-    // sendPayloadToAPI(payload);
+    // call api and send the payload
+    sendPayloadToAPI(payload);
   });  
 
 })

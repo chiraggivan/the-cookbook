@@ -101,6 +101,7 @@ def get_food_plan():
                             WHERE ri.recipe_id = %s
                             AND ri.is_active = 1
                             AND r.is_active = 1
+                            GROUP BY r.name
                         """,(s_user_id, recipe['recipe_id']))
                         row = cursor.fetchone()
                         if row is None:

@@ -458,3 +458,45 @@ def update_day_food_plan():
         cursor.close()
         conn.close()
         return jsonify({'error': str(err)}), 500
+
+# search ingredients for recipe
+@food_plans_api_bp.route("/recipes/search")
+@jwt_required()
+def search_ingredients():
+
+    s_user_id = get_jwt_identity()
+   
+    q = request.args.get("q", "").strip().lower()
+    #print("user id:",s_user_id," value of q :", q)
+    if not q:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT r.recipe_id, r.name AS recipe_name, COALESCE(SUM(ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor),0) AS price    
+            FROM recipes r 
+                JOIN recipe_ingredients ri ON r.recipe_id = ri.recipe_id 
+                JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+                JOIN units u ON ri.unit_id = u.unit_id
+                LEFT JOIN user_prices up ON up.user_id = %s 
+                    AND up.ingredient_id = i.ingredient_id 
+                    AND up.is_active = 1
+            WHERE r.name like %s AND ri.is_active = 1 AND r.is_active = 1
+            GROUP BY r.recipe_id, r.name
+            LIMIT 20
+        """,( s_user_id, f"%{q}%"))
+        results = cursor.fetchall()
+        for row in results:
+            row['price'] = round(float(row['price']),2)
+        # print("result: ", results)
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+
+    except Exception as e:
+        print("Error in search_ingredients:", e)
+        return jsonify([])
