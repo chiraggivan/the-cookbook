@@ -485,11 +485,12 @@ def search_ingredients():
                 LEFT JOIN user_prices up ON up.user_id = %s 
                     AND up.ingredient_id = i.ingredient_id 
                     AND up.is_active = 1
-            WHERE r.name like %s AND ri.is_active = 1 AND r.is_active = 1
+            WHERE LOWER(r.name) like LOWER(%s) AND ri.is_active = 1 AND r.is_active = 1 AND r.user_id = %s
             GROUP BY r.recipe_id, r.name
             LIMIT 20
-        """,( s_user_id, f"%{q}%"))
+        """,( s_user_id, f"%{q}%", s_user_id))
         results = cursor.fetchall()
+        print("result: ", results)
         for row in results:
             row['price'] = round(float(row['price']),2)
         # print("result: ", results)

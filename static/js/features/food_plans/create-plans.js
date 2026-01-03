@@ -117,14 +117,13 @@ function getWeekAndDayNumber(id) {
 }
 
 // Open modal on screan
-function openMealModal(weekNo, dayNo, isOldData) {
+function openMealModal(weekNo, dayNo, isOldData, dayBox) {
   const modal = document.getElementById("meal-modal");
   modal.querySelector(".modal-header h3").textContent = `Week ${weekNo} — Day ${dayNo}`;
 
   //get day data
   if(isOldData){
-    const dayData = getDayData(weekNo, dayNo); //
-    console.log("Modal day data:", dayData);
+    const dayData = getDayData(weekNo, dayNo); //console.log("Modal day data:", dayData);
 
     // create a clone
     modalDayData = structuredClone(dayData);
@@ -139,8 +138,27 @@ function openMealModal(weekNo, dayNo, isOldData) {
     // render day data
     renderModalMeals(dayData);
   } else {
+    modalDayData = {};
+    //check if dataset has food_plan_week_id and food_plan_day_id
+    if(dayBox.dataset.foodPlanWeekId){
+      modalDayData.food_plan_week_id = dayBox.dataset.foodPlanWeekId; 
+    }
+    if(dayBox.dataset.foodPlanDayId){
+      modalDayData.food_plan_day_id = dayBox.dataset.foodPlanDayId; 
+    }
+    modalDayData.day_no = dayNo;
+    modalDayData.week_no = weekNo;
+    modalDayData.daily_meals = [];
+
+    modal.dataset.foodPlanId = foodPlanId;
+    modal.dataset.weekNo = weekNo;
+    modal.dataset.dayNo = dayNo;
+    modal.removeAttribute("data-day-id");
+    modal.removeAttribute("data-week-id");
+
+    // console.log("Modal day data:", modalDayData);
     const dayData = null;
-    renderModalMeals(dayData);
+    renderModalMeals(modalDayData);
   }
 
   modal.style.display = "flex";
@@ -158,6 +176,8 @@ function getDayData(weekNo, dayNo) {
 
   // attach week id for convenience
   day.food_plan_week_id = week.food_plan_week_id; //console.log(" day data from getDayData", day);
+  day.week_no = weekNo;
+  day.day_no = dayNo;
   return day;
 }
 
@@ -221,11 +241,30 @@ function commitModalChanges() {
   const weekNo = Number(modal.dataset.weekNo);
   const dayNo = Number(modal.dataset.dayNo);
 
+  // console.log("foodPlanData is :", foodPlanData);
   const week = foodPlanData.find(w => w.week_no === weekNo);
-  const index = week.weekly_meals.findIndex(d => d.day_no === dayNo);
+  
+  if (!week) {
+    week = {
+      week_no: weekNo,
+      weekly_meals: []
+    };
+    foodPlanData.push(week);
+  }
 
-  week.weekly_meals[index] = modalDayData;
-
+  //Find day inside week
+  const dayIndex = week.weekly_meals.findIndex(
+    d => d.day_no === dayNo
+  );
+  
+  //Update or create day
+  if (dayIndex !== -1) {
+    week.weekly_meals[dayIndex] = modalDayData;
+  } else {
+    delete modalDayData.week_no;
+    week.weekly_meals.push(modalDayData);
+  }
+  
   modalDayData = null;
   modal.style.display = "none";
 }
@@ -472,7 +511,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         dayNo = WeeknDay.day;
         isOldData = false;
       }
-      openMealModal(weekNo, dayNo, isOldData);
+      openMealModal(weekNo, dayNo, isOldData, dayBox);
     });
   });
 
@@ -568,10 +607,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     const modal = document.getElementById("meal-modal");
 
     commitModalChanges();
-
+    
     const payload = buildFoodPlanPayload(modal);
     console.log("Payload to send:", payload);
-
+    return;
     // call api and send the payload
     sendPayloadToAPI(payload);
   });  
