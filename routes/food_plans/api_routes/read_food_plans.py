@@ -41,9 +41,10 @@ def get_food_plan():
         cursor.execute("SELECT food_plan_week_id, week_no FROM food_plan_weeks WHERE food_plan_id = %s AND is_active = 1 ORDER BY week_no",(food_plan_id,))
         rows = cursor.fetchall()
         if not rows:
-            cursor.close()
-            conn.close()
-            return jsonify({'error': 'Food plan week not found for the food plan of the user'}), 404
+            rows = []
+            # cursor.close()
+            # conn.close()
+            # return jsonify({'error': 'Food plan week not found for the food plan of the user'}), 404
         food_plan_week_rows = rows
 
         food_plan = []
@@ -54,9 +55,10 @@ def get_food_plan():
             cursor.execute("SELECT food_plan_day_id, day_no FROM food_plan_days WHERE food_plan_week_id = %s AND is_active = 1 ORDER BY day_no",(week['food_plan_week_id'],))
             rows = cursor.fetchall()
             if not rows:
-                cursor.close()
-                conn.close()
-                return jsonify({'error': 'Food plan day not found for the food plan week of the user'}), 404
+                rows = []
+                # cursor.close()
+                # conn.close()
+                # return jsonify({'error': 'Food plan day not found for the food plan week of the user'}), 404
             food_plan_day_rows = rows
 
             weekly_meals = []
@@ -67,9 +69,10 @@ def get_food_plan():
                 cursor.execute("SELECT food_plan_meal_id, meal_type FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(day['food_plan_day_id'],))
                 rows = cursor.fetchall()
                 if not rows:
-                    cursor.close()
-                    conn.close()
-                    return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
+                    rows = []
+                    # cursor.close()
+                    # conn.close()
+                    # return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
                 food_plan_meal_rows = rows
 
                 daily_meals = []
@@ -80,9 +83,10 @@ def get_food_plan():
                     cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1 ORDER BY display_order",(meal['food_plan_meal_id'],))
                     rows = cursor.fetchall()
                     if not rows:
-                        cursor.close()
-                        conn.close()
-                        return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
+                        rows = []
+                        # cursor.close()
+                        # conn.close()
+                        # return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
                     food_plan_recipe_rows = rows
 
                     recipes = []
@@ -129,7 +133,7 @@ def get_food_plan():
 
         data['food_plan'] = food_plan   
 
-        return jsonify({'plan': data}), 200    
+        return jsonify({'food_plan_id': food_plan_id, 'food_plan': food_plan}), 200    
 
     except Error as err:
         conn.rollback()

@@ -20,6 +20,8 @@ const mealType = document.getElementById("meal-type");
 const suggestionBox = document.getElementById("recipe-suggestion-box");
 const errorBox = document.getElementById("error");
 
+errorBox.textContent = '';
+
 let foodPlanData = null; // whole food plan data of the user
 let foodPlanId = null; // food_plan_id of the user
 let modalDayData = null; // food plan of the particular day selected and shown in modal
@@ -37,10 +39,9 @@ async function getUserFoodPlan(){
       }
     });
 
-    const data = await response.json();//
-    console.log("plan data : ", data);
-    foodPlanData = data.plan.food_plan;
-    foodPlanId = Number(data.plan.food_plan_id);
+    const data = await response.json(); //console.log("plan data : ", data);
+    foodPlanData = data.food_plan;
+    foodPlanId = Number(data.food_plan_id);
 
     const weeks = foodPlanData;
 
@@ -242,7 +243,7 @@ function commitModalChanges() {
   const dayNo = Number(modal.dataset.dayNo);
 
   // console.log("foodPlanData is :", foodPlanData);
-  const week = foodPlanData.find(w => w.week_no === weekNo);
+  let week = foodPlanData.find(w => w.week_no === weekNo);
   
   if (!week) {
     week = {
@@ -258,10 +259,12 @@ function commitModalChanges() {
   );
   
   //Update or create day
+  delete modalDayData.week_no; //modalDayData may contain week_no as well. Even if it doesnt this line wont throw error.
+  delete modalDayData.food_plan_week_id; // These data wont make much difference but as they are not required to be pushed in daily_meals
+
   if (dayIndex !== -1) {
     week.weekly_meals[dayIndex] = modalDayData;
   } else {
-    delete modalDayData.week_no;
     week.weekly_meals.push(modalDayData);
   }
   
@@ -325,28 +328,26 @@ function buildFoodPlanPayload(modal) {
 // send payload to api display message of success of failure
 async function sendPayloadToAPI(payload){
   try{
-  const response = await fetch("/food_plans/api/update", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(payload)
-  });
+    const response = await fetch("/food_plans/api/update", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const data = await response.json();//console.log("returned data :", data);
-  if (!response.ok) {
-    errorBox.textContent = data.error || "Something went wrong while fetch checking for user food plan.";
-    return;
-  }else{
-    showAlert(data.message || "Plan updated successfully!");
-    setTimeout(() => { window.location.href = "/plans"; }, 2500);
+    const data = await response.json();//console.log("returned data :", data);
+    if (!response.ok) {
+      errorBox.textContent = data.error || "Something went wrong while fetch checking for user food plan.";
+      return;
+    }else{
+      showAlert(data.message || "Plan updated successfully!");
+      setTimeout(() => { window.location.href = "/plans"; }, 1500);
+    }    
+  } catch (err){
+      errorBox.textContent = err.message;
   }
-
-  
-} catch (err){
-    errorBox.textContent = err.message;
-}
 }
 
 
@@ -362,7 +363,7 @@ function highlightItem(items, idx) {
     if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-// Select an recipe and populate fields
+// Select an recipe and populate in plan on right side of the modal
 function selectRecipe(recipe) {
   const mealType = document.getElementById("meal-type").value;
 
@@ -543,11 +544,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (!res.ok) throw new Error("Failed to fetch ingredients");
 
-        const data = await res.json(); // 
-        console.log(" list of recipes :", data);
+        const data = await res.json(); // console.log(" list of recipes :", data);
         // return;
-        // ingredientData = data;
-        // fetchedIngredients = data.map(item => item.name.toLowerCase());
 
         // Hide suggestions if no results
         if (data.length === 0) {
@@ -608,9 +606,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     commitModalChanges();
     
-    const payload = buildFoodPlanPayload(modal);
-    console.log("Payload to send:", payload);
-    return;
+    const payload = buildFoodPlanPayload(modal); // console.log("Payload to send:", payload);
+    // return;
+    
     // call api and send the payload
     sendPayloadToAPI(payload);
   });  

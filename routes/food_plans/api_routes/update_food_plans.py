@@ -227,6 +227,7 @@ def update_day_food_plan():
     try:           
         # ----------------------------- normalize and validate data ---------------------------            
         data = request.get_json()
+        
         food_plan_id = data.get('food_plan_id')
         if not food_plan_id:
             return jsonify({'error':'Update data incorrect. food plan id missing'}), 400
@@ -262,11 +263,11 @@ def update_day_food_plan():
                         if recipe.get('food_plan_recipe_id'):
                             food_plan_recipe_rows.add((recipe['food_plan_recipe_id'], meal.get('food_plan_meal_id')))
 
-        print("Food plan id :", food_plan_id)
-        print("Food plan week ids :", food_plan_week_rows)
-        print("Food plan day ids :", food_plan_day_rows)
-        print("Food plan meal ids :", food_plan_meal_rows)
-        print("Food plan recipe ids :", food_plan_recipe_rows)
+        # print("Food plan id :", food_plan_id)
+        # print("Food plan week ids :", food_plan_week_rows)
+        # print("Food plan day ids :", food_plan_day_rows)
+        # print("Food plan meal ids :", food_plan_meal_rows)
+        # print("Food plan recipe ids :", food_plan_recipe_rows)
         # --------------------------- connect db and verify data --------------------------
 
         # connect to db        
@@ -337,47 +338,53 @@ def update_day_food_plan():
                 conn.close()
                 return jsonify({'error': 'Combined Food plan meal id AND food plan recipe id not found.'}), 404
 
-        # return jsonify({'error': 'data received in backend', 'submitted data': data}), 400
+        # print("data from front end is : ", data)
+        # return jsonify({'message': 'data received in backend', 'submitted data': data}), 200
         # ---------------------------------------------    Inserting data in db      -------------------------------------------------------
 
         # make all the data wrt this food_plan inactive for the selected day
+        weeks = data.get('food_plan', [])
 
-        food_plan = data['food_plan']
-        if food_plan_id is not None:
-            for plan in food_plan:
-                week_no = plan['week_no']
-                cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE food_plan_id = %s AND week_no = %s",(food_plan_id, week_no))
-                row = cursor.fetchone()
-                if row['food_plan_week_id'] is not None:
-                    weekly_meals = plan['weekly_meals']
-                    for week in weekly_meals:
-                        day_no = week['day_no']
-                        cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND day_no = %s",(row['food_plan_week_id'], day_no))
-                        row = cursor.fetchone()
-                        if row['food_plan_day_id'] is not None:
-                            cursor.execute("""UPDATE food_plan_days 
-                                            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-                                            WHERE food_plan_day_id = %s""",(row['food_plan_day_id'],))
+        if food_plan_id:
+            if weeks:
+                for week in weeks:
+                    week_no = week['week_no']
+                    cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE food_plan_id = %s AND week_no = %s",(food_plan_id, week_no))
+                    row = cursor.fetchone()
 
-                            cursor.execute("""SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1""",(row['food_plan_day_id'],))
-                            rows = cursor.fetchall()
-                            if rows:
-                                for row in rows:
-                                    cursor.execute("""UPDATE food_plan_meals
-                                                    SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
-                                                    WHERE food_plan_meal_id = %s""",(row['food_plan_meal_id'],))
-                                    
-                                    cursor.execute("""SELECT food_plan_recipe_id FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1""",(row['food_plan_meal_id'],))
-                                    rows = cursor.fetchall()
-                                    if rows:
-                                        for row in rows:
-                                            cursor.execute("""UPDATE food_plan_recipes
-                                                            SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
-                                                            WHERE food_plan_recipe_id = %s""",(row['food_plan_recipe_id'],))
+                    if row and row.get('food_plan_week_id'):
+                        if week.get('weekly_meals'):
+                            for week in week.get('weekly_meals'):
+                                day_no = week['day_no']
+                                cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND day_no = %s",(row['food_plan_week_id'], day_no))
+                                row = cursor.fetchone()
+
+                                if row and row.get('food_plan_day_id'):
+                                    if row.get('food_plan_day_id'):
+                                        cursor.execute("""UPDATE food_plan_days 
+                                                        SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+                                                        WHERE food_plan_day_id = %s""",(row['food_plan_day_id'],))
+
+                                        cursor.execute("""SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1""",(row['food_plan_day_id'],))
+                                        rows = cursor.fetchall()
+
+                                        if rows:
+                                            for row in rows:
+                                                if row.get('food_plan_meal_id'):
+                                                    cursor.execute("""UPDATE food_plan_meals
+                                                                    SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
+                                                                    WHERE food_plan_meal_id = %s""",(row['food_plan_meal_id'],))
+                                                
+                                                    cursor.execute("""SELECT food_plan_recipe_id FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1""",(row['food_plan_meal_id'],))
+                                                    rows = cursor.fetchall()
+
+                                                    if rows:
+                                                        for row in rows:
+                                                            if row.get('food_plan_recipe_id'):
+                                                                cursor.execute("""UPDATE food_plan_recipes
+                                                                                SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
+                                                                                WHERE food_plan_recipe_id = %s""",(row['food_plan_recipe_id'],))
         
-        # conn.commit()
-        # cursor.close()
-        # conn.close()
         # return jsonify({'error': 'db table updated with is_active made 0 in 3 tables'}), 400
 
         # update or insert the data depending on the data
@@ -392,14 +399,14 @@ def update_day_food_plan():
             else:
                 cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE food_plan_id = %s AND week_no = %s",(food_plan_id, week_no))
                 row = cursor.fetchone()
-                if row['food_plan_week_id'] is None:
-                    cursor.execute("""INSERT INTO food_plan_weeks(food_plan_id, week_no)
-                                    VALUES (%s,%s)""",(food_plan_id, week_no))
-                    food_plan_week_id = cursor.lastrowid
-                else:
+                if row:
                     cursor.execute("""UPDATE food_plan_weeks SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                     WHERE food_plan_week_id = %s""",(row['food_plan_week_id'],))
-                    food_plan_week_id = row['food_plan_week_id']                
+                    food_plan_week_id = row['food_plan_week_id']
+                else:
+                    cursor.execute("""INSERT INTO food_plan_weeks(food_plan_id, week_no)
+                                    VALUES (%s,%s)""",(food_plan_id, week_no))
+                    food_plan_week_id = cursor.lastrowid                
 
             for day in week['weekly_meals']:
                 day_no = day['day_no']
@@ -411,42 +418,47 @@ def update_day_food_plan():
                 else:
                     cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND day_no = %s",(food_plan_week_id, day_no))
                     row = cursor.fetchone()
-                    if row['food_plan_day_id'] is None:
-                        cursor.execute("""INSERT INTO food_plan_days(food_plan_week_id, day_no)
-                                        VALUES (%s,%s)""",(food_plan_week_id, day_no))
-                        food_plan_day_id = cursor.lastrowid
-                    else:
+                    if row:
                         cursor.execute("""UPDATE food_plan_days SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                         WHERE food_plan_day_id = %s""",(row['food_plan_day_id'],))
-                        food_plan_day_id = row['food_plan_day_id']                    
+                        food_plan_day_id = row['food_plan_day_id']
+                    else:
+                        cursor.execute("""INSERT INTO food_plan_days(food_plan_week_id, day_no)
+                                        VALUES (%s,%s)""",(food_plan_week_id, day_no))
+                        food_plan_day_id = cursor.lastrowid                                                        
 
                 for meal in day['daily_meals']:
-                    meal_type = meal['meal_type']
+                        meal_type = meal['meal_type']
 
-                    if meal.get('food_plan_meal_id'):
-                        cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
-                                        WHERE food_plan_meal_id =%s""",(meal['food_plan_meal_id'],))
-                        food_plan_meal_id = meal['food_plan_meal_id']                        
-                    else:
-                        cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND meal_type = %s",(food_plan_day_id, meal_type))
-                        row = cursor.fetchone()
-                        if row['food_plan_meal_id'] is None:
-                            cursor.execute("""INSERT INTO food_plan_meals(food_plan_day_id, meal_type)
-                                            VALUES (%s,%s)""",(food_plan_day_id, meal_type))
-                            food_plan_meal_id = cursor.lastrowid
-                        else:
+                        if meal.get('food_plan_meal_id'):
                             cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
-                                            WHERE food_plan_meal_id =%s""",(row['food_plan_meal_id'],))
-                            food_plan_meal_id = row['food_plan_meal_id']
+                                            WHERE food_plan_meal_id =%s""",(meal['food_plan_meal_id'],))
+                            food_plan_meal_id = meal['food_plan_meal_id']                        
+                        else:
+                            cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND meal_type = %s",(food_plan_day_id, meal_type))
+                            row = cursor.fetchone()
+                            if row:
+                                cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
+                                                WHERE food_plan_meal_id =%s""",(row['food_plan_meal_id'],))
+                                food_plan_meal_id = row['food_plan_meal_id']
+                            else:
+                                cursor.execute("""INSERT INTO food_plan_meals(food_plan_day_id, meal_type)
+                                                VALUES (%s,%s)""",(food_plan_day_id, meal_type))
+                                food_plan_meal_id = cursor.lastrowid
 
-                    for recipe in meal['recipes']:
-                        recipe_id = recipe['recipe_id']
-                        display_order = recipe['display_order']
-                        # insert new rows everytime for update. old rows will help in future to track old food plan by reverse engineering 
-                        cursor.execute("""
-                            INSERT INTO food_plan_recipes(food_plan_meal_id, recipe_id, display_order)
-                            VALUES (%s, %s, %s)
-                        """,(food_plan_meal_id, recipe_id, display_order))
+                        for recipe in meal['recipes']:
+                            recipe_id = recipe['recipe_id']
+                            display_order = recipe['display_order']
+
+                            if recipe.get('food_plan_recipe_id'):
+                                cursor.execute("""UPDATE food_plan_recipes SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
+                                                WHERE food_plan_recipe_id =%s""",(recipe['food_plan_recipe_id'],))
+                            else:
+                                # insert new rows everytime for update. old rows will help in future to track old food plan by reverse engineering 
+                                cursor.execute("""
+                                    INSERT INTO food_plan_recipes(food_plan_meal_id, recipe_id, display_order)
+                                    VALUES (%s, %s, %s)
+                                """,(food_plan_meal_id, recipe_id, display_order))
 
         conn.commit()
         cursor.close()
@@ -490,7 +502,6 @@ def search_ingredients():
             LIMIT 20
         """,( s_user_id, f"%{q}%", s_user_id))
         results = cursor.fetchall()
-        print("result: ", results)
         for row in results:
             row['price'] = round(float(row['price']),2)
         # print("result: ", results)

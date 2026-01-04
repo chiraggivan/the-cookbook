@@ -131,7 +131,7 @@ def validate_food_plan(data, meals):
         if total_days > 1 or total_days == 0:
             return f"Cant be empty and Only 1 day of food planning is allowed.", None
 
-        if not weekly_meals or not isinstance(weekly_meals, list):
+        if not isinstance(weekly_meals, list):
             return f"invalid weekly meals: missing or not a list type", None
         
         for day in weekly_meals:
@@ -145,7 +145,7 @@ def validate_food_plan(data, meals):
                 return f"Invalid day_no. Should be positive int and not more than 7", None
             
             daily_meals = day.get('daily_meals')
-            if not daily_meals or not isinstance(daily_meals, list):
+            if not isinstance(daily_meals, list):
                 return f" invalid daily meals: missing or not a list type", None
             
             total_meals = len(daily_meals)
