@@ -761,11 +761,24 @@ input[type=number]::-webkit-inner-spin-button {
   border-color: #38873c;
 }
 
+.day-recipe-name {
+  color: #333;          
+  text-decoration: none; 
+  font-size: 0.85rem; 
+  text-align: left;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.day-recipe-name:hover{
+  color: #38873c;
+  text-decoration:underline;
+}
 .day-box::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(128, 128, 128, 0.5); /* 50% grey */
+  background: rgba(201, 201, 201, 0.2); /* 50% grey */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -778,13 +791,16 @@ input[type=number]::-webkit-inner-spin-button {
 }
 
 .day-box:hover::after {
-  content: "EDIT";
+  content: "";
   opacity: 1;
 }
 
 .meal-type {
-  font-weight: bold;
-  text-decoration: underline;
+  padding: 5px 0px 0px 0px;
+  font-weight:initial;
+  text-transform: capitalize;
+  text-decoration: none;
+  color:#ce2e23;
 }
 
 .recipe-row {
@@ -843,6 +859,7 @@ input[type=number]::-webkit-inner-spin-button {
   flex: 1;
   border-left: 1px solid #eee;
   padding-left: 16px;
+  text-transform: capitalize;
 }
 
 /* Rows */
@@ -856,6 +873,14 @@ input[type=number]::-webkit-inner-spin-button {
 .modal-row label {
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+#modal-error {
+  min-height: 14px;        /* reserve space even when empty */
+  font-size: 0.75rem;      /* smaller text */
+  color: #ef3c28;          /* red */
+  padding: 0px 8px;
+  font-weight: bold;
 }
 
 /* Inputs */
@@ -929,4 +954,30 @@ input[type=number]::-webkit-inner-spin-button {
   z-index: 1000;
 }
 
+.modal-suggestion-item {
+  padding: 3px;
+  cursor: pointer;
+  background-color: white; /* Default background */
+}
 
+.modal-suggestion-item:hover,
+.modal-suggestion-item.active {
+  background-color: #ddd; /* Consistent highlight for hover and keyboard selection */
+}
+
+/* Recipe name */
+.modal-recipe-name {
+  font-size: 0.85rem;      
+  font-weight: 500;
+  color: #000;
+  text-transform: capitalize;
+}
+
+/* Portion size */
+.modal-recipe-portion {
+  font-size: 0.6rem;       
+  color: #999999;            
+  margin-top: 2px;
+  font-style: italic;
+  text-transform: capitalize;
+}

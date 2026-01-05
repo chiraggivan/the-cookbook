@@ -14,7 +14,7 @@ const role = data.role;
 
 const newPlanBtn = document.getElementById("plan-btn");
 const weekOne = document.getElementById("week-1");
-const inputRecipe = document.getElementById("recipe-search");
+// const inputRecipe = document.getElementById("recipe-search");
 const dayBoxes = weekOne.querySelectorAll(".day-box");
 const mealType = document.getElementById("meal-type");
 const suggestionBox = document.getElementById("recipe-suggestion-box");
@@ -41,6 +41,7 @@ async function getUserFoodPlan(){
 
     const data = await response.json(); //console.log("plan data : ", data);
     foodPlanData = data.food_plan;
+    console.log("foodPlanData :", data);
     foodPlanId = Number(data.food_plan_id);
 
     const weeks = foodPlanData;
@@ -76,7 +77,7 @@ async function getUserFoodPlan(){
           recipes.forEach(recipe =>{
             const name = truncateName(recipe.recipe_name);
             dayHTML += `<div class="recipe-row">
-                          <span class="recipe-name">${name}</span>
+                          <a class="day-recipe-name" href="/recipes/details/${recipe.recipe_id}" onclick="event.stopPropagation()">${name}</a>
                           <span class="recipe-cost">£${recipe.cost}</span>
                         </div>`
           })
@@ -187,9 +188,9 @@ function renderModalMeals(dayData) {
   const container = document.getElementById("modal-meal-list");
   if (!container) return;
 
-  container.innerHTML = "";
+  if (dayData.daily_meals.length === 0) return;
 
-  if (!dayData) return;
+  container.innerHTML = "";
 
   dayData.daily_meals.forEach(meal => {
     let mealHTML = `
@@ -233,6 +234,10 @@ function removeRecipeFromModal(recipeId, mealType) {
       m => m.meal_type !== mealType
     );
   }
+  // console.log("modalDayData.daily_meals", modalDayData.daily_meals);
+  if (modalDayData.daily_meals.length === 0){
+    document.getElementById("modal-meal-list").innerHTML = '<p class="placeholder-text">Selected meals will appear here</p>';
+  }
   renderModalMeals(modalDayData);
 }
 
@@ -241,8 +246,11 @@ function commitModalChanges() {
   const modal = document.getElementById("meal-modal");
   const weekNo = Number(modal.dataset.weekNo);
   const dayNo = Number(modal.dataset.dayNo);
-
+  
   // console.log("foodPlanData is :", foodPlanData);
+  if (!foodPlanData){
+    foodPlanData = []
+  }
   let week = foodPlanData.find(w => w.week_no === weekNo);
   
   if (!week) {
@@ -339,11 +347,11 @@ async function sendPayloadToAPI(payload){
 
     const data = await response.json();//console.log("returned data :", data);
     if (!response.ok) {
-      errorBox.textContent = data.error || "Something went wrong while fetch checking for user food plan.";
+      errorBox.textContent = data.error || "Something went wrong while updating for user food plan.";
       return;
     }else{
       showAlert(data.message || "Plan updated successfully!");
-      setTimeout(() => { window.location.href = "/plans"; }, 1500);
+      setTimeout(() => { window.location.href = "/plans"; }, 500);
     }    
   } catch (err){
       errorBox.textContent = err.message;
@@ -352,11 +360,7 @@ async function sendPayloadToAPI(payload){
 
 
 
-
-
-
-
-
+//---------------------------------- below deals with modal recipe input, like selecting, highlighting recipe
 // Highlight suggestion item
 function highlightItem(items, idx) {
     items.forEach((item, i) => item.style.background = i === idx ? "#ddd" : "");
@@ -368,7 +372,7 @@ function selectRecipe(recipe) {
   const mealType = document.getElementById("meal-type").value;
 
   if (!mealType) {
-    alert("Please select a meal type first");
+    document.getElementById('modal-error').textContent = "Please select a meal type";
     return;
   }
 
@@ -414,20 +418,7 @@ function selectRecipe(recipe) {
   //Re-render UI
   renderModalMeals(modalDayData);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//----------------------------------- above deals with modal recipe input, like selecting, highlighting recipe
 
 
 
@@ -483,14 +474,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
       console.log(data);
       foodPlanId = data.plan_id;
-      console.log(data.plan_id);
       // Display success message and redirect
       showAlert(data.message || "Food Plan created successfully!");//console.log("submitted data: ", data)
       //errorBox.textContent = data.message || "Recipe created successfully!";
       setTimeout(() => { 
         newPlanBtn.style.display = 'none';
         weekOne.style.display = 'flex';
-        }, 1500);
+        }, 1000);
     }catch (err){
       errorBox.textContent = err.message;
     }
@@ -558,8 +548,12 @@ document.addEventListener("DOMContentLoaded", async function () {
           const div = document.createElement("div");
           div.dataset.id = recipe.recipe_id;
           div.dataset.cost = recipe.price;
-          div.textContent = recipe.recipe_name;
-          div.classList.add("suggestion-item");
+          div.classList.add("modal-suggestion-item");
+          div.innerHTML = `
+            <div class="modal-recipe-name">${recipe.recipe_name}</div>
+            <div class="modal-recipe-portion">${recipe.portion_size ? `Portion size: ${recipe.portion_size}` : ""}</div>
+          `;
+          
           div.addEventListener("click", () => selectRecipe(recipe));
           suggestionBox.appendChild(div);
         });
@@ -577,6 +571,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       } catch (err) {
         console.error("Error fetching ingredients:", err);
       }
+    }
+  })
+
+  //selecting meal makes error disappear
+  document.getElementById("meal-type").addEventListener("click", () => {
+    if(mealType.value != ''){
+      document.getElementById("modal-error").textContent = '';
     }
   })
 
@@ -608,7 +609,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     
     const payload = buildFoodPlanPayload(modal); // console.log("Payload to send:", payload);
     // return;
-    
+
     // call api and send the payload
     sendPayloadToAPI(payload);
   });  

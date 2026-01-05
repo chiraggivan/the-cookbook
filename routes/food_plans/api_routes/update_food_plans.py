@@ -472,7 +472,7 @@ def update_day_food_plan():
         return jsonify({'error': str(err)}), 500
 
 # search ingredients for recipe
-@food_plans_api_bp.route("/recipes/search")
+@food_plans_api_bp.route("/recipes/search", methods=['GET'])
 @jwt_required()
 def search_ingredients():
 
@@ -489,7 +489,7 @@ def search_ingredients():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT r.recipe_id, r.name AS recipe_name, COALESCE(SUM(ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor),0) AS price    
+            SELECT r.recipe_id, r.name AS recipe_name, r.portion_size, COALESCE(SUM(ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor),0) AS price    
             FROM recipes r 
                 JOIN recipe_ingredients ri ON r.recipe_id = ri.recipe_id 
                 JOIN ingredients i ON ri.ingredient_id = i.ingredient_id

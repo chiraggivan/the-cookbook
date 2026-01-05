@@ -21,7 +21,7 @@ export function showAlert(message, isError = false, autoClose = true) {
   if (autoClose) {
     setTimeout(() => {
       overlay.style.display = "none";
-    }, 2000); // hide after 2s
+    }, 1000); // hide after 2s
   } else {
     alertActions.style.display = "block"; // show OK button
     document.getElementById("alert-ok").onclick = () => {
