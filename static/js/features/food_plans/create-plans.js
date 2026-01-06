@@ -351,14 +351,23 @@ async function sendPayloadToAPI(payload){
       return;
     }else{
       showAlert(data.message || "Plan updated successfully!");
+      console.log("dashboard_data :", data.dashboard_data);
       setTimeout(() => { window.location.href = "/plans"; }, 500);
+      fetch("/weekly_dashboard/api/save_day_recipes_details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data.dashboard_data)
+      }).catch(err => {
+          console.error("Background fetch failed:", err);
+        });
     }    
   } catch (err){
       errorBox.textContent = err.message;
   }
 }
-
-
 
 //---------------------------------- below deals with modal recipe input, like selecting, highlighting recipe
 // Highlight suggestion item
@@ -418,6 +427,7 @@ function selectRecipe(recipe) {
   //Re-render UI
   renderModalMeals(modalDayData);
 }
+
 //----------------------------------- above deals with modal recipe input, like selecting, highlighting recipe
 
 
@@ -522,7 +532,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     suggestionBox.style.display = "none";
 
     // Fetch ingredient suggestions from API
-    if (query.length > 2){
+    if (query.length > 1){
         try {
         const res = await fetch(`/food_plans/api/recipes/search?q=${encodeURIComponent(query)}`, {
           method: "GET",

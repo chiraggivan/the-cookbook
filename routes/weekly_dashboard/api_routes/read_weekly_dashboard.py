@@ -2,6 +2,7 @@ from flask import request, jsonify
 from db import get_db_connection
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import weekly_dashboard_api_bp
+from mysql.connector import Error
 
 # Update food plan 
 @weekly_dashboard_api_bp.route('/save_day_recipes_details', methods=['POST'])
@@ -11,8 +12,18 @@ def get_weekly_dashboard():
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
     data = {}
+    conn = None
+    cursor = None
+    
     try:
         data = request.get_json()
+
+        dayData = data
+        food_plan_id = dayData['food_plan_id']
+        food_plan_week_id = dayData['food_plan_week_id']
+        food_plan_day_id = dayData['food_plan_day_id']
+        meals = dayData['daily_meals']
+        #----------------------------------------------- connect to db and verify data -----------------------------------
 
         # connect to db        
         conn = get_db_connection()
@@ -20,20 +31,40 @@ def get_weekly_dashboard():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
 
-        print("connection done")
+        # check user is valid and active
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'User not found'}), 404
 
-        dayData = data
-        food_plan_id = dayData['food_plan_id']
-        food_plan_week_id = dayData['food_plan_week_id']
-        food_plan_day_id = dayData['food_plan_day_id']
-        meals = dayData['daily_meals']
+        # check if food_plan_id, food_plan_week_id, food_plan_day_id belong to the same use 
+        cursor.execute("""
+            SELECT 1 
+            FROM users u JOIN food_plans fp ON u.user_id = fp.user_id AND u.user_id = %s AND u.is_active = 1
+                JOIN food_plan_weeks fpw ON fp.food_plan_id = fpw.food_plan_id AND fp.food_plan_id = %s AND fp.is_active = 1
+                JOIN food_plan_days fpd ON fpw.food_plan_week_id = fpd.food_plan_week_id AND fpw.food_plan_week_id = %s AND fpw.is_active = 1
+                    AND fpd.food_plan_day_id = %s AND fpd.is_active = 1
+        """,(s_user_id,food_plan_id, food_plan_week_id, food_plan_day_id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'No such data found for the user.'}), 404
+        print("Have entered save day recipe details")
+        # -------------------------------------------------- Insert, update, delete  in db --------------------------------
 
+        # delete the records of that day
+        cursor.execute("""
+            DELETE FROM food_plan_ingredient_records
+            WHERE food_plan_day_id = %s
+        """,(food_plan_day_id,))
+
+        # insert record in food_plan_ingredient_records table
         for meal in meals:
             food_plan_meal_id = meal['food_plan_meal_id']
             recipes = meal['recipes']
 
             for recipe in recipes:
+                food_plan_recipe_id = recipe['food_plan_recipe_id']
                 recipe_id = recipe['recipe_id']
+                display_order = recipe['display_order']
 
                 cursor.execute("""
                     SELECT ingredient_id, quantity, unit_id FROM recipe_ingredients WHERE recipe_id = %s AND is_active = 1
@@ -56,37 +87,30 @@ def get_weekly_dashboard():
 
                     total_quantity = conversion_factor*quantity
 
-                    print("[food_plan_id is :", food_plan_id, ", food_plan_week_id is :", food_plan_week_id ,", food_plan_day_id is :", food_plan_day_id,
-                            ", food_plan_meal_id is :", food_plan_meal_id, ", recipe_id is :", recipe_id, ", ingredient_id is :", ingredient_id,
-                            ", quantity is :", total_quantity, ", base_unit is :", base_unit, "]" )
+                    # print("[food_plan_id is :", food_plan_id, ", food_plan_week_id is :", food_plan_week_id ,", food_plan_day_id is :", food_plan_day_id,
+                    #         ", food_plan_meal_id is :", food_plan_meal_id, ", recipe_id is :", recipe_id, ", ingredient_id is :", ingredient_id,
+                    #         ", quantity is :", total_quantity, ", base_unit is :", base_unit, "]" )
 
+                    cursor.execute("""
+                        INSERT INTO food_plan_ingredient_records(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                                    recipe_id, ingredient_id, quantity, base_unit, display_order, is_active)
+                        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1)
+                    """,(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                        recipe_id, ingredient_id, total_quantity, base_unit, display_order))
 
-        
-
-        return jsonify({'message': 'data reached backend', 'meals': meals}), 200
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
+        conn.commit()
+        return jsonify({'message': 'data reached backend'}), 200
 
     except Error as err:
-        conn.rollback()
-        cursor.close()
-        conn.close()
+        if conn:
+            conn.rollback()
         return jsonify({'error': str(err)}), 500
+    except Exception as err:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': 'Unexpected error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

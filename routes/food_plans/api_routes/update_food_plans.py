@@ -389,6 +389,9 @@ def update_day_food_plan():
 
         # update or insert the data depending on the data
         weeks = data.get('food_plan',[])
+        record_for_dashboard = {}  # record to send it to a table from which many things can be found quickly like total ingredient cost,  quantity, etc..
+        record_for_dashboard['food_plan_id'] = food_plan_id
+
         for week in weeks:
             week_no = week['week_no']
 
@@ -396,6 +399,7 @@ def update_day_food_plan():
                 cursor.execute("""UPDATE food_plan_weeks SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                 WHERE food_plan_week_id = %s""",(week['food_plan_week_id'],))
                 food_plan_week_id = week['food_plan_week_id']
+                record_for_dashboard['food_plan_week_id'] = food_plan_week_id
             else:
                 cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE food_plan_id = %s AND week_no = %s",(food_plan_id, week_no))
                 row = cursor.fetchone()
@@ -403,10 +407,12 @@ def update_day_food_plan():
                     cursor.execute("""UPDATE food_plan_weeks SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                     WHERE food_plan_week_id = %s""",(row['food_plan_week_id'],))
                     food_plan_week_id = row['food_plan_week_id']
+                    record_for_dashboard['food_plan_week_id'] = food_plan_week_id
                 else:
                     cursor.execute("""INSERT INTO food_plan_weeks(food_plan_id, week_no)
                                     VALUES (%s,%s)""",(food_plan_id, week_no))
-                    food_plan_week_id = cursor.lastrowid                
+                    food_plan_week_id = cursor.lastrowid  
+                    record_for_dashboard['food_plan_week_id'] = food_plan_week_id              
 
             for day in week['weekly_meals']:
                 day_no = day['day_no']
@@ -415,6 +421,7 @@ def update_day_food_plan():
                     cursor.execute("""UPDATE food_plan_days SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                     WHERE food_plan_day_id = %s""",(day['food_plan_day_id'],))
                     food_plan_day_id = day['food_plan_day_id']
+                    record_for_dashboard['food_plan_day_id'] = food_plan_day_id
                 else:
                     cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND day_no = %s",(food_plan_week_id, day_no))
                     row = cursor.fetchone()
@@ -422,48 +429,68 @@ def update_day_food_plan():
                         cursor.execute("""UPDATE food_plan_days SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
                                         WHERE food_plan_day_id = %s""",(row['food_plan_day_id'],))
                         food_plan_day_id = row['food_plan_day_id']
+                        record_for_dashboard['food_plan_day_id'] = food_plan_day_id
                     else:
                         cursor.execute("""INSERT INTO food_plan_days(food_plan_week_id, day_no)
                                         VALUES (%s,%s)""",(food_plan_week_id, day_no))
-                        food_plan_day_id = cursor.lastrowid                                                        
+                        food_plan_day_id = cursor.lastrowid  
+                        record_for_dashboard['food_plan_day_id'] = food_plan_day_id                                                      
 
+                meals_records = []
                 for meal in day['daily_meals']:
-                        meal_type = meal['meal_type']
+                    meal_type = meal['meal_type']
+                    meal_record = {}
 
-                        if meal.get('food_plan_meal_id'):
+                    if meal.get('food_plan_meal_id'):
+                        cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
+                                        WHERE food_plan_meal_id =%s""",(meal['food_plan_meal_id'],))
+                        food_plan_meal_id = meal['food_plan_meal_id']       
+                        meal_record['food_plan_meal_id'] = food_plan_meal_id                 
+                    else:
+                        cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND meal_type = %s",(food_plan_day_id, meal_type))
+                        row = cursor.fetchone()
+                        if row:
                             cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
-                                            WHERE food_plan_meal_id =%s""",(meal['food_plan_meal_id'],))
-                            food_plan_meal_id = meal['food_plan_meal_id']                        
+                                            WHERE food_plan_meal_id =%s""",(row['food_plan_meal_id'],))
+                            food_plan_meal_id = row['food_plan_meal_id']
+                            meal_record['food_plan_meal_id'] = food_plan_meal_id
                         else:
-                            cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND meal_type = %s",(food_plan_day_id, meal_type))
-                            row = cursor.fetchone()
-                            if row:
-                                cursor.execute("""UPDATE food_plan_meals SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
-                                                WHERE food_plan_meal_id =%s""",(row['food_plan_meal_id'],))
-                                food_plan_meal_id = row['food_plan_meal_id']
-                            else:
-                                cursor.execute("""INSERT INTO food_plan_meals(food_plan_day_id, meal_type)
-                                                VALUES (%s,%s)""",(food_plan_day_id, meal_type))
-                                food_plan_meal_id = cursor.lastrowid
+                            cursor.execute("""INSERT INTO food_plan_meals(food_plan_day_id, meal_type)
+                                            VALUES (%s,%s)""",(food_plan_day_id, meal_type))
+                            food_plan_meal_id = cursor.lastrowid
+                            meal_record['food_plan_meal_id'] = food_plan_meal_id
 
-                        for recipe in meal['recipes']:
-                            recipe_id = recipe['recipe_id']
-                            display_order = recipe['display_order']
+                    recipes_records = []
+                    for recipe in meal['recipes']:
+                        recipe_id = recipe['recipe_id']
+                        display_order = recipe['display_order']
+                        recipe_record ={}                       # for dashboard use later
+                        recipe_record['recipe_id'] = recipe_id
+                        recipe_record['display_order'] = display_order
 
-                            if recipe.get('food_plan_recipe_id'):
-                                cursor.execute("""UPDATE food_plan_recipes SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
-                                                WHERE food_plan_recipe_id =%s""",(recipe['food_plan_recipe_id'],))
-                            else:
-                                # insert new rows everytime for update. old rows will help in future to track old food plan by reverse engineering 
-                                cursor.execute("""
-                                    INSERT INTO food_plan_recipes(food_plan_meal_id, recipe_id, display_order)
-                                    VALUES (%s, %s, %s)
-                                """,(food_plan_meal_id, recipe_id, display_order))
+                        if recipe.get('food_plan_recipe_id'):
+                            cursor.execute("""UPDATE food_plan_recipes SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
+                                            WHERE food_plan_recipe_id =%s""",(recipe['food_plan_recipe_id'],))
+                            food_plan_recipe_id = recipe['food_plan_recipe_id']
+                            recipe_record['food_plan_recipe_id'] = food_plan_recipe_id
+                        else:
+                            # insert new rows everytime for update. old rows will help in future to track old food plan by reverse engineering 
+                            cursor.execute("""
+                                INSERT INTO food_plan_recipes(food_plan_meal_id, recipe_id, display_order)
+                                VALUES (%s, %s, %s)
+                            """,(food_plan_meal_id, recipe_id, display_order))
+                            food_plan_recipe_id = cursor.lastrowid
+                            recipe_record['food_plan_recipe_id'] = food_plan_recipe_id
+                        
+                        recipes_records.append(recipe_record.copy())
+                    meal_record['recipes'] = recipes_records
+                    meals_records.append(meal_record)
+                record_for_dashboard['daily_meals'] = meals_records
 
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'message': f'Food Plan updated successfully!!!!!', 'updated_data': weeks}), 201
+        return jsonify({'message': f'Food Plan updated successfully!!!!!', 'dashboard_data': record_for_dashboard}), 201
     
     except Error as err:
         conn.rollback()
