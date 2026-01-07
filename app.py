@@ -20,6 +20,7 @@ from routes.admin.html_routes import admin_html_bp
 from routes.food_plans.api_routes import food_plans_api_bp
 from routes.food_plans.html_routes import food_plans_html_bp
 from routes.weekly_dashboard.api_routes import weekly_dashboard_api_bp
+from routes.weekly_dashboard.html_routes import weekly_dashboard_html_bp
 
 
 app = Flask(__name__)
@@ -34,6 +35,7 @@ app.register_blueprint(admin_html_bp)
 app.register_blueprint(food_plans_api_bp)
 app.register_blueprint(food_plans_html_bp)
 app.register_blueprint(weekly_dashboard_api_bp)
+app.register_blueprint(weekly_dashboard_html_bp)
 
 jwt = JWTManager(app)
 

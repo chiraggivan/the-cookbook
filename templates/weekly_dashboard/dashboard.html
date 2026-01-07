@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Dashboard</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page" data-week-no="{{ week_no }}" data-food-plan-id="{{ food_plan_id }}">
+  <div class="nav-container">
+    <div class="user-links">
+      <a href="#" onclick="history.back(); return false;" class="my-recipes">Back</a>
+    </div>
+    <div class="admin-options">
+      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
+      <a href="/admin/recipes" class="admin-link">Recipes</a>
+      <a href="/admin/users" class="admin-link">Users</a>
+      <a href="/admin/dishes" class="admin-link">Dishes</a>
+    </div>
+  </div>
+
+  <div id="error"></div>
+  <script type="module"  src="/static/js/features/weekly_dashboard/dashboard.js" defer></script>
+</body>

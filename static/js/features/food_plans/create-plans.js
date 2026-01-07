@@ -11,10 +11,13 @@ if (!isTokenValid(token)) {
 const data = getUserFromToken(token);
 const userId = parseInt(data.user_id);
 const role = data.role;
+let user = 'free'
 
 const newPlanBtn = document.getElementById("plan-btn");
 const weekOne = document.getElementById("week-1");
-// const inputRecipe = document.getElementById("recipe-search");
+const weekTwo = document.getElementById("week-2");
+const weekThree = document.getElementById("week-3");
+// const weekFour = document.getElementById("week-4");
 const dayBoxes = weekOne.querySelectorAll(".day-box");
 const mealType = document.getElementById("meal-type");
 const suggestionBox = document.getElementById("recipe-suggestion-box");
@@ -55,7 +58,12 @@ async function getUserFoodPlan(){
     
     sortedWeeks.forEach(week => {   
       const food_plan_week_id = week.food_plan_week_id;
-      if (week.week_no !== 1) return;   
+      // if (week.week_no !== 1) return;                                     // need to remove this line for multiple weeks
+      const weekNumber = `w${week.week_no}`
+      const weekSelected = document.getElementById(weekNumber);
+      weekSelected.dataset.weekNo = week.week_no;
+      weekSelected.dataset.foodPlanId = foodPlanId;
+      
       let modal_week_id = '';
       modal_week_id +=`week-${week.week_no}-`;
       const days = week.weekly_meals;
@@ -68,8 +76,12 @@ async function getUserFoodPlan(){
         modal_day_id += `${modal_week_id}day-${day.day_no}`
         let dayHTML =`Day ${day.day_no}`;
         const meals = day.daily_meals;  
+        const meal_order = ["breakfast", "lunch", "dinner"]
+        const sortedMeals = [...meals].sort((a,b) => {
+          return meal_order.indexOf(a.type) - meal_order.indexOf(b.type);
+        })
 
-        meals.forEach(meal =>{
+        sortedMeals.forEach(meal =>{
           const food_plan_meal_id = meal.food_plan_meal_id;
           dayHTML += `<div class="meal-type"><strong>${meal.meal_type}</strong></div>`;         
 
@@ -455,11 +467,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     if(data.userExist){
       newPlanBtn.style.display = 'none';
       weekOne.style.display = 'flex';
+      if(user == 'paid'){
+        weekTwo.style.display = 'flex';
+        weekThree.style.display = 'flex';
+      }
       foodPlanId = data.plan_id;
       getUserFoodPlan();
     } else{
       newPlanBtn.style.display = 'flex';
       weekOne.style.display = 'none';
+      weekTwo.style.display = 'none';
+      weekThree.style.display = 'nones'
     } 
   } catch (err){
       errorBox.textContent = err.message;
@@ -495,6 +513,20 @@ document.addEventListener("DOMContentLoaded", async function () {
       errorBox.textContent = err.message;
     }
   })
+
+  // open weekly dashboard by clicking "week 1" box
+  document.addEventListener("click", (e) => {
+    const weekBox = e.target.closest(".week-box");
+    if (!weekBox) return;
+
+    const rawWeekNo = weekBox.dataset.weekNo;
+    const rawFoodPlanId = weekBox.dataset.foodPlanId;
+    if (!rawWeekNo || !rawFoodPlanId) {
+      return;
+    }
+    const weekId = parseInt(rawWeekNo, 10);
+    window.location.href = `/weekly_dashboard/${rawFoodPlanId}/${weekId}`;
+  });
 
   // open modal by clicking on one of the day.
   dayBoxes.forEach(dayBox => {

@@ -4,10 +4,10 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import weekly_dashboard_api_bp
 from mysql.connector import Error
 
-# Update food plan 
+# save food plan day's day in food_plan_ingredient_records table for dashboard 
 @weekly_dashboard_api_bp.route('/save_day_recipes_details', methods=['POST'])
 @jwt_required()
-def get_weekly_dashboard():
+def set_weekly_dashboard():
 
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
@@ -47,7 +47,7 @@ def get_weekly_dashboard():
         row = cursor.fetchone()
         if not row:
             return jsonify({'error': 'No such data found for the user.'}), 404
-        print("Have entered save day recipe details")
+    
         # -------------------------------------------------- Insert, update, delete  in db --------------------------------
 
         # delete the records of that day
@@ -100,6 +100,103 @@ def get_weekly_dashboard():
 
         conn.commit()
         return jsonify({'message': 'data reached backend'}), 200
+
+    except Error as err:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': str(err)}), 500
+    except Exception as err:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': 'Unexpected error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+#get the data for dashboard
+@weekly_dashboard_api_bp.route('/get_weekly_dashboard', methods=['POST'])
+@jwt_required()
+def get_weekly_dashboard():
+
+    s_user_id = get_jwt_identity()
+    print("logged in user id : ",s_user_id)
+    conn = None
+    cursor = None
+    
+    try:
+        data = request.get_json()
+        week_no = int(data.get('week_no'))
+        food_plan_id = int(data.get('food_plan_id'))
+        print("week is :",  week_no)
+        print("plan id : ", food_plan_id)
+            
+        if week_no < 1 or week_no > 6:
+            return jsonify({'error': 'Invalid week number'}), 500
+
+
+        #----------------------------------------------- connect to db and verify data -----------------------------------
+
+        # connect to db        
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        # check user is valid and active
+        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (s_user_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'User not found'}), 404
+        
+        # get food_plan_week_id for week no and food plan id in food_plan_weeks table
+        cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE week_no = %s AND food_plan_id = %s AND is_active = 1",(week_no, food_plan_id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'food plan week not found'}), 404
+
+        food_plan_week_id = row['food_plan_week_id'] # print("food_plan_week_id is :", food_plan_week_id)
+        
+        # retrive data from food plan ingredient records table 
+        cursor.execute("""
+            SELECT fpir.food_plan_week_id, fpw.week_no, fpir.food_plan_day_id, fpd.day_no, fpir.food_plan_meal_id, fpm.meal_type, fpir.food_plan_recipe_id,
+                fpir.recipe_id, r.name as recipe_name, fpir.ingredient_id, i.name as ingredient_name, fpir.quantity, fpir.base_unit, COALESCE(up.custom_price, i.default_price) as base_price
+            FROM food_plan_ingredient_records fpir
+                JOIN food_plan_weeks fpw ON fpw.food_plan_week_id = fpir.food_plan_week_id AND fpw.is_active = 1
+                JOIN food_plan_days fpd ON fpd.food_plan_day_id = fpir.food_plan_day_id AND fpd.is_active = 1
+                JOIN food_plan_meals fpm ON fpm.food_plan_meal_id = fpir.food_plan_meal_id AND fpm.is_active = 1
+                JOIN recipes r ON r.recipe_id = fpir.recipe_id AND r.is_active = 1
+                JOIN ingredients i ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1 
+                LEFT JOIN user_prices up ON up.ingredient_id = i.ingredient_id AND up.user_id = %s AND up.is_active = 1
+            WHERE fpir.food_plan_week_id = %s 
+        """,(s_user_id, food_plan_week_id))
+        dashData = cursor.fetchall()
+        if not dashData or dashData == []:
+            return jsonify({'error': 'no data found for dashboard'}), 404
+        for r in dashData:
+            r['base_price'] = round(float(r['base_price']),2)
+            r['quantity'] = round(float(r['quantity']),8)
+        
+        # get all aggregate values
+        cursor.execute("""
+            SELECT COUNT(DISTINCT food_plan_meal_id)  AS total_meals, COUNT(DISTINCT food_plan_recipe_id)      AS total_items,
+                    COUNT(DISTINCT recipe_id)   AS total_recipes,    COUNT(DISTINCT ingredient_id)   AS total_ingredients,
+                    SUM(quantity) AS total_quantity, MIN(quantity)  AS min_quantity, MAX(quantity) AS max_quantity
+            FROM food_plan_ingredient_records fpir
+                JOIN food_plan_weeks fpw ON fpw.food_plan_week_id = fpir.food_plan_week_id AND fpw.is_active = 1
+                JOIN food_plan_days fpd ON fpd.food_plan_day_id = fpir.food_plan_day_id AND fpd.is_active = 1
+                JOIN food_plan_meals fpm ON fpm.food_plan_meal_id = fpir.food_plan_meal_id AND fpm.is_active = 1
+                JOIN recipes r ON r.recipe_id = fpir.recipe_id AND r.is_active = 1
+                JOIN ingredients i ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1 
+                LEFT JOIN user_prices up ON up.ingredient_id = i.ingredient_id AND up.user_id = %s AND up.is_active = 1
+            WHERE fpir.food_plan_week_id = %s
+        """)
+
+
+
+
+
+        return jsonify({'message': 'fetched data ', 'data': rows}), 200
 
     except Error as err:
         if conn:
