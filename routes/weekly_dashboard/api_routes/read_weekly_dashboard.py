@@ -124,13 +124,22 @@ def get_weekly_dashboard():
     print("logged in user id : ",s_user_id)
     conn = None
     cursor = None
+    finalData ={}
+
+    # function to fill gaps in days
+    def fill_missing_days(data, start=1, end=7):
+        day_map = {d["day_no"]: d for d in data}
+        result = []
+        for day in range(start, end + 1):
+            result.append(
+                day_map.get(day, {"day_no": day, "day_cost": 0})
+            )
+        return result
     
     try:
         data = request.get_json()
         week_no = int(data.get('week_no'))
         food_plan_id = int(data.get('food_plan_id'))
-        print("week is :",  week_no)
-        print("plan id : ", food_plan_id)
             
         if week_no < 1 or week_no > 6:
             return jsonify({'error': 'Invalid week number'}), 500
@@ -156,7 +165,7 @@ def get_weekly_dashboard():
             return jsonify({'error': 'food plan week not found'}), 404
 
         food_plan_week_id = row['food_plan_week_id'] # print("food_plan_week_id is :", food_plan_week_id)
-        
+    
         # retrive data from food plan ingredient records table 
         cursor.execute("""
             SELECT fpir.food_plan_week_id, fpw.week_no, fpir.food_plan_day_id, fpd.day_no, fpir.food_plan_meal_id, fpm.meal_type, fpir.food_plan_recipe_id,
@@ -168,8 +177,8 @@ def get_weekly_dashboard():
                 JOIN recipes r ON r.recipe_id = fpir.recipe_id AND r.is_active = 1
                 JOIN ingredients i ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1 
                 LEFT JOIN user_prices up ON up.ingredient_id = i.ingredient_id AND up.user_id = %s AND up.is_active = 1
-            WHERE fpir.food_plan_week_id = %s 
-        """,(s_user_id, food_plan_week_id))
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s 
+        """,(s_user_id, food_plan_id, food_plan_week_id))
         dashData = cursor.fetchall()
         if not dashData or dashData == []:
             return jsonify({'error': 'no data found for dashboard'}), 404
@@ -177,26 +186,113 @@ def get_weekly_dashboard():
             r['base_price'] = round(float(r['base_price']),2)
             r['quantity'] = round(float(r['quantity']),8)
         
+        finalData['dashData'] = dashData
+        
         # get all aggregate values
         cursor.execute("""
-            SELECT COUNT(DISTINCT food_plan_meal_id)  AS total_meals, COUNT(DISTINCT food_plan_recipe_id)      AS total_items,
-                    COUNT(DISTINCT recipe_id)   AS total_recipes,    COUNT(DISTINCT ingredient_id)   AS total_ingredients,
-                    SUM(quantity) AS total_quantity, MIN(quantity)  AS min_quantity, MAX(quantity) AS max_quantity
+            SELECT COUNT(DISTINCT fpir.food_plan_meal_id)  AS total_meals, 
+                    COUNT(DISTINCT fpir.food_plan_recipe_id)  AS total_items,
+                    COUNT(DISTINCT fpir.recipe_id) AS total_recipes, 
+                    COUNT(DISTINCT fpir.ingredient_id) AS total_ingredients,
+                    ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) AS cost
             FROM food_plan_ingredient_records fpir
-                JOIN food_plan_weeks fpw ON fpw.food_plan_week_id = fpir.food_plan_week_id AND fpw.is_active = 1
-                JOIN food_plan_days fpd ON fpd.food_plan_day_id = fpir.food_plan_day_id AND fpd.is_active = 1
-                JOIN food_plan_meals fpm ON fpm.food_plan_meal_id = fpir.food_plan_meal_id AND fpm.is_active = 1
-                JOIN recipes r ON r.recipe_id = fpir.recipe_id AND r.is_active = 1
                 JOIN ingredients i ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1 
                 LEFT JOIN user_prices up ON up.ingredient_id = i.ingredient_id AND up.user_id = %s AND up.is_active = 1
-            WHERE fpir.food_plan_week_id = %s
-        """)
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s
+        """,(s_user_id, food_plan_id, food_plan_week_id))
+        aggData = cursor.fetchone()
+        if not aggData:
+            return jsonify({'error': 'error while finding aggregate data.'}), 
+        if aggData and aggData['cost'] is not None:
+            aggData['cost'] = float(aggData['cost'])
+        finalData['aggData'] = aggData
+        
+        # ingredients and its cost  
+        cursor.execute("""
+            SELECT  i.name,  SUM(fpir.quantity) AS quantity, COALESCE(up.custom_price, i.default_price) as ingredient_cost, fpir.base_unit, 
+                ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) AS cost,  
+                COUNT(DISTINCT fpir.food_plan_recipe_id) AS total_dishes, 
+                COUNT(DISTINCT fpir.recipe_id) AS total_recipes  
+            FROM food_plan_ingredient_records fpir
+                JOIN ingredients i  ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1
+                JOIN food_plans fp  ON fp.food_plan_id = fpir.food_plan_id AND fp.is_active = 1
+                LEFT JOIN user_prices up  ON up.user_id = %s
+                    AND up.ingredient_id = fpir.ingredient_id
+                    AND up.is_active = 1
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s AND fpir.is_active = 1
+            GROUP BY  i.ingredient_id, i.name, fpir.base_unit, ingredient_cost
+            ORDER BY quantity DESC;
+        """,(s_user_id, food_plan_id, food_plan_week_id)) 
+        ingredientCostList = cursor.fetchall()
+        if not ingredientCostList or ingredientCostList ==[]:
+            return jsonify({'error': 'error while finding ingredient cost list data.'}), 404
+        for r in ingredientCostList:
+            r['cost'] = float(r['cost'])
+            r['quantity'] = float(r['quantity'])
+            r['ingredient_cost'] = float(r['ingredient_cost'])
+
+        finalData['ingredientCostList'] = ingredientCostList
+
+        # recipes and its cost
+        cursor.execute("""
+            SELECT distinct(fpir.recipe_id) , r.name, ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) as recipe_cost
+            FROM food_plan_ingredient_records fpir
+                JOIN recipes r ON fpir.recipe_id = r.recipe_id AND r.is_active =1
+                JOIN ingredients i  ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1
+                LEFT JOIN user_prices up  ON up.user_id = %s AND up.ingredient_id = fpir.ingredient_id AND up.is_active = 1
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s AND fpir.is_active = 1
+            GROUP BY fpir.food_plan_recipe_id, fpir.recipe_id
+            ORDER BY recipe_cost DESC
+        """,(s_user_id, food_plan_id, food_plan_week_id)) 
+        recipeCostList = cursor.fetchall()
+        if not recipeCostList or recipeCostList ==[]:
+            return jsonify({'error': 'error while finding recipe cost list data.'}), 404
+        for r in recipeCostList:
+            r['recipe_cost'] = float(r['recipe_cost'])
+        finalData['recipeCostList'] = recipeCostList
+
+        #meals and its cost
+        cursor.execute("""
+            SELECT fpm.meal_type , ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) as meal_cost
+            FROM food_plan_ingredient_records fpir
+                JOIN food_plan_meals fpm ON fpir.food_plan_meal_id = fpm.food_plan_meal_id AND fpm.is_active =1
+                JOIN ingredients i  ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1
+                LEFT JOIN user_prices up  ON up.user_id = %s AND up.ingredient_id = fpir.ingredient_id AND up.is_active = 1
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s AND fpir.is_active = 1
+            GROUP BY fpm.meal_type
+            ORDER BY meal_cost DESC;
+        """,(s_user_id, food_plan_id, food_plan_week_id)) 
+        mealCostList = cursor.fetchall()
+        if not mealCostList or mealCostList ==[]:
+            return jsonify({'error': 'error while finding meal cost list data.'}), 404
+        for r in mealCostList:
+            r['meal_cost'] = float(r['meal_cost'])
+        finalData['mealCostList'] = mealCostList
+
+        #day and its cost
+        cursor.execute("""
+            SELECT fpd.day_no, ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) as day_cost
+            FROM food_plan_ingredient_records fpir
+                JOIN food_plan_days fpd ON fpir.food_plan_day_id = fpd.food_plan_day_id AND fpd.is_active =1
+                JOIN ingredients i  ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1
+                LEFT JOIN user_prices up  ON up.user_id = %s AND up.ingredient_id = fpir.ingredient_id AND up.is_active = 1
+            WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s AND fpir.is_active = 1
+            GROUP BY fpd.day_no
+            ORDER BY fpd.day_no;
+        """,(s_user_id, food_plan_id, food_plan_week_id)) 
+        dayCostList = cursor.fetchall()
+        if not dayCostList or dayCostList ==[]:
+            return jsonify({'error': 'error while finding day cost list data.'}), 404
+        for r in dayCostList:
+            r['day_cost'] = float(r['day_cost'])
+        dayCostList = fill_missing_days(dayCostList)
+        finalData['dayCostList'] = dayCostList
+
+        
 
 
 
-
-
-        return jsonify({'message': 'fetched data ', 'data': rows}), 200
+        return jsonify({'message': 'fetched data ', 'data': finalData}), 200
 
     except Error as err:
         if conn:
@@ -205,9 +301,10 @@ def get_weekly_dashboard():
     except Exception as err:
         if conn:
             conn.rollback()
-        return jsonify({'error': 'Unexpected error'}), 500
+        return jsonify({'error': str(err)}), 500
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+

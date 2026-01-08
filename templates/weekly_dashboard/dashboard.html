@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Weekly Dashboard</title>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.min.js"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="recipes-page" data-week-no="{{ week_no }}" data-food-plan-id="{{ food_plan_id }}">
@@ -10,12 +13,120 @@
     <div class="user-links">
       <a href="#" onclick="history.back(); return false;" class="my-recipes">Back</a>
     </div>
-    <div class="admin-options">
-      <a href="/admin/ingredients" class="admin-link">Ingredients</a>
-      <a href="/admin/recipes" class="admin-link">Recipes</a>
-      <a href="/admin/users" class="admin-link">Users</a>
-      <a href="/admin/dishes" class="admin-link">Dishes</a>
-    </div>
+  </div>
+
+  <div class="dashboard">
+    <!-- HEADER -->
+    <header class="dashboard-header">
+      <h1>Weekly Meal Planner</h1>
+    </header>
+
+    <!-- KPI CARDS -->
+    <section class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Meals</div>
+        <div class="kpi-value" id="kpi-total-meals">0</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Total Recipes</div>
+        <div class="kpi-value" id="kpi-total-recipes">0</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Total Ingredients</div>
+        <div class="kpi-value" id="kpi-total-ingredients">0</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Estimated Cost</div>
+        <div class="kpi-value" id="kpi-cost">£0.00</div>
+      </div>
+    </section>
+
+
+    <!-- MAIN CONTENT -->
+    <section class="main-grid">
+
+      <!-- LEFT -->
+      <div class="panel weekly-plan">
+        <h2>Weekly Meal Plan</h2>
+        <div class="panel-body">
+          <!-- days & meals go here -->
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right-column">
+        <div class="panel cost-breakdown">
+          <h2>Meal Cost Breakdown</h2>
+          <div class="panel-body chart-layout">
+            <!-- LEFT: PIE CHART -->
+            <div class="chart-container">
+              <canvas id="mealCostPie"></canvas>
+            </div>
+
+            <!-- RIGHT: SUMMARY / BARS / LEGEND -->
+            <div class="chart-side">
+              <!-- <h4>Meal Cost Breakdown</h4> -->
+
+              <div class="legend-item">
+                <span class="dot breakfast"></span> Breakfast
+              </div>
+              <div class="legend-item">
+                <span class="dot lunch"></span> Lunch
+              </div>
+              <div class="legend-item">
+                <span class="dot dinner"></span> Dinner
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel nutrition-overview">
+          <h2>Day Cost Breakdown</h2>
+          <div class="panel-body nutrition-cards">
+            <canvas id="dayCostBar"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- BOTTOM -->
+    <section class="bottom-grid">
+
+      <div class="panel shopping-list">
+        <h2>Shopping List</h2>
+        <div class="panel-body">
+          <div class="table-scroll">
+            <table id="shoppingTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Ingredient</th>
+                  <th>Quantity</th>
+                  <th>Cost (£)</th>
+                  <th>Base Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be injected here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel tips">
+        <h2>Tips & Insights</h2>
+        <div class="panel-body">
+          <!-- insights later -->
+        </div>
+      </div>
+
+    </section>
+
   </div>
 
   <div id="error"></div>
