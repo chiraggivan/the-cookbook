@@ -720,11 +720,12 @@ input[type=number]::-webkit-inner-spin-button {
   display: flex;
   gap: 12px;
   width: 100%;
+  
 }
 
 .box {
   flex: 1;                     /* all boxes equal width */
-  height: 140px;
+  height: 180px;
   border: 2px solid #ccc;
   background: #fff;
   border-radius: 8px;
@@ -998,6 +999,7 @@ body {
 
 /* MAIN CONTAINER */
 .dashboard {
+  display: none;
   max-width: 1200px;
   margin: auto;
 }
@@ -1189,4 +1191,179 @@ body {
   border-radius: 4px;
 }
 
+/* week data css where it shows day names and meal names along with recipe names in meals  */
+.week-scroll {
+  max-height: 440px;          
+  overflow-y: auto;
+  border-radius: 8px;
+}
 
+.week-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.week-scroll::-webkit-scrollbar-thumb {
+  background-color: #c7d2fe;
+  border-radius: 4px;
+}
+
+.weekly-plan .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 435px;     
+  /* overflow-y: auto;      */
+  padding-right: 6px;
+}
+
+.day-block {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.day-name {
+  background: #3b82f6;
+  color: white;
+  padding: 10px;
+  font-weight: 600;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.day-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px 0 0 8px;
+  min-width: 120px;
+}
+
+.day-name {
+  font-weight: 600;
+  font-size: 24px;
+}
+
+.day-cost {
+  font-size: 20px;
+  font-weight: bold;
+  color: #272424;
+  opacity: 0.9;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.meals-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+
+.meal-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 50px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.meal-label {
+  font-weight: 600;
+}
+
+.meal-recipes {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  mask-image: linear-gradient(
+    to right,
+    black 90%,
+    transparent 100%
+  );
+}
+
+/* Hide scrollbar but keep scroll */
+.meal-recipes::-webkit-scrollbar {
+  height: 6px;
+}
+
+.meal-recipes::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.recipe-pill {
+  background: #e5f0ff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  flex: 0 0 auto;
+  text-transform: capitalize;
+}
+
+/* recipe cost breakdown */
+.recipe-scroll {
+  max-height: 260px;          
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
+.recipe-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recipe-scroll::-webkit-scrollbar-thumb {
+  background-color: #c7d2fe;
+  border-radius: 4px;
+}
+
+#recipeCostTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+#recipeCostTable th {
+  /* text-align: left; */
+  font-weight: 600;
+  color: #374151;
+  padding: 8px;
+}
+
+#recipeCostTable thead th {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 2;
+  font-weight: 700;
+}
+
+#recipeCostTable td {
+  /* text-align: left; */
+  padding: 6px;
+  color: #111827;
+}
+
+#recipeCostTable tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+th.recipe-cost,
+td.recipe-cost {
+  text-align: right;
+}
+td.recipe-cost {
+  font-weight: 400;
+}
+th.recipe-list{
+ text-align: left; 
+}

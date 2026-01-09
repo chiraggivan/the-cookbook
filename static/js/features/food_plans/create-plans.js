@@ -18,7 +18,7 @@ const weekOne = document.getElementById("week-1");
 const weekTwo = document.getElementById("week-2");
 const weekThree = document.getElementById("week-3");
 // const weekFour = document.getElementById("week-4");
-const dayBoxes = weekOne.querySelectorAll(".day-box");
+const dayBoxes = document.querySelectorAll(".week-row .day-box");
 const mealType = document.getElementById("meal-type");
 const suggestionBox = document.getElementById("recipe-suggestion-box");
 const errorBox = document.getElementById("error");
@@ -29,6 +29,18 @@ let foodPlanData = null; // whole food plan data of the user
 let foodPlanId = null; // food_plan_id of the user
 let modalDayData = null; // food plan of the particular day selected and shown in modal
 let food_plan_id;
+
+// get day name from day no
+function getDayName (dayNo){
+  if(dayNo == 1) return "Monday"
+  if(dayNo == 2) return "Tuesday"
+  if(dayNo == 3) return "Wednesday"
+  if(dayNo == 4) return "Thursday"
+  if(dayNo == 5) return "Friday"
+  if(dayNo == 6) return "Saturday"
+  if(dayNo == 7) return "Sunday"
+  else return "Day"
+}
 
 // get food plan of the user
 async function getUserFoodPlan(){
@@ -73,12 +85,12 @@ async function getUserFoodPlan(){
         // if (day.day_no !== 1) return;
         const food_plan_day_id = day.food_plan_day_id;
         let modal_day_id ='';
-        modal_day_id += `${modal_week_id}day-${day.day_no}`
-        let dayHTML =`Day ${day.day_no}`;
+        modal_day_id += `${modal_week_id}day-${day.day_no}`;
+        let dayHTML =`${getDayName(day.day_no)}`;
         const meals = day.daily_meals;  
         const meal_order = ["breakfast", "lunch", "dinner"]
         const sortedMeals = [...meals].sort((a,b) => {
-          return meal_order.indexOf(a.type) - meal_order.indexOf(b.type);
+          return meal_order.indexOf(a.meal_type) - meal_order.indexOf(b.meal_type);
         })
 
         sortedMeals.forEach(meal =>{
@@ -132,6 +144,7 @@ function getWeekAndDayNumber(id) {
 
 // Open modal on screan
 function openMealModal(weekNo, dayNo, isOldData, dayBox) {
+  console.log("entered openMealModal");
   const modal = document.getElementById("meal-modal");
   modal.querySelector(".modal-header h3").textContent = `Week ${weekNo} — Day ${dayNo}`;
 

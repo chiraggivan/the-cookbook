@@ -3,6 +3,7 @@ from db import get_db_connection
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import weekly_dashboard_api_bp
 from mysql.connector import Error
+import copy
 
 # save food plan day's day in food_plan_ingredient_records table for dashboard 
 @weekly_dashboard_api_bp.route('/save_day_recipes_details', methods=['POST'])
@@ -136,6 +137,26 @@ def get_weekly_dashboard():
             )
         return result
     
+    # function to get day name by day no
+    def dayIs(no):
+        dayNo = no
+        if dayNo == 1:
+            return 'Monday'
+        elif dayNo == 2:
+            return 'Tuesday'
+        elif dayNo == 3:
+            return 'Wednesday'
+        elif dayNo == 4:
+            return 'Thursday'
+        elif dayNo == 5:
+            return 'Friday'
+        elif dayNo == 6:
+            return 'Saturday'
+        elif dayNo == 7:
+            return 'Sunday'
+        else:
+            return 'Day'
+    
     try:
         data = request.get_json()
         week_no = int(data.get('week_no'))
@@ -165,7 +186,7 @@ def get_weekly_dashboard():
             return jsonify({'error': 'food plan week not found'}), 404
 
         food_plan_week_id = row['food_plan_week_id'] # print("food_plan_week_id is :", food_plan_week_id)
-    
+        
         # retrive data from food plan ingredient records table 
         cursor.execute("""
             SELECT fpir.food_plan_week_id, fpw.week_no, fpir.food_plan_day_id, fpd.day_no, fpir.food_plan_meal_id, fpm.meal_type, fpir.food_plan_recipe_id,
@@ -181,13 +202,12 @@ def get_weekly_dashboard():
         """,(s_user_id, food_plan_id, food_plan_week_id))
         dashData = cursor.fetchall()
         if not dashData or dashData == []:
-            return jsonify({'error': 'no data found for dashboard'}), 404
+            return jsonify({'message': 'no data found for dashboard', 'data': 'none'}), 200
         for r in dashData:
             r['base_price'] = round(float(r['base_price']),2)
             r['quantity'] = round(float(r['quantity']),8)
-        
         finalData['dashData'] = dashData
-        
+    
         # get all aggregate values
         cursor.execute("""
             SELECT COUNT(DISTINCT fpir.food_plan_meal_id)  AS total_meals, 
@@ -288,9 +308,44 @@ def get_weekly_dashboard():
         dayCostList = fill_missing_days(dayCostList)
         finalData['dayCostList'] = dayCostList
 
+        # create dictonary to show food plan of whole even empty days or meals
+        food_plan = copy.deepcopy(dashData)
+        days = [1,2,3,4,5,6,7]
+        meals = ['breakfast', 'lunch', 'dinner']
+        weeklyData = []
+        for d in days:
+            day = {
+                "name": dayIs(d),
+                "meals": []
+            }
+            day_data = [row for row in food_plan if row.get("day_no") == d]
+            day_cost = 0
+            for row in day_data:
+                day_cost += row.get('quantity',0)*row.get('base_price',0)
+            day['cost'] = day_cost
+
+            for m in meals:
+                meal = {
+                    "name": m,
+                    "recipes": []
+                }
+                meal_data = [y for y in day_data if y.get("meal_type") == m]
+                meal_cost = 0
+                for row in meal_data:
+                    meal_cost += row.get('quantity',0)*row.get('base_price',0)
+                meal['cost'] = meal_cost
+
+                recipes = []
+                for r in meal_data:
+                    recipe_name = r.get("recipe_name")
+                    if recipe_name and recipe_name not in recipes:
+                        recipes.append(recipe_name)
+
+                meal["recipes"] = recipes
+                day["meals"].append(meal)
+            weeklyData.append(day)
         
-
-
+        finalData['weeklyData'] = weeklyData
 
         return jsonify({'message': 'fetched data ', 'data': finalData}), 200
 

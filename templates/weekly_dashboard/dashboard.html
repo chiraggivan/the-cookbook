@@ -15,10 +15,10 @@
     </div>
   </div>
 
-  <div class="dashboard">
+  <div id="dashboard" class="dashboard">
     <!-- HEADER -->
     <header class="dashboard-header">
-      <h1>Weekly Meal Planner</h1>
+      <h1>Weekly Dashboard</h1>
     </header>
 
     <!-- KPI CARDS -->
@@ -51,8 +51,10 @@
       <!-- LEFT -->
       <div class="panel weekly-plan">
         <h2>Weekly Meal Plan</h2>
-        <div class="panel-body">
-          <!-- days & meals go here -->
+        <div class="week-scroll">
+          <div id="weeklyPlan" class="panel-body">
+          
+          </div>
         </div>
       </div>
 
@@ -119,9 +121,22 @@
       </div>
 
       <div class="panel tips">
-        <h2>Tips & Insights</h2>
+        <h2>Recipes Cost Breakdown</h2>
         <div class="panel-body">
-          <!-- insights later -->
+          <div class="recipe-scroll">
+            <table id="recipeCostTable">
+              <thead>
+                <tr>
+                  <th class="recipe-list">#</th>
+                  <th class="recipe-list">Name</th>
+                  <th class ="recipe-cost">Cost (£)</th>                  
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be injected here -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
