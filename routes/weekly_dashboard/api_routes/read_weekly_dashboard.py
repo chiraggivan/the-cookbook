@@ -127,6 +127,58 @@ def get_weekly_dashboard():
     cursor = None
     finalData ={}
 
+    # get easy quantity text
+    def get_easy_quantity(data):
+        units = ['kg','l','pc','bunch']
+        # for unit in units:
+        if data.get('base_unit') == 'kg':
+            if data.get('cup_unit') == 'g' and data.get('cup_weight'):
+                easyNumber = data.get('quantity')*1000 / data.get('cup_weight')
+                wholeNo = int(easyNumber)
+                deciNo = easyNumber - wholeNo  
+                print(data['name'] , ' cup weight : ', data['cup_weight'], 'easyNumber is: ' ,easyNumber ) 
+                easyText = ''
+                if wholeNo > 0: 
+                    easyText = str(wholeNo) + ''
+                if deciNo:
+                    if deciNo > 0.75:
+                        if wholeNo == 0: return '~ ' + (wholeNo + 1) + ' cups' 
+                        else: return '~ ' + (wholeNo + 1) + ' cup'                         
+                    if deciNo == 0.75:
+                        if wholeNo == 0: return'3/4 cup' 
+                        else : return easyText+' 3/4 cups'                    
+                    if deciNo > 0.5:
+                        if wholeNo == 0: return '~ 3/4 cup' 
+                        else : return '~ ' + easyText + ' 3/4 cups'                        
+                    if deciNo == 0.5:
+                        if wholeNo == 0: return '1/2 cup' 
+                        else : return easyText + ' 1/2 cups'                        
+                    if deciNo > 0.25:
+                        if wholeNo == 0: return '~ 1/2 cup' 
+                        else : return '~ ' + easyText + ' 1/2 cups'                       
+                    if deciNo == 0.25:
+                        if wholeNo == 0: return '1/4 cup or 4 tablespoons' 
+                        else : return easyText + '1/4 cups or '+ easyText+ ' cup & 4 tablespoons'                        
+                    if deciNo > 0.125:
+                        if wholeNo == 0: return '~ 1/4 cup or ~ 4 tablespoons' 
+                        else: return '~ ' +easyText+ '1/4 cups or ~ '+easyText+ ' cup & 4 tablespoons'                        
+                    if deciNo == 0.125:
+                        if wholeNo == 0: return '2 tablespoons' 
+                        else: return easyText + ' cup & 2 tablespoons'                        
+                    if deciNo < 0.125:
+                        if wholeNo == 0: return '~ less than 2 tablespoons' 
+                        else : '~ '+easyText+ ' cup & 2 tablespoons'                
+                else: 
+                    if wholeNo == 1: return str(wholeNo) +' cup' 
+                    else : return str(wholeNo) +' cups'
+                    
+                
+        else:
+            return 'nothing'
+                         
+
+
+
     # function to fill gaps in days
     def fill_missing_days(data, start=1, end=7):
         day_map = {d["day_no"]: d for d in data}
@@ -137,6 +189,45 @@ def get_weekly_dashboard():
             )
         return result
     
+    # funcgtion to fill gaps in meals
+    def fill_missing_meals(data):
+        food_plan = copy.deepcopy(data)
+        days = [1,2,3,4,5,6,7]
+        meals = ['breakfast', 'lunch', 'dinner']
+        weeklyData = []
+        for d in days:
+            day = {
+                "name": dayIs(d),
+                "meals": []
+            }
+            day_data = [row for row in food_plan if row.get("day_no") == d]
+            day_cost = 0
+            for row in day_data:
+                day_cost += row.get('quantity',0)*row.get('base_price',0)
+            day['cost'] = day_cost
+
+            for m in meals:
+                meal = {
+                    "name": m,
+                    "recipes": []
+                }
+                meal_data = [y for y in day_data if y.get("meal_type") == m]
+                meal_cost = 0
+                for row in meal_data:
+                    meal_cost += row.get('quantity',0)*row.get('base_price',0)
+                meal['cost'] = meal_cost
+
+                recipes = []
+                for r in meal_data:
+                    recipe_name = r.get("recipe_name")
+                    if recipe_name and recipe_name not in recipes:
+                        recipes.append(recipe_name)
+
+                meal["recipes"] = recipes
+                day["meals"].append(meal)
+            weeklyData.append(day)
+        return weeklyData
+
     # function to get day name by day no
     def dayIs(no):
         dayNo = no
@@ -179,18 +270,24 @@ def get_weekly_dashboard():
         if not cursor.fetchone():
             return jsonify({'error': 'User not found'}), 404
         
-        # get food_plan_week_id for week no and food plan id in food_plan_weeks table
-        cursor.execute("SELECT food_plan_week_id FROM food_plan_weeks WHERE week_no = %s AND food_plan_id = %s AND is_active = 1",(week_no, food_plan_id))
+        # get food_plan_week_id for user with week no and food plan id in food_plan_weeks table
+        cursor.execute("""
+            SELECT fpw.food_plan_week_id 
+            FROM food_plan_weeks fpw 
+                JOIN food_plans fp ON fp.food_plan_id = fpw.food_plan_id AND fp.user_id = %s AND fp.is_active = 1
+            WHERE fpw.week_no = %s AND fpw.food_plan_id = %s AND fpw.is_active = 1        
+        """,(s_user_id, week_no, food_plan_id))
         row = cursor.fetchone()
         if not row:
             return jsonify({'error': 'food plan week not found'}), 404
 
         food_plan_week_id = row['food_plan_week_id'] # print("food_plan_week_id is :", food_plan_week_id)
         
-        # retrive data from food plan ingredient records table 
+        # retrive data from food plan ingredient records table along with its referenced table
         cursor.execute("""
             SELECT fpir.food_plan_week_id, fpw.week_no, fpir.food_plan_day_id, fpd.day_no, fpir.food_plan_meal_id, fpm.meal_type, fpir.food_plan_recipe_id,
-                fpir.recipe_id, r.name as recipe_name, fpir.ingredient_id, i.name as ingredient_name, fpir.quantity, fpir.base_unit, COALESCE(up.custom_price, i.default_price) as base_price
+                fpir.recipe_id, r.name as recipe_name, fpir.ingredient_id, i.name as ingredient_name, fpir.quantity, fpir.base_unit, 
+                COALESCE(up.custom_price, i.default_price) as base_price, i.cup_weight, i.cup_unit
             FROM food_plan_ingredient_records fpir
                 JOIN food_plan_weeks fpw ON fpw.food_plan_week_id = fpir.food_plan_week_id AND fpw.is_active = 1
                 JOIN food_plan_days fpd ON fpd.food_plan_day_id = fpir.food_plan_day_id AND fpd.is_active = 1
@@ -206,6 +303,7 @@ def get_weekly_dashboard():
         for r in dashData:
             r['base_price'] = round(float(r['base_price']),2)
             r['quantity'] = round(float(r['quantity']),8)
+            # r['easy_quantity'] = get_easy_quantity(r)
         finalData['dashData'] = dashData
     
         # get all aggregate values
@@ -232,7 +330,7 @@ def get_weekly_dashboard():
             SELECT  i.name,  SUM(fpir.quantity) AS quantity, COALESCE(up.custom_price, i.default_price) as ingredient_cost, fpir.base_unit, 
                 ROUND(SUM(fpir.quantity * COALESCE(up.custom_price, i.default_price)), 2) AS cost,  
                 COUNT(DISTINCT fpir.food_plan_recipe_id) AS total_dishes, 
-                COUNT(DISTINCT fpir.recipe_id) AS total_recipes  
+                COUNT(DISTINCT fpir.recipe_id) AS total_recipes, i.cup_weight, i.cup_unit  
             FROM food_plan_ingredient_records fpir
                 JOIN ingredients i  ON i.ingredient_id = fpir.ingredient_id AND i.is_active = 1
                 JOIN food_plans fp  ON fp.food_plan_id = fpir.food_plan_id AND fp.is_active = 1
@@ -240,7 +338,7 @@ def get_weekly_dashboard():
                     AND up.ingredient_id = fpir.ingredient_id
                     AND up.is_active = 1
             WHERE fpir.food_plan_id = %s AND fpir.food_plan_week_id = %s AND fpir.is_active = 1
-            GROUP BY  i.ingredient_id, i.name, fpir.base_unit, ingredient_cost
+            GROUP BY  i.ingredient_id, i.name, fpir.base_unit, ingredient_cost, i.cup_weight, i.cup_unit 
             ORDER BY quantity DESC;
         """,(s_user_id, food_plan_id, food_plan_week_id)) 
         ingredientCostList = cursor.fetchall()
@@ -250,6 +348,11 @@ def get_weekly_dashboard():
             r['cost'] = float(r['cost'])
             r['quantity'] = float(r['quantity'])
             r['ingredient_cost'] = float(r['ingredient_cost'])
+
+        for i in ingredientCostList:
+            if i.get('cup_weight'):
+                i['cup_weight'] = float(i['cup_weight'])
+            i['easy_quantity'] = get_easy_quantity(i)
 
         finalData['ingredientCostList'] = ingredientCostList
 
@@ -309,42 +412,7 @@ def get_weekly_dashboard():
         finalData['dayCostList'] = dayCostList
 
         # create dictonary to show food plan of whole even empty days or meals
-        food_plan = copy.deepcopy(dashData)
-        days = [1,2,3,4,5,6,7]
-        meals = ['breakfast', 'lunch', 'dinner']
-        weeklyData = []
-        for d in days:
-            day = {
-                "name": dayIs(d),
-                "meals": []
-            }
-            day_data = [row for row in food_plan if row.get("day_no") == d]
-            day_cost = 0
-            for row in day_data:
-                day_cost += row.get('quantity',0)*row.get('base_price',0)
-            day['cost'] = day_cost
-
-            for m in meals:
-                meal = {
-                    "name": m,
-                    "recipes": []
-                }
-                meal_data = [y for y in day_data if y.get("meal_type") == m]
-                meal_cost = 0
-                for row in meal_data:
-                    meal_cost += row.get('quantity',0)*row.get('base_price',0)
-                meal['cost'] = meal_cost
-
-                recipes = []
-                for r in meal_data:
-                    recipe_name = r.get("recipe_name")
-                    if recipe_name and recipe_name not in recipes:
-                        recipes.append(recipe_name)
-
-                meal["recipes"] = recipes
-                day["meals"].append(meal)
-            weeklyData.append(day)
-        
+        weeklyData = fill_missing_meals(dashData)
         finalData['weeklyData'] = weeklyData
 
         return jsonify({'message': 'fetched data ', 'data': finalData}), 200
