@@ -138,7 +138,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       // Quantity
       const tdQty = document.createElement("td");
-      tdQty.textContent = item.quantity;
+      if(item.easy_quantity == 'nothing'){
+        tdQty.textContent = item.quantity;
+      }else{
+        tdQty.textContent = item.easy_quantity;
+      }
+      
       tr.appendChild(tdQty);
 
       // Cost

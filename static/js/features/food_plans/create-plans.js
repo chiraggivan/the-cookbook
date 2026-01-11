@@ -378,16 +378,16 @@ async function sendPayloadToAPI(payload){
       showAlert(data.message || "Plan updated successfully!");
       console.log("dashboard_data :", data.dashboard_data);
       setTimeout(() => { window.location.href = "/plans"; }, 500);
-      fetch("/weekly_dashboard/api/save_day_recipes_details", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(data.dashboard_data)
-      }).catch(err => {
-          console.error("Background fetch failed:", err);
-        });
+      // fetch("/weekly_dashboard/api/save_day_recipes_details", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "Authorization": `Bearer ${token}`
+      //   },
+      //   body: JSON.stringify(data.dashboard_data)
+      // }).catch(err => {
+      //     console.error("Background fetch failed:", err);
+      //   });
     }    
   } catch (err){
       errorBox.textContent = err.message;

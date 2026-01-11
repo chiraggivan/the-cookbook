@@ -4,11 +4,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import weekly_dashboard_api_bp
 from mysql.connector import Error
 import copy
+import math
 
-# save food plan day's day in food_plan_ingredient_records table for dashboard 
+# save food plan week's record in food_plan_ingredient_records table for dashboard 
 @weekly_dashboard_api_bp.route('/save_day_recipes_details', methods=['POST'])
 @jwt_required()
-def set_weekly_dashboard():
+def set_daily_dashboard():
 
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
@@ -37,7 +38,7 @@ def set_weekly_dashboard():
         if not cursor.fetchone():
             return jsonify({'error': 'User not found'}), 404
 
-        # check if food_plan_id, food_plan_week_id, food_plan_day_id belong to the same use 
+        # check if food_plan_id, food_plan_week_id, food_plan_day_id belong to the same user 
         cursor.execute("""
             SELECT 1 
             FROM users u JOIN food_plans fp ON u.user_id = fp.user_id AND u.user_id = %s AND u.is_active = 1
@@ -116,6 +117,73 @@ def set_weekly_dashboard():
         if conn:
             conn.close()
 
+# save food plan day's day in food_plan_ingredient_records table for dashboard 
+@weekly_dashboard_api_bp.route('/save_week_recipes_details', methods=['POST'])
+@jwt_required()
+def set_weekly_dashboard(fp_id, fpw_id):
+
+    food_plan_id = fp_id
+    food_plan_week_id = fpw_id
+
+    # delete the records of that day
+    cursor.execute("""
+        DELETE FROM food_plan_ingredient_records
+        WHERE food_plan_week_id = %s
+    """,(food_plan_week_id,))
+
+    cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND is_active = 1",(food_plan_week_id,))
+    days = cursor.fetchall()
+
+    for day in days:
+        food_plan_day_id = day['food_plan_day_id']
+
+        cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(food_plan_day_id,))
+        meals = cursor.fetchall()    
+
+        for meal in meals:
+            food_plan_meal_id = meal['food_plan_meal_id']
+
+            cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1",(food_plan_meal_id,))
+            recipes = cursor.fetchall()
+
+            for recipe in recipes:
+                food_plan_recipe_id = recipe['food_plan_recipe_id']
+                recipe_id = recipe['recipe_id']
+                display_order = recipe['display_order']
+
+                cursor.execute("SELECT ingredient_id, quantity, unit_id FROM recipe_ingredients WHERE recipe_id = %s AND is_active = 1",(recipe_id,))
+                ingredient_rows = cursor.fetchall()
+
+                for row in ingredient_rows:
+                    ingredient_id = row['ingredient_id']
+                    quantity = row['quantity']
+                    unit_id = row['unit_id']
+
+                    cursor.execute("SELECT unit_id, unit_name, conversion_factor FROM units WHERE ingredient_id = %s AND is_active = 1",(ingredient_id,))
+                    unit_rows = cursor.fetchall()
+
+                    base_unit_row = next((r for r in unit_rows if r['conversion_factor'] == 1),  None)
+                    base_unit = base_unit_row['unit_name'] if base_unit_row else None 
+
+                    conversion_factor_row = next((r for r in unit_rows if r['unit_id'] == unit_id), None)
+                    conversion_factor = conversion_factor_row['conversion_factor'] if conversion_factor_row else None
+
+                    total_quantity = conversion_factor*quantity
+
+                    # print("[food_plan_id is :", food_plan_id, ", food_plan_week_id is :", food_plan_week_id ,", food_plan_day_id is :", food_plan_day_id,
+                    #         ", food_plan_meal_id is :", food_plan_meal_id, ", recipe_id is :", recipe_id, ", ingredient_id is :", ingredient_id,
+                    #         ", quantity is :", total_quantity, ", base_unit is :", base_unit, "]" )
+
+                    cursor.execute("""
+                        INSERT INTO food_plan_ingredient_records(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                                    recipe_id, ingredient_id, quantity, base_unit, display_order, is_active)
+                        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1)
+                    """,(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                        recipe_id, ingredient_id, total_quantity, base_unit, display_order))
+    conn.commit()
+    return jsonify({'message': 'data reached backend'}), 200
+
+
 #get the data for dashboard
 @weekly_dashboard_api_bp.route('/get_weekly_dashboard', methods=['POST'])
 @jwt_required()
@@ -127,8 +195,8 @@ def get_weekly_dashboard():
     cursor = None
     finalData ={}
 
-    # get easy quantity text
-    def get_easy_quantity(data):
+    # get easy text quantity 
+    def get_easy_quantity_text(data):
         units = ['kg','l','pc','bunch']
         # for unit in units:
         if data.get('base_unit') == 'kg':
@@ -136,10 +204,13 @@ def get_weekly_dashboard():
                 easyNumber = data.get('quantity')*1000 / data.get('cup_weight')
                 wholeNo = int(easyNumber)
                 deciNo = easyNumber - wholeNo  
-                print(data['name'] , ' cup weight : ', data['cup_weight'], 'easyNumber is: ' ,easyNumber ) 
                 easyText = ''
+                if data['quantity'] > 1:
+                    print("quantity :",data['quantity'])
+                    return str(math.ceil(data['quantity']*100)/100) + ' kilograms'    
                 if wholeNo > 0: 
                     easyText = str(wholeNo) + ''
+
                 if deciNo:
                     if deciNo > 0.75:
                         if wholeNo == 0: return '~ ' + (wholeNo + 1) + ' cups' 
@@ -164,21 +235,164 @@ def get_weekly_dashboard():
                         else: return '~ ' +easyText+ '1/4 cups or ~ '+easyText+ ' cup & 4 tablespoons'                        
                     if deciNo == 0.125:
                         if wholeNo == 0: return '2 tablespoons' 
-                        else: return easyText + ' cup & 2 tablespoons'                        
-                    if deciNo < 0.125:
-                        if wholeNo == 0: return '~ less than 2 tablespoons' 
-                        else : '~ '+easyText+ ' cup & 2 tablespoons'                
+                        else: return easyText + ' cup & 2 tablespoons'    
+                    if deciNo > 0.0625: 
+                        if wholeNo == 0: return '~ 2 tablespoons' 
+                        else: return '~ ' +easyTextt+ ' cup & 2 tablespoons'     
+                    if deciNo == 0.0625:
+                        if wholeNo == 0: return '1 tablespoon' 
+                        else: return easyText + ' cup & 1 tablespoon'
+                    if deciNo > ((0.0625/3) *2):
+                        if wholeNo == 0: return ' ~ 1 tablespoon' 
+                        else : '~ '+easyText+ ' cup & 1 tablespoon'    
+                    if deciNo == ((0.0625/3) *2):
+                        if wholeNo == 0: return '2 teaspoons' 
+                        else: return easyText + ' cup & 2 teaspoons'
+                    if deciNo > ((0.0625/3) *1):
+                        if wholeNo == 0: return ' ~ 2 teaspoons' 
+                        else : '~ '+easyText+ ' cup & 2 tablespoons'    
+                    if deciNo == ((0.0625/3) *1):
+                        if wholeNo == 0: return '1 teaspoon' 
+                        else: return easyText + ' cup & 1 teaspoon'
+                    if deciNo < ((0.0625/3) *1):
+                        if wholeNo == 0: return ' less than a teaspoon' 
+                        else : '~ '+easyText+ ' cup & 1 teaspoon'            
                 else: 
                     if wholeNo == 1: return str(wholeNo) +' cup' 
                     else : return str(wholeNo) +' cups'
+            else:
+                easyNumber = data.get('quantity')
+                wholeNo = int(easyNumber)
+                deciNo = easyNumber - wholeNo  
+                easyText = ''
+
+                if data['quantity'] >= 1:
+                    return str(math.ceil(data['quantity']*100)/100) + ' kilograms'
+                else:
+                    return str(math.ceil(data['quantity']*1000)) + ' grams'
                     
-                
+        elif data.get('base_unit') == 'l':
+            easyNumber = data.get('quantity')
+            wholeNo = int(easyNumber)
+            deciNo = easyNumber - wholeNo  
+            easyText = ''
+
+            if data['quantity'] > 1:
+                return str(math.ceil(data['quantity']*100)/100) + ' Litres'    
+            
+            if deciNo:
+                if deciNo > 0.96:
+                    return '~ ' + (wholeNo + 1) + ' Litre'                          
+                if deciNo == 0.96:
+                    return'4 cups'               
+                if deciNo > 0.72:
+                    return '~ less than 4 cups'                         
+                if deciNo == 0.720:
+                    if wholeNo == 0: return '1/2 cup'                 
+                if deciNo == 0.5:
+                    return '1/2 Litre'                      
+                if deciNo > 0.48:
+                    return 'slightly more than 2 Cups or nearly 1/2 Litre'                       
+                if deciNo == 0.48:
+                    return '~ 2 Cups or ~ 1/2 Litre'                         
+                if deciNo > 0.240:
+                    return str(math.ceil(data['quantity']*100))+ ' millilitres'     
+                if deciNo == 0.240: 
+                    return '1 cup or 240 millilitres'  
+                if deciNo > 0.120:
+                    return str(math.ceil(data['quantity']*100))+ ' millilitres'     
+                if deciNo == 0.120: 
+                    return '1/2 cup or 120 ml'
+                if deciNo > 0.060:
+                    return str(math.ceil(data['quantity']*100))+ ' ml'     
+                if deciNo == 0.060: 
+                    return '4 tablespoons or 60 ml'
+                if deciNo > 0.030:
+                    return 'slightly more than 2 tablespoons or '+ str(math.ceil(data['quantity']*100))+ ' ml'     
+                if deciNo == 0.030: 
+                    return '2 tablespoons or 30 ml'
+                if deciNo > 0.015:
+                    return 'slightly more than a tablespoon or '+ str(math.ceil(data['quantity']*100))+ ' ml'     
+                if deciNo == 0.015: 
+                    return '1 tablespoon or 15 ml'
+                if deciNo > 0.005:
+                    return 'less than a tablespoon or '+str(math.ceil(data['quantity']*100))+ ' ml'     
+                if deciNo == 0.005: 
+                    return '1 teaspoon or 5 ml'
+                if deciNo < 0.005:
+                    return 'less than a teaspoon'                
+            else: 
+                if wholeNo == 1: return str(wholeNo) +' Litre' 
+                else : return str(wholeNo) +' Litres'
+
+        elif data.get('base_unit') == 'pc' or data.get('base_unit') == 'bunch':
+            easyNumber = data.get('quantity')
+            wholeNo = int(easyNumber)
+            deciNo = easyNumber - wholeNo  
+            easyText = ''
+
+            if deciNo:
+                if deciNo > 0.75:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return 'less than 1 ' + data['name']
+                        else: return '~ ' + str(wholeNo + 1) + ' ' + data['name'] +'s'  
+                    else:
+                        if wholeNo == 0 : return 'less than 1 bunch'
+                        else: return '~ ' + str(wholeNo + 1) + 'bunches'
+                if deciNo == 0.75:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return '3/4 ' + data['name']
+                        else: return str(wholeNo) + ' 3/4 ' + data['name'] +'s'
+                    else:
+                        if wholeNo == 0 : return '3/4 bunch'
+                        else: return str(wholeNo) + ' 3/4 bunches'                 
+                if deciNo > 0.5:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return 'less than 3/4 ' + data['name']
+                        else: return '~ ' + str(wholeNo) + ' 3/4 ' + data['name'] +'s' 
+                    else:     
+                        if wholeNo == 0 : return 'less than 3/4 bunch'
+                        else: return '~ ' + str(wholeNo + 1) +  ' 3/4 bunches'                   
+                if deciNo == 0.50:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return '1/2 ' + data['name']
+                        else: return str(wholeNo) + ' 1/2 ' + data['name'] +'s' 
+                    else:
+                        if wholeNo == 0 : return '1/2 bunch'
+                        else: return str(wholeNo) + ' 1/2 bunches'         
+                if deciNo > 0.25:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return 'less than 1/2 ' + data['name']
+                        else: return '~ ' + str(wholeNo) + ' 1/2 ' + data['name'] +'s'                      
+                    else:
+                        if wholeNo == 0 : return 'less than 1/2 bunch'
+                        else: return '~ ' + str(wholeNo + 1) +  ' 1/2 bunches'
+                if deciNo == 0.25:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return '1/4 ' + data['name']
+                        else: return str(wholeNo) + ' 1/4 ' + data['name'] +'s'     
+                    else:
+                        if wholeNo == 0 : return '1/4 bunch'
+                        else: return str(wholeNo) + ' 1/4 bunches'
+                if deciNo < 0.25:
+                    if data.get('base_unit') == 'pc':
+                        if wholeNo == 0 : return 'less than 1/4 ' + data['name']
+                        else: return '~ ' + str(wholeNo ) + ' 1/4 ' + data['name'] +'s' 
+                    else:
+                        if wholeNo == 0 : return 'less than 1/4 bunch'
+                        else: return '~ ' + str(wholeNo + 1) +  ' 1/4 bunches'
+
+            else:
+                if data.get('base_unit') == 'pc':
+                    if wholeNo == 1 : return str(wholeNo) +' '+ data['name']  
+                    else: return str(wholeNo) + data['name'] +'s'      
+                else:
+                    if wholeNo == 1 : return str(wholeNo) + ' bunch'  
+                    else: return str(wholeNo) + ' bunches'
+              
         else:
             return 'nothing'
-                         
-
-
-
+                
     # function to fill gaps in days
     def fill_missing_days(data, start=1, end=7):
         day_map = {d["day_no"]: d for d in data}
@@ -248,6 +462,61 @@ def get_weekly_dashboard():
         else:
             return 'Day'
     
+    # function to delete and insert new record for weekly dashboard
+    def set_weekly_dashboard(fp_id, fpw_id):
+        food_plan_id = fp_id
+        food_plan_week_id = fpw_id
+
+        # delete the records of that day
+        cursor.execute("""
+            DELETE FROM food_plan_ingredient_records
+            WHERE food_plan_week_id = %s
+        """,(food_plan_week_id,))
+        cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND is_active = 1",(food_plan_week_id,))
+        days = cursor.fetchall()
+
+        for day in days:
+            food_plan_day_id = day['food_plan_day_id']
+            cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(food_plan_day_id,))
+            meals = cursor.fetchall()   
+
+            for meal in meals:
+                food_plan_meal_id = meal['food_plan_meal_id']
+                cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1",(food_plan_meal_id,))
+                recipes = cursor.fetchall()
+
+                for recipe in recipes:
+                    food_plan_recipe_id = recipe['food_plan_recipe_id']
+                    recipe_id = recipe['recipe_id']
+                    display_order = recipe['display_order']
+                    cursor.execute("SELECT ingredient_id, quantity, unit_id FROM recipe_ingredients WHERE recipe_id = %s AND is_active = 1",(recipe_id,))
+                    ingredient_rows = cursor.fetchall()
+
+                    for row in ingredient_rows:
+                        ingredient_id = row['ingredient_id']
+                        quantity = row['quantity']
+                        unit_id = row['unit_id']
+
+                        cursor.execute("SELECT unit_id, unit_name, conversion_factor FROM units WHERE ingredient_id = %s AND is_active = 1",(ingredient_id,))
+                        unit_rows = cursor.fetchall()
+
+                        base_unit_row = next((r for r in unit_rows if r['conversion_factor'] == 1),  None)
+                        base_unit = base_unit_row['unit_name'] if base_unit_row else None 
+
+                        conversion_factor_row = next((r for r in unit_rows if r['unit_id'] == unit_id), None)
+                        conversion_factor = conversion_factor_row['conversion_factor'] if conversion_factor_row else None
+
+                        total_quantity = conversion_factor*quantity
+                        cursor.execute("""
+                            INSERT INTO food_plan_ingredient_records(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                                        recipe_id, ingredient_id, quantity, base_unit, display_order, is_active)
+                            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1)
+                        """,(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                            recipe_id, ingredient_id, total_quantity, base_unit, display_order))
+        conn.commit()
+        return jsonify({'message': 'data reached backend'}), 200
+
+
     try:
         data = request.get_json()
         week_no = int(data.get('week_no'))
@@ -279,10 +548,71 @@ def get_weekly_dashboard():
         """,(s_user_id, week_no, food_plan_id))
         row = cursor.fetchone()
         if not row:
-            return jsonify({'error': 'food plan week not found'}), 404
+            return jsonify({'error': 'No data found for the week of this user.'}), 404
 
         food_plan_week_id = row['food_plan_week_id'] # print("food_plan_week_id is :", food_plan_week_id)
+        # ( run set_weekly_dashboard and send (food_plan_id and food_plan_week_id)) --> currently running below
+
+        # delete the records of that day
+        cursor.execute("""
+            DELETE FROM food_plan_ingredient_records
+            WHERE food_plan_week_id = %s
+        """,(food_plan_week_id,))
+
+        # start to get data for food_plan_ingredient_records table
+        cursor.execute("SELECT food_plan_day_id FROM food_plan_days WHERE food_plan_week_id = %s AND is_active = 1",(food_plan_week_id,))
+        days = cursor.fetchall()
+
+        for day in days:
+            food_plan_day_id = day['food_plan_day_id']
+
+            cursor.execute("SELECT food_plan_meal_id FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(food_plan_day_id,))
+            meals = cursor.fetchall()    
+
+            for meal in meals:
+                food_plan_meal_id = meal['food_plan_meal_id']
+
+                cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1",(food_plan_meal_id,))
+                recipes = cursor.fetchall()
+
+                for recipe in recipes:
+                    food_plan_recipe_id = recipe['food_plan_recipe_id']
+                    recipe_id = recipe['recipe_id']
+                    display_order = recipe['display_order']
+
+                    cursor.execute("SELECT ingredient_id, quantity, unit_id FROM recipe_ingredients WHERE recipe_id = %s AND is_active = 1",(recipe_id,))
+                    ingredient_rows = cursor.fetchall()
+
+                    for row in ingredient_rows:
+                        ingredient_id = row['ingredient_id']
+                        quantity = row['quantity']
+                        unit_id = row['unit_id']
+
+                        cursor.execute("SELECT unit_id, unit_name, conversion_factor FROM units WHERE ingredient_id = %s AND is_active = 1",(ingredient_id,))
+                        unit_rows = cursor.fetchall()
+
+                        base_unit_row = next((r for r in unit_rows if r['conversion_factor'] == 1),  None)
+                        base_unit = base_unit_row['unit_name'] if base_unit_row else None 
+
+                        conversion_factor_row = next((r for r in unit_rows if r['unit_id'] == unit_id), None)
+                        conversion_factor = conversion_factor_row['conversion_factor'] if conversion_factor_row else None
+
+                        total_quantity = conversion_factor*quantity
+
+                        # print("[food_plan_id is :", food_plan_id, ", food_plan_week_id is :", food_plan_week_id ,", food_plan_day_id is :", food_plan_day_id,
+                        #         ", food_plan_meal_id is :", food_plan_meal_id, ", recipe_id is :", recipe_id, ", ingredient_id is :", ingredient_id,
+                        #         ", quantity is :", total_quantity, ", base_unit is :", base_unit, "]" )
+
+                        cursor.execute("""
+                            INSERT INTO food_plan_ingredient_records(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                                        recipe_id, ingredient_id, quantity, base_unit, display_order, is_active)
+                            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1)
+                        """,(food_plan_id, food_plan_week_id, food_plan_day_id, food_plan_meal_id, food_plan_recipe_id,
+                            recipe_id, ingredient_id, total_quantity, base_unit, display_order))
         
+        # commit the insert 
+        conn.commit()
+
         # retrive data from food plan ingredient records table along with its referenced table
         cursor.execute("""
             SELECT fpir.food_plan_week_id, fpw.week_no, fpir.food_plan_day_id, fpd.day_no, fpir.food_plan_meal_id, fpm.meal_type, fpir.food_plan_recipe_id,
@@ -352,7 +682,7 @@ def get_weekly_dashboard():
         for i in ingredientCostList:
             if i.get('cup_weight'):
                 i['cup_weight'] = float(i['cup_weight'])
-            i['easy_quantity'] = get_easy_quantity(i)
+            i['easy_quantity'] = get_easy_quantity_text(i)
 
         finalData['ingredientCostList'] = ingredientCostList
 
