@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from db import get_db_connection
+from mysql.connector import Error
 from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import dishes_api_bp

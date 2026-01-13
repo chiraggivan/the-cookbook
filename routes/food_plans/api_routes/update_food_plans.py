@@ -1,5 +1,6 @@
 from flask import request, jsonify
 from db import get_db_connection
+from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import food_plans_api_bp
 from .utils import (normalize_string, normalize_value, normalize_plan, normalize_food_plan, normalize_weekly_meals, 

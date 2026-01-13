@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       return;
     }
     document.getElementById("dashboard").style.display = 'block';
+    document.getElementById("dash-header").innerHTML = `<h1>Week-${weekNo} Dashboard</h1>`
     const completeData = data.data;
     console.log("data is :", completeData);
     const aggData = completeData.aggData;

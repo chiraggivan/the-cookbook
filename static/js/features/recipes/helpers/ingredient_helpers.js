@@ -3,6 +3,8 @@ import { attachRowListeners, updateMoveButtons } from "./UI-animation_helpers.js
 import { attachCostEvents, recalcCost } from "./recipe_utils.js";
 
 const token = localStorage.getItem("access_token");
+let debounceTimer = null;
+let abortController = null;
 
 // function to create empty ingredient row (any changes can be made here and get applied everywhere)
 export function getEmptyIngredientRow(rowIndex) {
@@ -149,40 +151,58 @@ export function initializeIngredientInput(row, token) {
         suggestionBox.style.display = "none";
 
         if (query.length < 1) return;
-        try {
-            const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("Failed to fetch ingredients");
 
-            const data = await res.json();
-            ingredientData = data;
-            fetchedIngredients = data.map(item => item.name.toLowerCase());
+        // Debounce: clear previous timer
+        clearTimeout(debounceTimer);
 
-            if (data.length === 0) return;
+        debounceTimer = setTimeout(async () => { 
+            try {
+                // Abort previous request if still running
+                if (abortController) {
+                    abortController.abort();
+                }
+                abortController = new AbortController();
 
-            data.forEach(item => {
-                const div = document.createElement("div");
-                div.dataset.id = item.ingredient_id;
-                div.textContent = item.name;
-                div.classList.add("suggestion-item");
-                div.addEventListener("click", async () => await selectIngredient(item, row));
-                suggestionBox.appendChild(div);
-            });
+                const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }, 
+                    signal: abortController.signal
+                });
+                if (!res.ok) throw new Error("Failed to fetch ingredients");
 
-            suggestionBox.style.display = "block";
+                const data = await res.json();
+                ingredientData = data;
+                fetchedIngredients = data.map(item => item.name.toLowerCase());
 
-            // Highlight first suggestion by default
-            const items = suggestionBox.querySelectorAll(".suggestion-item");
-            if (items.length > 0) {
-                activeIndex = 0;
-                highlightItem(items, activeIndex);
-            }
-            
+                if (data.length === 0) return;
 
-        } catch (err) {
-            console.error("Error fetching ingredients:", err);
-        }
+                data.forEach(item => {
+                    const div = document.createElement("div");
+                    div.dataset.id = item.ingredient_id;
+                    div.textContent = item.name;
+                    div.classList.add("suggestion-item");
+                    div.addEventListener("click", async () => await selectIngredient(item, row));
+                    suggestionBox.appendChild(div);
+                });
+
+                suggestionBox.style.display = "block";
+
+                // Highlight first suggestion by default
+                const items = suggestionBox.querySelectorAll(".suggestion-item");
+                if (items.length > 0) {
+                    activeIndex = 0;
+                    highlightItem(items, activeIndex);
+                }
+                
+
+            } catch (err) {
+                // Ignore abort errors (expected)
+                if (err.name !== "AbortError") {
+                    console.error("Error fetching ingredients:", err);
+                }
+            }    
+        }, 400)
+        
     });
 
     // Handle keyboard navigation for selecting ingredient with (Tab or Enter) as selected ingredient

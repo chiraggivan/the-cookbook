@@ -22,6 +22,8 @@ const dayBoxes = document.querySelectorAll(".week-row .day-box");
 const mealType = document.getElementById("meal-type");
 const suggestionBox = document.getElementById("recipe-suggestion-box");
 const errorBox = document.getElementById("error");
+let debounceTimer = null;
+let abortController = null;
 
 errorBox.textContent = '';
 
@@ -95,8 +97,10 @@ async function getUserFoodPlan(){
 
         sortedMeals.forEach(meal =>{
           const food_plan_meal_id = meal.food_plan_meal_id;
-          dayHTML += `<div class="meal-type"><strong>${meal.meal_type}</strong></div>`;         
-
+          if(meal.recipes.length> 0){
+            dayHTML += `<div class="meal-type"><strong>${meal.meal_type}</strong></div>`;
+          }
+                   
           const recipes = meal.recipes;
           recipes.forEach(recipe =>{
             const name = truncateName(recipe.recipe_name);
@@ -218,6 +222,9 @@ function renderModalMeals(dayData) {
   container.innerHTML = "";
 
   dayData.daily_meals.forEach(meal => {
+    if(meal.recipes.length > 0){
+      
+    }
     let mealHTML = `
       <div class="modal-meal">
         <div class="meal-type"><strong>${meal.meal_type}</strong></div>
@@ -550,7 +557,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       if(dayBox.dataset.week){
         weekNo = Number(dayBox.dataset.week);
         dayNo = Number(dayBox.dataset.day);
-        isOldData = true;
+        isOldData = true;  // check from the div element of html contains data of week. if it contains then true else false
       }else{
         const WeeknDay = getWeekAndDayNumber(dayBox.id);
         weekNo = WeeknDay.week;
@@ -576,15 +583,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     suggestionBox.innerHTML = "";
     suggestionBox.style.display = "none";
 
-    // Fetch ingredient suggestions from API
-    if (query.length > 1){
-        try {
+    if (query.length < 2) return;
+
+    // Debounce: clear previous timer
+    clearTimeout(debounceTimer);
+
+    // Fetch ingredient suggestions from API with delay of 400 ms
+    debounceTimer = setTimeout(async () => {
+      try {
+        // Abort previous request if still running
+        if (abortController) {
+          abortController.abort();
+        }
+        abortController = new AbortController();
+
         const res = await fetch(`/food_plans/api/recipes/search?q=${encodeURIComponent(query)}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
-          }
+          },
+          signal: abortController.signal
         });
 
         if (!res.ok) throw new Error("Failed to fetch ingredients");
@@ -626,7 +645,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       } catch (err) {
         console.error("Error fetching ingredients:", err);
       }
-    }
+    }, 400)
   })
 
   //selecting meal makes error disappear

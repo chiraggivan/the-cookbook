@@ -1,5 +1,6 @@
 from flask import request, jsonify
 from db import get_db_connection
+from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import dishes_api_bp
 import re

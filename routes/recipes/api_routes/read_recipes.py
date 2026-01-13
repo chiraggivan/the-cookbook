@@ -1,7 +1,7 @@
 # routes/read.py
-from flask import jsonify#, Blueprint, render_template, request
+from flask import jsonify
 from db import get_db_connection
-#from bcrypt import hashpw, checkpw, gensalt
+from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity#, JWTManager,  create_access_token
 from . import recipes_api_bp
 

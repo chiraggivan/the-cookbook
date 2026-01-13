@@ -1,5 +1,6 @@
 from flask import jsonify
 from db import get_db_connection
+from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import food_plans_api_bp
 
@@ -66,13 +67,20 @@ def get_food_plan():
                 each_food_day_plan = {}
                 each_food_day_plan['food_plan_day_id'] = day['food_plan_day_id']
                 each_food_day_plan['day_no'] = day['day_no']
-                cursor.execute("SELECT food_plan_meal_id, meal_type FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(day['food_plan_day_id'],))
+                # cursor.execute("SELECT food_plan_meal_id, meal_type FROM food_plan_meals WHERE food_plan_day_id = %s AND is_active = 1",(day['food_plan_day_id'],))
+                # Below cursor makes sure that if the recipe is deleted after it was put in to the food plan. then it this will take care of
+                # making sure not to show meal_id or meal_type if that recipe was the only recipe in the meal and has been deleted
+                cursor.execute("""
+                    SELECT fpm.food_plan_meal_id, fpm.meal_type, count(fpr.recipe_id)
+                    FROM food_plan_meals fpm 
+                        JOIN food_plan_recipes fpr ON fpr.food_plan_meal_id = fpm.food_plan_meal_id and fpr.is_active = 1
+                        JOIN recipes r ON r.recipe_id = fpr.recipe_id AND r.is_active = 1
+                    WHERE fpm.food_plan_day_id = %s AND fpm.is_active = 1
+                    GROUP BY fpm.food_plan_meal_id, fpm.meal_type;
+                """,(day['food_plan_day_id'],))
                 rows = cursor.fetchall()
                 if not rows:
                     rows = []
-                    # cursor.close()
-                    # conn.close()
-                    # return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
                 food_plan_meal_rows = rows
 
                 daily_meals = []
@@ -80,13 +88,15 @@ def get_food_plan():
                     each_food_meal_plan = {}
                     each_food_meal_plan['food_plan_meal_id'] = meal['food_plan_meal_id']
                     each_food_meal_plan['meal_type'] = meal['meal_type']
-                    cursor.execute("SELECT food_plan_recipe_id, recipe_id, display_order FROM food_plan_recipes WHERE food_plan_meal_id = %s AND is_active = 1 ORDER BY display_order",(meal['food_plan_meal_id'],))
+                    cursor.execute("""
+                        SELECT fpr.food_plan_recipe_id, fpr.recipe_id, fpr.display_order 
+                        FROM food_plan_recipes fpr
+                            JOIN recipes r ON fpr.recipe_id = r.recipe_id AND r.is_active = 1
+                        WHERE fpr.food_plan_meal_id = %s AND fpr.is_active = 1 ORDER BY fpr.display_order
+                    """,(meal['food_plan_meal_id'],))
                     rows = cursor.fetchall()
                     if not rows:
                         rows = []
-                        # cursor.close()
-                        # conn.close()
-                        # return jsonify({'error': 'Food plan meal not found for the food plan day of the user'}), 404
                     food_plan_recipe_rows = rows
 
                     recipes = []
