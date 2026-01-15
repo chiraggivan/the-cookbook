@@ -1,0 +1,135 @@
+
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+
+<h2 class="mb-3">All Recipes</h2>
+
+<table id="recipeList" class="table table-bordered table-hover">
+  <thead class="table-dark">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>By</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<a  href="/recipes/create_recipe"  class="btn btn-primary mt-3">
+  Create New Recipe
+</a>
+
+<!-- Error message -->
+<div id="error" class="alert alert-danger mt-3 d-none"></div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<!-- Page Script -->
+<script>
+  const token = localStorage.getItem("access_token");
+
+  // Decode JWT and get user info
+  function getUserFromToken(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+
+      const payload = JSON.parse(jsonPayload);
+
+      return {
+        user_id: payload.sub,
+        role: payload.role
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const data = getUserFromToken(token);
+  console.log("data is :", data);
+
+  if (!token || !data) {
+    const errorDiv = document.getElementById("error");
+    errorDiv.textContent = "Please log in to view recipes.";
+    errorDiv.classList.remove("d-none");
+
+    setTimeout(() => {
+      window.location.href = "/auth/login";
+    }, 1000);
+  } else {
+    const role = data.role;
+    const userId = parseInt(data.user_id);
+
+    if (role === "admin") {
+      const adminMenuEx = document.getElementById("nav-ex");
+      const adminMenuCo = document.getElementById("nav-co");
+
+      // adminMenuEx.classList.remove("d-none");
+      adminMenuCo.classList.remove("d-none");
+      
+      adminMenuEx.classList.add("d-lg-flex");
+      adminMenuCo.classList.add("d-lg-none");
+      document.getElementById("nav-co1").classList.remove("d-none");
+    }
+      
+    // document.querySelector(".admin-menu").style.display = "flex";
+
+    loadRecipes(userId);
+  }
+
+  async function loadRecipes(userId) {
+    try {
+      const res = await fetch("/recipes/api/all_recipes", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to load recipes");
+      }
+
+      const data = await res.json();
+      const tbody = document.querySelector("#recipeList tbody");
+      tbody.innerHTML = "";
+
+      data.forEach(r => {
+        const userLabel = r.user_id === userId ? "You" : r.username;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.recipe_id}</td>
+          <td>
+            <a href="/recipes/details/${r.recipe_id}" class="link-primary">
+              ${r.name}
+            </a>
+          </td>
+          <td>${r.description}</td>
+          <td>
+            <a href="/recipes/user/${r.user_id}" class="link-secondary">
+              ${userLabel}
+            </a>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+    } catch (err) {
+      const errorDiv = document.getElementById("error");
+      errorDiv.textContent = err.message;
+      errorDiv.classList.remove("d-none");
+    }
+  }
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 import { updateTotalRecipeCost, restrictNumberInput } from "./recipe_utils.js";
 import { attachRowListeners, updateMoveButtons } from "./UI-animation_helpers.js";
 import { attachCostEvents, recalcCost } from "./recipe_utils.js";
-
+import { createSpinner } from "./../../../core/utils.js"
 const token = localStorage.getItem("access_token");
 let debounceTimer = null;
 let abortController = null;
@@ -152,10 +152,11 @@ export function initializeIngredientInput(row, token) {
 
         if (query.length < 1) return;
 
-        // Debounce: clear previous timer
+        //clear previous timer
         clearTimeout(debounceTimer);
 
         debounceTimer = setTimeout(async () => { 
+            let spinner
             try {
                 // Abort previous request if still running
                 if (abortController) {
@@ -163,6 +164,12 @@ export function initializeIngredientInput(row, token) {
                 }
                 abortController = new AbortController();
 
+                // show suggestion box + spinner
+                suggestionBox.innerHTML = "";
+                suggestionBox.style.display = "block";
+                spinner = createSpinner();
+                suggestionBox.appendChild(spinner);
+                
                 const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
                     method: "GET",
                     headers: { "Authorization": `Bearer ${token}` }, 
@@ -171,9 +178,16 @@ export function initializeIngredientInput(row, token) {
                 if (!res.ok) throw new Error("Failed to fetch ingredients");
 
                 const data = await res.json();
+
+                spinner.remove();
+
                 ingredientData = data;
                 fetchedIngredients = data.map(item => item.name.toLowerCase());
 
+                // if (data.length === 0) {
+                //     suggestionBox.innerHTML = "<div class='suggestion-empty'>No results</div>";
+                //     return;
+                // }
                 if (data.length === 0) return;
 
                 data.forEach(item => {
@@ -187,8 +201,10 @@ export function initializeIngredientInput(row, token) {
 
                 suggestionBox.style.display = "block";
 
-                // Highlight first suggestion by default
                 const items = suggestionBox.querySelectorAll(".suggestion-item");
+
+                // Highlight first suggestion by default
+                
                 if (items.length > 0) {
                     activeIndex = 0;
                     highlightItem(items, activeIndex);
@@ -196,8 +212,15 @@ export function initializeIngredientInput(row, token) {
                 
 
             } catch (err) {
+                // remove spinner if present
+                if (spinner){
+                    spinner.remove();
+                    suggestionBox.style.display = "none";
+                } 
+
                 // Ignore abort errors (expected)
                 if (err.name !== "AbortError") {
+                    suggestionBox.style.display = "none";
                     console.error("Error fetching ingredients:", err);
                 }
             }    

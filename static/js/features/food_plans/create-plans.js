@@ -1,4 +1,4 @@
-import{ isTokenValid, getUserFromToken, showAlert } from "../../core/utils.js";
+import{ isTokenValid, getUserFromToken, showAlert, createSpinner } from "../../core/utils.js";
 
 const token = localStorage.getItem("access_token");
 
@@ -47,7 +47,14 @@ function getDayName (dayNo){
 // get food plan of the user
 async function getUserFoodPlan(){
   // const plan_id = foodPlanId;
-  try{
+  let spinner;
+  const allDayBoxes = document.querySelectorAll(".box.day-box")
+  allDayBoxes.forEach(dayBox => {
+    dayBox.innerHTML = "";
+    spinner = createSpinner(); // new spinner per box
+    dayBox.appendChild(spinner);
+  });
+  try{       // setTimeout( async () => {    // for testing spinner -- start
     const response = await fetch("/food_plans/api/plan", {
       method: "GET",
       headers: {
@@ -57,6 +64,12 @@ async function getUserFoodPlan(){
     });
 
     const data = await response.json(); //console.log("plan data : ", data);
+
+    // remove spinner
+    allDayBoxes.forEach(dayBox => {
+      spinner.remove()
+    })
+
     foodPlanData = data.food_plan;
     console.log("foodPlanData :", data);
     foodPlanId = Number(data.food_plan_id);
@@ -127,6 +140,7 @@ async function getUserFoodPlan(){
       errorBox.textContent = data.error || "Something went wrong while fetch food plan for user.";
       return;
     }
+  // },3000) // for testing spinner -- end
   } catch (err){
     errorBox.textContent = err.message;
   }
@@ -590,12 +604,19 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Fetch ingredient suggestions from API with delay of 400 ms
     debounceTimer = setTimeout(async () => {
+      let spinner
       try {
         // Abort previous request if still running
         if (abortController) {
           abortController.abort();
         }
         abortController = new AbortController();
+
+        // show suggestion box + spinner
+        suggestionBox.innerHTML = "";
+        suggestionBox.style.display = "block";
+        spinner = createSpinner();
+        suggestionBox.appendChild(spinner);
 
         const res = await fetch(`/food_plans/api/recipes/search?q=${encodeURIComponent(query)}`, {
           method: "GET",
@@ -610,12 +631,18 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         const data = await res.json(); // console.log(" list of recipes :", data);
         // return;
-
-        // Hide suggestions if no results
+        spinner.remove();
+        
+        // if no recipes found
         if (data.length === 0) {
-          suggestionBox.style.display = "none";
-          return;
+            suggestionBox.innerHTML = "<div class='suggestion-empty'> No such recipe...</div>";
+            return;
         }
+        // // Hide suggestions if no results
+        // if (data.length === 0) {
+        //   suggestionBox.style.display = "none";
+        //   return;
+        // }
 
         // Display suggestion items
         data.forEach(recipe => {
@@ -643,7 +670,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
       } catch (err) {
-        console.error("Error fetching ingredients:", err);
+        if (spinner){
+          spinner.remove();
+          suggestionBox.style.display = "none";
+        } 
+
+        // Ignore abort errors (expected)
+        if (err.name !== "AbortError") {
+            suggestionBox.style.display = "none";
+            console.error("Error fetching recipes:", err);
+        }
+        
       }
     }, 400)
   })

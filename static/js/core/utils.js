@@ -167,6 +167,13 @@ export function getUserFromToken(token) {
     return null;
   }
 }
+// Function to create spinner when api is being fetched
+export function createSpinner() {
+    const div = document.createElement("div");
+    div.classList.add("suggestion-spinner");
+    div.innerHTML = `<span class="loader"></span>`;
+    return div;
+}
 
 
 // --- Hybrid global compatibility (for non-module scripts) ---

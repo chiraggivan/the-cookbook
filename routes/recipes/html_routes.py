@@ -7,7 +7,7 @@ recipes_html_bp = Blueprint("recipes_html", __name__, url_prefix="/recipes")
 
 @recipes_html_bp.route('/', methods=['GET'])  
 def recipes_page():
-    return render_template("recipes/recipes.html")
+    return render_template("recipes/bs/recipes.html")
 
 @recipes_html_bp.route('/my', methods=['GET'])  
 def my_recipes_page():
