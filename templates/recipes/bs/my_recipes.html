@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}My Recipes{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-3">All Recipes</h2>
+
+<table id="recipeList" class="table table-bordered table-hover">
+  <thead class="table-dark">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Portion Size</th>
+      <th>Description</th>
+      <!-- <th>By</th> -->
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<a  href="/recipes/create_recipe"  class="btn btn-primary mt-3"> <!-- create-recipe-btn -->
+  Create New Recipe
+</a>
+
+<!-- Error message -->
+<div id="error" class="alert alert-danger mt-3 d-none"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem("access_token");
+async function loadRecipes() {
+    try {
+    const res = await fetch("/recipes/api/my_recipes", {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    // console.log("Response object:", res);
+
+    if (!res.ok) {
+        throw new Error("Failed to load recipes");
+    }
+    const data = await res.json();
+    const tbody = document.querySelector("#recipeList tbody");
+    tbody.innerHTML = "";
+    data.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+        <td>${r.recipe_id}</td>
+        <td><a href="/recipes/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
+        <td>${r.portion_size}</td>
+        <td>${r.description}</td>
+        
+    `;  // <td>${r.username}</td>
+
+        tbody.appendChild(tr);
+    });
+    } catch (err) {
+    document.getElementById("error").textContent = err.message;
+    }
+}
+
+if (token) {
+    loadRecipes();
+} else {
+    document.getElementById("error").textContent = "Please log in to view recipes.";
+    setTimeout(() => { window.location.href = "auth/login"; }, 2000);
+}
+</script>
+{% endblock %}

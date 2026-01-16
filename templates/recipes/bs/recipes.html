@@ -72,21 +72,6 @@
   } else {
     const role = data.role;
     const userId = parseInt(data.user_id);
-
-    if (role === "admin") {
-      const adminMenuEx = document.getElementById("nav-ex");
-      const adminMenuCo = document.getElementById("nav-co");
-
-      // adminMenuEx.classList.remove("d-none");
-      adminMenuCo.classList.remove("d-none");
-      
-      adminMenuEx.classList.add("d-lg-flex");
-      adminMenuCo.classList.add("d-lg-none");
-      document.getElementById("nav-co1").classList.remove("d-none");
-    }
-      
-    // document.querySelector(".admin-menu").style.display = "flex";
-
     loadRecipes(userId);
   }
 

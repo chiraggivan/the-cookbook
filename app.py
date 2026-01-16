@@ -1,9 +1,10 @@
-from flask import Flask, jsonify, request, g, render_template
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from flask import Flask, jsonify, request, g, render_template, session
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request
 #from bcrypt import hashpw, checkpw, gensalt
 import mysql.connector
 from datetime import timedelta
 from mysql.connector import Error
+from db import get_db_connection
 import re
 
 from config import Config
@@ -38,6 +39,55 @@ app.register_blueprint(weekly_dashboard_api_bp)
 app.register_blueprint(weekly_dashboard_html_bp)
 
 jwt = JWTManager(app)
+
+# get user before every request
+@app.before_request
+def load_logged_in_user():
+    
+    g.user = None
+
+    # try session (HTML pages)
+    user_id = session.get('user_id')
+    role = session.get('role')
+
+    if user_id:
+        g.user = {
+            'user_id': user_id,
+            'role': role
+        }
+        return  
+
+    # mostly for postman as session data is not attached in api call from postman
+    try:
+        verify_jwt_in_request(optional=True)
+    except Exception:
+        return
+
+    user_id = get_jwt_identity()
+    if not user_id:
+        return
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT user_id, username, role FROM users WHERE user_id = %s AND is_active = TRUE",
+        (user_id,)
+    )
+    user = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    g.user = user
+
+# current_user will be available in all templates
+@app.context_processor
+def inject_user():
+    print("entered context_processor")
+    return dict(current_user=g.user)
+
+
 
 # add new ingredient by admin
 @app.route('/ingredients', methods=['POST'])
@@ -325,3 +375,5 @@ def add_update_user_price():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
+
+

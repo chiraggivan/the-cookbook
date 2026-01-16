@@ -73,7 +73,7 @@ async function loadRecipeDetails() {
     // Show Buttons - check logged in user and recipe owner same or not and show BUTTONS accordingly (toggle switch + buttons)
     const actionsEl = document.getElementById("recipe-actions");
     if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
-      document.getElementById('recipe-buttons').style.display = 'block';
+      document.getElementById('recipe-buttons').classList.remove("d-none");
       actionsEl.innerHTML = `
         <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
           <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Private"}</span>

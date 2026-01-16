@@ -1,5 +1,5 @@
 # routes/read.py
-from flask import jsonify
+from flask import jsonify, g
 from db import get_db_connection
 from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity#, JWTManager,  create_access_token
@@ -10,8 +10,9 @@ from . import recipes_api_bp
 @jwt_required()
 def get_recipes():
 
-    s_user_id = get_jwt_identity()
-    #print("logged in user id : ",s_user_id)
+    user = g.user #print("logged in user : ",user)
+    s_user_id = user.get('user_id')
+    
     if not s_user_id:
         return jsonify({'error': 'No user identity found in token'}), 401
     try:
@@ -39,8 +40,9 @@ def get_recipes():
 @jwt_required()
 def get_user_recipes(user_id):
 
-    s_user_id = get_jwt_identity()
-    #print("logged in user id : ",s_user_id)
+    user = g.user #print("logged in user : ",user)
+    s_user_id = user.get('user_id')
+
     if not s_user_id:
         return jsonify({'error': 'No user identity found in token'}), 401
     
@@ -84,7 +86,10 @@ def get_user_recipes(user_id):
 @jwt_required()
 def get_my_recipes():
 
-    s_user_id = get_jwt_identity()
+    # s_user_id = get_jwt_identity()
+    user = g.user #print("logged in user : ",user)
+    s_user_id = user.get('user_id')
+    
     print("logged in user id : ",s_user_id)
     try:
         conn = get_db_connection()
@@ -119,8 +124,9 @@ def get_my_recipes():
 @jwt_required()
 def get_recipe_details(recipe_id):
 
-    s_user_id = get_jwt_identity()
-    #print("logged in user id : ",s_user_id)
+    user = g.user #print("logged in user : ",user)
+    s_user_id = user.get('user_id')
+    
     if (recipe_id <= 0):
         return jsonify({'error':'Recipe ID is negative.'}), 404
         

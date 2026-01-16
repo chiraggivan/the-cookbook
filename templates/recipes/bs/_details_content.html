@@ -1,0 +1,65 @@
+<div class="container my-4">
+
+  <!-- Recipe Header -->
+  <h1 id="recipe-name" class="mb-2"></h1>
+
+  <div id="recipe-info" class="d-flex justify-content-between align-items-center mb-2">
+    <span id="recipe-meta"></span>
+    <span id="recipe-actions"></span>
+  </div>
+
+  <p id="recipe-description" class="mb-2"></p>
+
+  <p id="recipe-total-cost" class="text-end fw-bold mb-3"></p>
+
+  <!-- Action Buttons (Owner only) -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div class="dish-created-wrapper">
+      <button
+        id="dish-created-btn"
+        class="btn btn-success"
+      >
+        Dish Created Now
+      </button>
+      <div id="dish-created-info" class="mt-2"></div>
+    </div>
+
+    <div id="recipe-buttons" class="d-none">
+      <button id="edit-recipe-btn" class="btn btn-primary me-2">
+        Edit Recipe
+      </button>
+      <button id="delete-recipe-btn" class="btn btn-danger">
+        Delete Recipe
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Ingredients -->
+  <h2 class="mt-4">Ingredients</h2>
+
+  <div class="table-responsive">
+    <table id="ingredients-table" class="table table-bordered table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Ingredient</th>
+          <th>Quantity</th>
+          <th>Unit</th>
+          <th>Cost</th>
+          <th>Base Quantity</th>
+          <th>Base Unit</th>
+          <th>Base Price</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Steps -->
+  <div id="steps-container" class="mt-4"></div>
+
+  <!-- Error -->
+  <div id="error" class="alert alert-danger d-none mt-3"></div>
+
+</div>
