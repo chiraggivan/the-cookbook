@@ -1,4 +1,6 @@
-import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js"; 
+// import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js";
+import { isTokenValid } from "../../core/utils.js"; 
+import { showConfirm, showAlert } from "../../core/confirmModal.js"
 import { recipePreparedDateInfo } from "../dishes/helpers/dish_utils.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
@@ -6,6 +8,7 @@ const decoded = parseJwt(token); // console.log("decoded : ",decoded);
 const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
 const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
 const dish_data = {} // variable for sending json to dish created button
+
 
 // validate token
 if (!isTokenValid(token)) {
@@ -90,7 +93,7 @@ async function loadRecipeDetails() {
 
       privacyToggle.addEventListener("change", async () => {
         const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
-        //privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
+        privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
         
         try {
           const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
@@ -437,168 +440,3 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-
-
-// const overlay = document.getElementById("wizard-overlay");
-// const steps = document.querySelectorAll(".step");
-
-// const mealSelect = document.getElementById("mealSelect");
-// const dateInput = document.getElementById("dateInput");
-// const timeInput = document.getElementById("timeInput");
-// const commentInput = document.getElementById("commentInput");
-
-// let currentStep = 1;
-
-// // Open modal
-// function openWizard() {
-//   overlay.classList.remove("hidden");
-//   showStep(1);
-
-//   // Defaults
-//   const now = new Date();
-//   dateInput.value = now.toISOString().split("T")[0];
-//   timeInput.value = now.toTimeString().slice(0,5);
-// }
-
-// // Close modal
-// function closeWizard() {
-//   overlay.classList.add("hidden");
-// }
-
-// // Show step
-// function showStep(step) {
-//   currentStep = step;
-//   steps.forEach(s => s.classList.remove("active"));
-//   document.querySelector(`[data-step="${step}"]`).classList.add("active");
-// }
-
-// // Enable Next only when meal selected
-// mealSelect.addEventListener("change", () => {
-//   const nextBtn = document.querySelector('[data-step="1"] .next');
-//   nextBtn.disabled = mealSelect.value === "";
-// });
-
-// // Button handling
-// overlay.addEventListener("click", (e) => {
-//   if (e.target.classList.contains("cancel")) {
-//     closeWizard();
-//   }
-
-//   if (e.target.classList.contains("next")) {
-//     showStep(currentStep + 1);
-//   }
-
-//   if (e.target.classList.contains("back")) {
-//     showStep(currentStep - 1);
-//   }
-
-//   if (e.target.classList.contains("save")) {
-//     const payload = {
-//       meal: mealSelect.value,
-//       date: dateInput.value,
-//       time: timeInput.value,
-//       comment: commentInput.value
-//     };
-
-//     console.log("Saved data:", payload);
-//     closeWizard();
-//   }
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function isTokenExpired(token) {
-//   try {
-//     const payload = parseJwt(token);
-//     if (!payload || !payload.exp) return true;
-//     return payload.exp * 1000 < Date.now(); // true if expired
-//   } catch (e) {
-//     return true;
-//   }
-// }
-
-// if (token && !isTokenValid(token)) {
-//   loadRecipeDetails();
-// } 
-// else {
-//   localStorage.removeItem("access_token");
-//   document.getElementById("error").textContent = "Please log in to view recipe details.";
-//   setTimeout(() => { window.location.href = "/auth/login"; }, 2000);
-// }
-
-
-
-// function showAlert(message, isError = false, autoClose = true) {
-//   const overlay = document.getElementById("modal-overlay");
-//   const alertBox = document.getElementById("alert-box");
-//   const alertMessage = document.getElementById("alert-message");
-//   const alertActions = document.getElementById("alert-actions");
-
-//   alertMessage.textContent = message;
-//   alertBox.className = "alert-box" + (isError ? " error" : " success");
-//   overlay.style.display = "flex";
-//   alertActions.style.display = "none"; // hide OK button if autoclose
-
-//   if (autoClose) {
-//     setTimeout(() => {
-//       overlay.style.display = "none";
-//     }, 2000); // hide after 2s
-//   } else {
-//     alertActions.style.display = "block"; // show OK button
-//     document.getElementById("alert-ok").onclick = () => {
-//       overlay.style.display = "none";
-//     };
-//   }
-// }
-
-// function showConfirm(message) {
-//   return new Promise((resolve) => {
-//     const overlay = document.getElementById("modal-overlay");
-//     const alertBox = document.getElementById("alert-box");
-//     const alertMessage = document.getElementById("alert-message");
-//     const alertActions = document.getElementById("alert-actions");
-
-//     alertMessage.textContent = message;
-//     alertBox.className = "alert-box";
-//     overlay.style.display = "flex";
-
-//     // Replace actions with Yes/No buttons
-//     alertActions.innerHTML = `
-//       <button id="confirm-yes">Yes</button>
-//       <button id="confirm-no" style="background:#f44336;">No</button>
-//     `;
-//     alertActions.style.display = "block";
-
-//     document.getElementById("confirm-yes").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(true);
-//     };
-//     document.getElementById("confirm-no").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(false);
-//     };
-//   });
-// }

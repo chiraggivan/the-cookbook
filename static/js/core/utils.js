@@ -59,6 +59,34 @@ export function showConfirm(message) {
   });
 }
 
+// show bootstrap confirm message
+export function showBootstrapConfirm(message) {
+  return new Promise((resolve) => {
+    alertMessage.textContent = message;
+
+    modal.show();
+
+    const onConfirm = () => {
+      cleanup();
+      modal.hide();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    function cleanup() {
+      okBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+    }
+
+    okBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+  });
+}
+
 // Show a multi-option confirm modal
 export function showMultiConfirm(message, componentName) {
   return new Promise((resolve) => {
