@@ -1,11 +1,14 @@
-import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js"; 
+// import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js";
+import { isTokenValid } from "../../core/utils.js"; 
+import { showConfirm, showAlert } from "../../core/confirmModal.js"
 import { recipePreparedDateInfo } from "../dishes/helpers/dish_utils.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
 const decoded = parseJwt(token); // console.log("decoded : ",decoded);
 const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
 const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
-const dish_data = {} // variable for sending json to dish created button
+let dish_data = {}
+let overlay, mealSelect, dateInput, timeInput, commentInput;
 
 // validate token
 if (!isTokenValid(token)) {
@@ -44,12 +47,12 @@ async function loadRecipeDetails() {
 
     // data for dishes created  
     if (true) { 
-      const createdAt = new Date();  // Convert string to Date object
-      const dateOnly = createdAt.toLocaleDateString('en-GB');  // "24/12/2025" (UK format)
-      const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+      // const createdAt = new Date();  // Convert string to Date object
+      // const dateOnly = createdAt.toLocaleDateString('en-GB');  // "24/12/2025" (UK format)
+      // const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
+      //   hour: '2-digit', 
+      //   minute: '2-digit' 
+      // });
       dish_data['recipe_id'] = recipe.recipe_id;
       dish_data['recipe_name'] = recipe.name;
       dish_data['portion_size'] = recipe.portion_size;
@@ -57,8 +60,9 @@ async function loadRecipeDetails() {
       // dish_data['time_prepared'] = timeOnly;
       // dish_data['meal'] = 'lunch';
       dish_data['recipe_by'] = recipe.user_id;
-      dish_data['comment'] = '';
+      // dish_data['comment'] = '';
     }
+
     // Title + Meta + Description
     document.getElementById("recipe-name").textContent = recipe.name;
 
@@ -73,7 +77,7 @@ async function loadRecipeDetails() {
     // Show Buttons - check logged in user and recipe owner same or not and show BUTTONS accordingly (toggle switch + buttons)
     const actionsEl = document.getElementById("recipe-actions");
     if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
-      document.getElementById('recipe-buttons').style.display = 'block';
+      document.getElementById('recipe-buttons').classList.remove("d-none");
       actionsEl.innerHTML = `
         <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
           <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Private"}</span>
@@ -90,7 +94,7 @@ async function loadRecipeDetails() {
 
       privacyToggle.addEventListener("change", async () => {
         const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
-        //privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
+        privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
         
         try {
           const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
@@ -256,9 +260,6 @@ function updateTotalRecipeCost() {
   }
 }
 
-
-
-
 document.addEventListener("DOMContentLoaded", () => {
   
   const editBtn = document.getElementById("edit-recipe-btn");
@@ -297,113 +298,150 @@ document.addEventListener("DOMContentLoaded", () => {
         showAlert("Something went wrong.", true);
     }
   });
+
+  // const dishCreatedBtn = document.getElementById("dish-created-btn"); 
+  // dishCreatedBtn.addEventListener("click", async () => {
+  //   try {
+  //     const response = await fetch(`/dishes/api/`,{
+  //       method: "POST",
+  //       headers: {
+  //         "Authorization": `Bearer ${token}`,
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify(dish_data)
+  //     }); //console.log("response is :" , response);
+      
+  //     const data = await response.json(); //console.log("data received :",data);
+  //     if (response.ok) {
+  //       const createdDate = data.date_prepared; 
+  //       const createdTime = data.time_prepared;
+
+  //       if(createdDate !== "" && createdTime !== ""){
+  //         let createDishBtnPressed = true;
+  //         const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
+  //         document.getElementById("dish-created-info").textContent = display_text
+  //       }
+  //     } else {
+  //       showAlert(data.error || "Failed to create dish.", true);
+  //     }
+  //   } catch(err){
+  //     showAlert("Something went wrong.", true);
+  //   }
+  // });  
   
+
+  const overlay = document.getElementById("wizard-overlay");
+  const modal = new bootstrap.Modal(overlay);
+  const mealSelect = document.getElementById("mealSelect");
+  const dateInput = document.getElementById("dateInput");
+  const timeInput = document.getElementById("timeInput");
+  const commentInput = document.getElementById("commentInput");
+  let currentStep = 1;
+  // let dish_data = {}; // variable for sending json to dish created button
+
+  function resetWizard() {
+    // dish_data = {};
+    mealSelect.value = "";
+    dateInput.value = "";
+    timeInput.value = "";
+    commentInput.value = "";
+    showStep(1);
+
+    const nextBtn = overlay.querySelector('[data-step="1"] .next');
+    if (nextBtn) nextBtn.disabled = true;
+  }
+
+  // show step
+  function showStep(step) {
+    const steps = overlay.querySelectorAll(".step");
+    currentStep = step;
+    steps.forEach(s => s.classList.add("d-none"));
+    const active = overlay.querySelector(`.step[data-step="${step}"]`);
+    if (active) active.classList.remove("d-none");
+  }
+
   const dishCreatedBtn = document.getElementById("dish-created-btn"); 
   dishCreatedBtn.addEventListener("click", async () => {
+    
+    // show modal
+    resetWizard();
+    modal.show();
+  
+  });
 
-    const overlay = document.getElementById("wizard-overlay");
-    const steps = document.querySelectorAll(".step");
-    const mealSelect = document.getElementById("mealSelect");
-    const dateInput = document.getElementById("dateInput");
-    const timeInput = document.getElementById("timeInput");
-    const commentInput = document.getElementById("commentInput");
-    let currentStep = 1;
+  // meal select event listener
+  mealSelect.addEventListener("change", () => {
+    const nextBtn = overlay.querySelector('[data-step="1"] .next');
+    nextBtn.disabled = mealSelect.value === "";
+    dish_data.meal = mealSelect.value;
+  });
 
-    // Open modal
-    function openWizard() {
-      overlay.classList.remove("hidden");
+  // click buttons on modal listener
+  overlay.addEventListener("click", async (e) => {
+    const btn = e.target;
+
+    // cancel button
+    if (btn.classList.contains("cancel")) {
+      modal.hide();
+      resetWizard();
+      return;
     }
 
-    // Close modal
-    function closeWizard() {
-      overlay.classList.add("hidden");
+    // back button
+    if (btn.classList.contains("back")) {
+      showStep(currentStep - 1);
+      return;
     }
 
-    // Show step
-    function showStep(step) {
-      currentStep = step;
-      steps.forEach(s => s.classList.remove("active"));
-      document.querySelector(`[data-step="${step}"]`).classList.add("active");
-    }
-
-    openWizard();
-
-    // Enable Next only when meal selected
-    mealSelect.addEventListener("change", () => {
-      const nextBtn = overlay.querySelector('[data-step="1"] .next');
-      nextBtn.disabled = mealSelect.value === "";
-      dish_data['meal'] = mealSelect.value;
-    });
-
-    // Button handling
-    overlay.addEventListener("click", async (e) => {
-      if (e.target.classList.contains("cancel")) {
-        closeWizard();
+    // next button
+    if (btn.classList.contains("next")) {
+      if (currentStep === 2) {
+        const now = new Date();
+        dish_data.preparation_date =
+          dateInput.value || now.toISOString().split("T")[0];
+        dish_data.time_prepared =
+          timeInput.value ||
+          now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
       }
+      showStep(currentStep + 1);
+      return;
+    }
+    
+    // save button
+    if (btn.classList.contains("save")) {
+      dish_data.comment = commentInput.value;
 
-      if (e.target.classList.contains("next")) {
-        console.log("dish data is: ", dish_data);
-        console.log("date is : ", dateInput.value);
-        console.log("time is : ", timeInput.value);
-        const createdAt = new Date();  // Convert string to Date object
-        const dateOnly = createdAt.toISOString().split("T")[0];  // "2025-12-24" (UK format)
-        const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+      try {
+        const response = await fetch(`/dishes/api/`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(dish_data)
         });
 
-        if (dateInput.value){
-          dish_data['preparation_date'] = dateInput.value;
-        }else {
-          dish_data['preparation_date'] = dateOnly
-        }
+        const data = await response.json();
 
-        if (timeInput.value){
-          dish_data['time_prepared'] = timeInput.value;
-        }else {
-          dish_data['time_prepared'] = timeOnly 
+        if (response.ok) {
+          const text = recipePreparedDateInfo(
+            data.date_prepared,
+            data.time_prepared,
+            true
+          );
+          setTimeout(() => {
+            document.getElementById("dish-created-info").textContent = text;
+          }, 300);
+        } else {
+          showAlert(data.error || "Failed to create dish.", true);
         }
-        
-
-        showStep(currentStep + 1);
+      } catch {
+        showAlert("Something went wrong.", true);
       }
 
-      if (e.target.classList.contains("back")) {
-        showStep(currentStep - 1);
-      }
-
-      if (e.target.classList.contains("save")) {
-        dish_data['comment'] = commentInput.value;
-        try {
-          const response = await fetch(`/dishes/api/`,{
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(dish_data)
-          }); //console.log("response is :" , response);
-          
-          const data = await response.json(); //console.log("data received :",data);
-          if (response.ok) {
-            const createdDate = data.date_prepared; 
-            const createdTime = data.time_prepared;
-
-            if(createdDate !== "" && createdTime !== ""){
-              let createDishBtnPressed = true;
-              const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
-              document.getElementById("dish-created-info").textContent = display_text
-            }
-          } else {
-            showAlert(data.error || "Failed to create dish.", true);
-          }
-        } catch(err){
-          showAlert("Something went wrong.", true);
-        }
-        
-        closeWizard();
-      }
-    });
-
+      modal.hide();
+      resetWizard();
+    }
   });
 });
+
