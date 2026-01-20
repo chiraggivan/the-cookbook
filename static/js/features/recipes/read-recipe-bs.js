@@ -357,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentStep = step;
     steps.forEach(s => s.classList.add("d-none"));
     const active = overlay.querySelector(`.step[data-step="${step}"]`);
-    if (active) active.classList.remove("d-none");
+    if (active) active.classList.remove("d-none"); 
   }
 
   const dishCreatedBtn = document.getElementById("dish-created-btn"); 
