@@ -25,15 +25,19 @@ def search_ingredients():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT i.ingredient_id, i.name, COALESCE(up.custom_price , i.default_price) as price, i.base_unit
-            FROM ingredients i LEFT JOIN user_prices up ON i.ingredient_id = up.ingredient_id 
-            AND up.user_id = %s AND up.is_active = 1
+            SELECT user_ingredient_id as id, name, display_price as price, display_unit as base_unit, display_quantity, 'user' as ingredient_source
+            FROM user_ingredients
+            WHERE LOWER(name) LIKE %s AND is_active = 1
+            UNION ALL
+            SELECT i.ingredient_id, i.name, COALESCE(up.custom_price , i.default_price) as price, i.base_unit, 1 as display_quantity, 'main' as ingredient_source
+            FROM ingredients i 
+            LEFT JOIN user_prices up ON i.ingredient_id = up.ingredient_id AND up.user_id = %s AND up.is_active = 1
             WHERE LOWER(i.name) LIKE %s
             AND (i.approval_status = "approved" OR i.submitted_by = %s)
             LIMIT 20
-        """,( s_user_id, f"%{q}%", s_user_id))
+        """,(f"%{q}%", s_user_id, f"%{q}%", s_user_id))
         results = cursor.fetchall()
-        #print("result: ", results)
+        # print("result: ", results)
         cursor.close()
         conn.close()
         return jsonify(results)
@@ -240,6 +244,10 @@ def create_recipe():
                         if not isinstance(ingredient_id, (int, float)) or ingredient_id <= 0 or ingredient_id >= 10**6:
                             return f"Invalid ingredient id: must be numeric > 0  and < 1000000"
 
+                        ingredient_source = ing.get('ingredient_source')
+                        if not isinstance(ingredient_source, str) or ingredient_source not in ['main','user']:
+                            return f"Invalid ingredient_source({ingredient_source}): must be a string within [main,user]"                        
+
                         quantity = to_float(ing.get("quantity"), "quantity")
                         if not isinstance(quantity, (int, float)) or quantity <= 0 or quantity >= 10**6:
                             return f"Invalid quantity: must be numeric > 0  and < 1000000"
@@ -336,6 +344,7 @@ def create_recipe():
                     conn.close()
                     return jsonify({'error': f"Unit ID {ing['unit_id']} not valid for ingredient ID {ing['ingredient_id']}"}), 400   
                 # print(f"ingredients with id {ing['ingredient_id']} and unit id match with units table")
+                
                 # check if json has any one of -- base_unit, base_price or base_quantity then validate if new base new unit provided is compatible with old one.
                 # eg: old base unit in kg. so new base unit has to be in [kg, g, oz, lbs] as finally it will be storted as kg by applying conversion later while inserting
                 if ing.get('base_unit'):
@@ -396,9 +405,9 @@ def create_recipe():
             # Insert into recipe_ingredients
             for ing in component['ingredients']:
                 cursor.execute("""
-                    INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, is_active, display_order, component_id)
-                    VALUES (%s, %s, %s, %s, TRUE, %s,%s)
-                """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'],component_id))
+                    INSERT INTO recipe_ingredients (recipe_id, ingredient_id, ingredient_source, quantity, unit_id, is_active, display_order, component_id)
+                    VALUES (%s, %s, %s, %s, %s, TRUE, %s,%s)
+                """, (recipe_id, ing['ingredient_id'],ing['ingredient_source'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'],component_id))
 
                 # Update user_prices if base_unit/base_price/base_quantity is provided and different
                 if ing.get('base_unit'):

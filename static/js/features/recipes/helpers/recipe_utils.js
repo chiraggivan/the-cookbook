@@ -215,6 +215,7 @@ export async function renderRecipeDataOnScreen(data){
             tr.classList.add("ingredient-row");
             tr.dataset.recipeIngredientId = i.recipe_ingredient_id || "";
             tr.dataset.ingredientId = i.ingredient_id || "";
+            tr.dataset.ingredientSource = i.ingredient_source;
             tr.dataset.originalOrder = rowIndex || 0;
             tr.dataset.defaultBaseQuantity = i.base_quantity;
             tr.dataset.defaultBaseUnit = i.unit;
@@ -277,6 +278,7 @@ export async function renderRecipeDataOnScreen(data){
         };
         componentIndex++
     };
+
     // add an empty ingredientrow at the end of table. (kept in 'if' for easy understanding)
     if (true) {
         const tr = document.createElement("tr");

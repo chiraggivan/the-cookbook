@@ -264,6 +264,7 @@ export function validateIngredientRows() {
                 ingDisplayOrder++;
                 const ingredientObj = {
                     ingredient_id: parseInt(row.dataset.ingredientId),
+                    ingredient_source: row.dataset.ingredientSource,
                     quantity: parseFloat(quantityInput.value),
                     unit_id: parseInt(unitSelect.value),
                     ingredient_display_order : ingDisplayOrder,
@@ -401,6 +402,7 @@ export function getRecipePayload(originalRecipeData, completeRecipeData) {
     payload.add_ingredients = completeRecipeData.ingredients.add_ingredients.map(newRow => {
         const cleaned = {
             ingredient_id: newRow.ingredient_id,
+            ingredient_source: newRow.ingredient_source,
             quantity: parseFloat(newRow.quantity),
             unit_id: parseInt(newRow.unit_id),
             component_display_order: parseInt(newRow.component_display_order),
@@ -440,6 +442,7 @@ export function getRecipePayload(originalRecipeData, completeRecipeData) {
             // CASE 1: Ingredient changed
             if (updatedRow.ingredient_id && updatedRow.ingredient_id !== originalRow.ingredient_id) {
                 changes.ingredient_id = updatedRow.ingredient_id;
+                changes.ingredient_source = updatedRow.ingredient_source;
                 changes.quantity = parseFloat(updatedRow.quantity);
                 changes.unit_id = parseInt(updatedRow.unit_id);
 

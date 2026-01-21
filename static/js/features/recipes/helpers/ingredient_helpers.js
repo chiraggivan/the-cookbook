@@ -48,7 +48,7 @@ export function getEmptyIngredientRow(rowIndex) {
 }
 
 // Populate units dropdown for a selected ingredient
-export async function populateUnits(row, token) {
+export async function populateUnits(row) {
     // get the ingredient id from row
     const ingredientId = row.dataset.ingredientId;
     // get the unit id from row
@@ -192,7 +192,8 @@ export function initializeIngredientInput(row, token) {
 
                 data.forEach(item => {
                     const div = document.createElement("div");
-                    div.dataset.id = item.ingredient_id;
+                    div.dataset.id = item.id;
+                    div.dataset.source = item.ingredient_source;
                     div.textContent = item.name;
                     div.classList.add("suggestion-item");
                     div.addEventListener("click", async () => await selectIngredient(item, row));
@@ -286,19 +287,25 @@ export function initializeIngredientInput(row, token) {
     // Select an ingredient (new or existing) and populate fields
     async function selectIngredient(item, row) {
         input.value = item.name;
-        row.dataset.ingredientId = item.ingredient_id;
+        row.dataset.ingredientId = item.id;
+        row.dataset.ingredientSource = item.ingredient_source;
 
-        row.querySelector('input[name^="base_quantity_"]').value = 1;
+        row.querySelector('input[name^="base_quantity_"]').value = item.display_quantity ? Number(item.display_quantity) : 1;
         row.querySelector('input[name^="base_price_"]').value = item.price ? Number(item.price).toFixed(2) : "";
         row.querySelector('select[name^="base_unit_"]').innerHTML = `<option selected>${item.base_unit || ""}</option>`;
 
         // Store defaults for payload comparison
-        row.dataset.defaultBaseQuantity = 1;
+        if (item.display_quantity){
+            row.dataset.defaultBaseQuantity = item.display_quantity;
+        }else{
+            row.dataset.defaultBaseQuantity = 1;
+        }
+        
         row.dataset.defaultBasePrice = item.price ? Number(item.price).toFixed(2) : 0;
         row.dataset.defaultBaseUnit = item.base_unit || "";
 
         // Populate the units dropdown using the correct 4 params
-        await populateUnits(row, token);
+        await populateUnits(row);
         populateBaseUnits(row); 
 
         suggestionBox.style.display = "none";

@@ -320,6 +320,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const recipePayload = getRecipePayload(originalRecipeData, completeRecipeData);
         console.log("recipePayLoad is:", recipePayload);
+        // return;
         
         try {
         const response = await fetch(`/recipes/api/update-recipe/${recipeId}`, {

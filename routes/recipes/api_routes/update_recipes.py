@@ -72,6 +72,7 @@ def get_recipe_details_for_update(recipe_id):
                 i.name,
                 ri.recipe_ingredient_id,
                 ri.quantity,
+                ri.ingredient_source,
                 u.unit_id,
                 u.unit_name,
                 ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
@@ -79,7 +80,8 @@ def get_recipe_details_for_update(recipe_id):
                 COALESCE(up.base_unit, i.base_unit) AS unit
             FROM recipe_ingredients ri 
             LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
-            JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+            LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id AND ri.ingredient_source = 'main'
+            LEFT JOIN user_ingredients ui ON ui.user_ingredient_id = ri.ingredient_id AND ri.ingredient_source = 'user'
             JOIN units u ON ri.unit_id = u.unit_id
             LEFT JOIN user_prices up ON up.user_id = %s 
                 AND up.ingredient_id = i.ingredient_id 
@@ -350,7 +352,7 @@ def update_recipe(recipe_id):
                 cleaned["update_components"] = cleaned_update_components
 
             # check fields of update ingredients and normalize required fields only
-            update_ingredient_fields =["recipe_ingredient_id", "ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit", "place", "component_display_order", "ingredient_display_order"]
+            update_ingredient_fields =["recipe_ingredient_id", "ingredient_id","ingredient_source", "quantity", "unit_id", "base_price", "base_quantity", "base_unit", "place", "component_display_order", "ingredient_display_order"]
             update_ingredients = data.get('update_ingredients')
             if update_ingredients is None:
                 cleaned["update_ingredients"] = []
@@ -377,7 +379,7 @@ def update_recipe(recipe_id):
                 cleaned["update_ingredients"] = cleaned_update_ingredients
 
             # check fields of add ingredients and normalize required fields only
-            add_ingredient_fields =["ingredient_id", "quantity", "unit_id", "base_price", "base_quantity", "base_unit","component_display_order","ingredient_display_order"]
+            add_ingredient_fields =["ingredient_id","ingredient_source", "quantity", "unit_id", "base_price", "base_quantity", "base_unit","component_display_order","ingredient_display_order"]
             add_ingredients = data.get('add_ingredients')
             if add_ingredients is None:     
                 cleaned["add_ingredients"] = []
@@ -463,7 +465,7 @@ def update_recipe(recipe_id):
             update_ingredients = data.get("update_ingredients",[])
             add_ingredients = data.get("add_ingredients",[])
             remove_ingredients = data.get("remove_ingredients",[])
-
+            
             # --- for remove_components field validation
             if remove_components:
                 for component in remove_components:
@@ -538,6 +540,7 @@ def update_recipe(recipe_id):
                     for ing in ingredients:
                         if group_name == 'add_ingredients':
                             ingredient_id = ing.get('ingredient_id')
+                            ingredient_source = ing.get('ingredient_source')
                             quantity = ing.get('quantity')
                             unit_id = ing.get('unit_id')
                             if ingredient_id is None or quantity is None or unit_id is None:
@@ -551,6 +554,11 @@ def update_recipe(recipe_id):
                         if ingredient_id is not None:
                             if ingredient_id =="" or not isinstance(ingredient_id,int) or ingredient_id <= 0:
                                 return jsonify({'error':f"Invalid ingredient id '{ingredient_id}': must be int > 0"}), 400
+                        
+                        ingredient_source = ing.get('ingredient_source')
+                        if ingredient_source is not None:
+                            if not isinstance(ingredient_source,str) or ingredient_source not in['main','user']:
+                                return jsonify({'error':f"Invalid ingredient source '{ingredient_source}': must be string within [main, user]"}), 400
 
                         quantity = ing.get("quantity")
                         if quantity is not None:
@@ -680,6 +688,7 @@ def update_recipe(recipe_id):
                     'error': 'Recipe with same name and portion size already exists',
                     'submitted_data': data
                 }), 409
+
         # ---------------------------------------------------------------------------------
         # check all the fields of components like add, update and remove but first we will find some data to help verify later
 
@@ -693,7 +702,7 @@ def update_recipe(recipe_id):
             """,(recipe_id, value))
             row = cursor.fetchone()
             if not row:
-                return jsonify({"error": f"Invalid recipe ingredient id {value} : this does not below to the recipe id {recipe_id}"}), 400 
+                return jsonify({"error": f"Invalid recipe component id {value} : this does not belong to the recipe id {recipe_id}"}), 400 
         
         # finding out what can be the max number for component_display_order
         cursor.execute("""
@@ -826,11 +835,11 @@ def update_recipe(recipe_id):
                 if action == 'update':
                     # check if recipe ingredient id exists in recipe ingredients table. ONLY for update
                     cursor.execute("""
-                        SELECT i.ingredient_id, i.quantity, i.unit_id, i.display_order, i.component_id, c.display_order as cdo
+                        SELECT i.ingredient_id, i.ingredient_source, i.quantity, i.unit_id, i.display_order, i.component_id, c.display_order as cdo
                         FROM recipe_ingredients i JOIN recipe_components c ON i.component_id = c.recipe_component_id
-                        WHERE i.recipe_ingredient_id = %s AND i.recipe_id = %s AND i.is_active = TRUE
+                        WHERE i.recipe_ingredient_id = %s AND i.ingredient_source = %s AND i.recipe_id = %s AND i.is_active = TRUE
                         LIMIT 1
-                    """,(ing.get('recipe_ingredient_id'),recipe_id))   
+                    """,(ing.get('recipe_ingredient_id'), ing.get('ingredient_source'), recipe_id))   
                     row = cursor.fetchone()
                     if not row:
                         cursor.close()
@@ -838,6 +847,7 @@ def update_recipe(recipe_id):
                         return jsonify({'error': f"Can't find recipe ingredient id {ing.get('recipe_ingredient_id')} with action as {action}", "submitted_data":data}), 404  
                     
                     old_ing_id = row['ingredient_id']
+                    old_ing_source = row['ingredient_source']
                     old_quantity = float(row['quantity'])
                     old_unit_id = row['unit_id']
                     old_ingredient_display_order = row['display_order']
@@ -859,21 +869,36 @@ def update_recipe(recipe_id):
                         conn.close()
                         return jsonify({'error': f"component_display_order out of range. it was submitted within add/update ingredients", "submitted_data":data}), 404 
 
-                # check if new ingredient id exists in ingredients table
+                # check if new ingredient id exists in ingredients table or user_ingredients table
                 if 'ingredient_id' in ing:
-                    cursor.execute("""SELECT base_unit FROM ingredients 
-                        WHERE ingredient_id = %s AND is_active = TRUE AND (approval_status = "approved" OR submitted_by = %s)
-                        LIMIT 1
-                    """, (ing['ingredient_id'],s_user_id))
-                    row = cursor.fetchone()
-                    if not row:
-                        cursor.close()
-                        conn.close()
-                        return jsonify({'error': f"Can't find ingredient id {ing.get('ingredient_id')}","submitted_data":data}), 404
-                    main_base_unit = row['base_unit']
+                    if ing['ingredient_source'] == 'main':
+                        cursor.execute("""SELECT base_unit FROM ingredients 
+                            WHERE ingredient_id = %s AND is_active = TRUE AND (approval_status = "approved" OR submitted_by = %s)
+                            LIMIT 1
+                        """, (ing['ingredient_id'],s_user_id))
+                        row = cursor.fetchone()
+                        if not row:
+                            cursor.close()
+                            conn.close()
+                            return jsonify({'error': f"Can't find ingredient id {ing.get('ingredient_id')}","submitted_data":data}), 404
+                        main_base_unit = row['base_unit']
+                    
+                    if ing['ingredient_source'] == 'user':
+                        cursor.execute("""SELECT base_unit FROM user_ingredients 
+                            WHERE user_ingredient_id = %s AND is_active = TRUE AND (approval_status = "approved" OR submitted_by = %s)
+                            LIMIT 1
+                        """, (ing['ingredient_id'],s_user_id))
+                        row = cursor.fetchone()
+                        if not row:
+                            cursor.close()
+                            conn.close()
+                            return jsonify({'error': f"Can't find user ingredient id {ing.get('ingredient_id')}","submitted_data":data}), 404
+                        main_base_unit = row['base_unit']
              
                 if ing.get('ingredient_id') is None:
                     ing['ingredient_id'] = old_ing_id
+                if ing.get('ingredient_source') is None:
+                    ing['ingredient_source'] = old_ing_source
                 if ing.get('unit_id') is None:
                     ing['unit_id'] = old_unit_id
                 if ing.get('quantity') is None:
@@ -915,10 +940,6 @@ def update_recipe(recipe_id):
 
         # ----------------------------- UPDATE in DB BEGINS BELOW -------------------------------------------------
         # return jsonify({"error":"db connected and about to start updating in db", "submitted_data": data}), 400
-
-
-
-
         
         # Update recipe table if any fields are provided
         if update_fields:
@@ -1014,7 +1035,7 @@ def update_recipe(recipe_id):
                 row = cursor.fetchone()
                 if row:
                     ing['component_id'] = row['recipe_component_id']
-                else: # mostly wont get executed as new ingredient will have to be under one of the componens
+                else: # mostly wont get executed as new ingredient will have to be under one of the components
                     # this is done if new component is added and new/updated ingredient is under it then we need to 
                     # find the recipe_component_id from recipe_components table that has been created and 
                     # save it in component_id field of recipe_ingredients table.
@@ -1028,9 +1049,9 @@ def update_recipe(recipe_id):
                     # cursor = conn.cursor(dictionary=True)
                     cursor.execute("""
                         SELECT recipe_ingredient_id FROM recipe_ingredients 
-                        WHERE recipe_id = %s AND ingredient_id = %s AND is_active = 0
+                        WHERE recipe_id = %s AND ingredient_id = %s AND ingredient_source = %s AND is_active = 0
                         LIMIT 1
-                    """, (recipe_id, ing['ingredient_id']))
+                    """, (recipe_id, ing['ingredient_id'], ing['ingredient_source']))
                     row = cursor.fetchone()
                     if row:
                         ri_id = row["recipe_ingredient_id"]
@@ -1040,20 +1061,20 @@ def update_recipe(recipe_id):
                             WHERE recipe_ingredient_id = %s
                         """, (ing['quantity'], ing['unit_id'], ing['ingredient_display_order'], ing['component_id'], ri_id))
                         if cursor.rowcount == 0:
-                            return jsonify({'error':"Problem encountered while adding new recipe ingredient."}), 400
+                            return jsonify({'error':"Problem encountered while adding new recipe ingredient found as inactive in recipe ingredient table."}), 400
                     else:
                         cursor.execute("""
-                            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit_id, component_id, display_order, is_active)
-                            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
-                        """, (recipe_id, ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['component_id'], ing['ingredient_display_order']))
+                            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, ingredient_source, quantity, unit_id, component_id, display_order, is_active)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+                        """, (recipe_id, ing['ingredient_id'],ing['ingredient_source'], ing['quantity'], ing['unit_id'], ing['component_id'], ing['ingredient_display_order']))
                         if cursor.rowcount == 0:
                             return jsonify({'error':"Problem encountered while adding new row of recipe ingredient."}), 400
                 else:  # update
                     cursor.execute("""
                         UPDATE recipe_ingredients 
-                        SET ingredient_id = %s, quantity = %s, unit_id = %s, display_order = %s, component_id = %s
+                        SET ingredient_id = %s, ingredient_source = %s, quantity = %s, unit_id = %s, display_order = %s, component_id = %s
                         WHERE recipe_ingredient_id = %s AND is_active = TRUE
-                    """, (ing['ingredient_id'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'], ing['component_id'], ing['recipe_ingredient_id']))
+                    """, (ing['ingredient_id'],  ing['ingredient_source'], ing['quantity'], ing['unit_id'], ing['ingredient_display_order'], ing['component_id'], ing['recipe_ingredient_id']))
                     # if cursor.rowcount == 0:
                     #     return jsonify({'error':"Problem encountered while updating recipe ingredient.", "submitted_data": data}), 400
                     

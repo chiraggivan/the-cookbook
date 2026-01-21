@@ -162,6 +162,7 @@ def get_recipe_details(recipe_id):
                 i.name,
                 ri.recipe_ingredient_id,
                 ri.quantity,
+                ri.ingredient_source,
                 u.unit_id,
                 u.unit_name,
                 ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
@@ -169,7 +170,8 @@ def get_recipe_details(recipe_id):
                 COALESCE(up.base_unit, i.base_unit) AS unit
             FROM recipe_ingredients ri 
             LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
-            JOIN ingredients i ON ri.ingredient_id = i.ingredient_id
+            LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id AND ri.ingredient_source = 'main'
+            LEFT JOIN user_ingredients ui ON ui.user_ingredient_id = ri.ingredient_id AND ri.ingredient_source = 'user'
             JOIN units u ON ri.unit_id = u.unit_id
             LEFT JOIN user_prices up ON up.user_id = %s 
                 AND up.ingredient_id = i.ingredient_id 
