@@ -27,7 +27,7 @@ def search_ingredients():
         cursor.execute("""
             SELECT user_ingredient_id as id, name, display_price as price, display_unit as base_unit, display_quantity, 'user' as ingredient_source
             FROM user_ingredients
-            WHERE LOWER(name) LIKE %s AND is_active = 1
+            WHERE submitted_by = %s AND LOWER(name) LIKE %s AND  is_active = 1
             UNION ALL
             SELECT i.ingredient_id, i.name, COALESCE(up.custom_price , i.default_price) as price, i.base_unit, 1 as display_quantity, 'main' as ingredient_source
             FROM ingredients i 
@@ -35,7 +35,7 @@ def search_ingredients():
             WHERE LOWER(i.name) LIKE %s
             AND (i.approval_status = "approved" OR i.submitted_by = %s)
             LIMIT 20
-        """,(f"%{q}%", s_user_id, f"%{q}%", s_user_id))
+        """,(s_user_id, f"%{q}%", s_user_id, f"%{q}%", s_user_id))
         results = cursor.fetchall()
         # print("result: ", results)
         cursor.close()
@@ -51,10 +51,11 @@ def search_ingredients():
 @jwt_required()
 def get_ingredient_units():
     s_user_id = get_jwt_identity()
-    # print("user id is: ", s_user_id)
+    # print("params are : ", request.args)
     ingredient_id = request.args.get("ingredient", type=int)
+    ingredient_source = request.args.get("source", type=str)
     #print(" value of ingredient id :", ingredient_id)
-    if not ingredient_id:
+    if not ingredient_id or not ingredient_source:
         return jsonify([])
 
     try:
@@ -65,8 +66,8 @@ def get_ingredient_units():
         cursor.execute("""
             SELECT unit_id, unit_name, conversion_factor
             FROM units 
-            WHERE ingredient_id = %s AND is_active = 1
-        """,(ingredient_id,))
+            WHERE ingredient_id = %s AND ingredient_source = %s AND is_active = 1
+        """,(ingredient_id,ingredient_source))
         results = cursor.fetchall()
         #print("result: ", results)
         cursor.close()

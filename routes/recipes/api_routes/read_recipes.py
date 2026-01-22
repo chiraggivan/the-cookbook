@@ -158,16 +158,18 @@ def get_recipe_details(recipe_id):
                 rc.display_order as component_display_order,
                 rc.component_text,
                 ri.display_order as ingredient_display_order,
-                i.ingredient_id,
-                i.name,
+                COALESCE(i.ingredient_id, ui.user_ingredient_id) as ingredient_id,
+                COALESCE(i.name, ui.name) as name,
                 ri.recipe_ingredient_id,
                 ri.quantity,
                 ri.ingredient_source,
+                ui.submitted_by as ingredient_by,
                 u.unit_id,
                 u.unit_name,
-                ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
-                COALESCE(up.custom_price, i.default_price) AS cost,
-                COALESCE(up.base_unit, i.base_unit) AS unit
+                ri.quantity * COALESCE(ui.base_price, COALESCE(up.custom_price, i.default_price))  * u.conversion_factor AS price,
+                COALESCE(ui.display_quantity, 1) as base_quantity,
+                COALESCE(ui.display_price, COALESCE(up.custom_price, i.default_price)) AS cost,
+                COALESCE(ui.display_unit, COALESCE(up.base_unit, i.base_unit)) AS unit
             FROM recipe_ingredients ri 
             LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
             LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id AND ri.ingredient_source = 'main'

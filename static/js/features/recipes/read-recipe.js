@@ -191,7 +191,7 @@ async function loadRecipeDetails() {
           <td>${i.quantity}</td>
           <td>${i.unit_name}</td>
           <td class="ingredient-price">${Number(i.price).toFixed(4)}</td>
-          <td>${Number(1)}</td>
+          <td>${i.base_quantity}</td>
           <td>${i.unit}</td>
           <td>${Number(i.cost).toFixed(2)}</td>
         `;

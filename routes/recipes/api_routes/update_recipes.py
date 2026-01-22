@@ -68,16 +68,16 @@ def get_recipe_details_for_update(recipe_id):
                 rc.display_order as component_display_order,
                 rc.component_text,
                 ri.display_order as ingredient_display_order,
-                i.ingredient_id,
-                i.name,
+                COALESCE(i.ingredient_id, ui.user_ingredient_id) as ingredient_id,
+                COALESCE(i.name, ui.name) as name,
                 ri.recipe_ingredient_id,
                 ri.quantity,
                 ri.ingredient_source,
                 u.unit_id,
                 u.unit_name,
-                ri.quantity * COALESCE(up.custom_price, i.default_price) * u.conversion_factor AS price,
-                COALESCE(up.custom_price, i.default_price) AS base_price,
-                COALESCE(up.base_unit, i.base_unit) AS unit
+                COALESCE(ui.display_quantity, 1) as base_quantity,
+                COALESCE(ui.display_price, COALESCE(up.custom_price, i.default_price)) AS cost,
+                COALESCE(ui.display_unit, COALESCE(up.base_unit, i.base_unit)) AS unit
             FROM recipe_ingredients ri 
             LEFT JOIN recipe_components rc ON rc.recipe_component_id = ri.component_id
             LEFT JOIN ingredients i ON ri.ingredient_id = i.ingredient_id AND ri.ingredient_source = 'main'
@@ -837,9 +837,9 @@ def update_recipe(recipe_id):
                     cursor.execute("""
                         SELECT i.ingredient_id, i.ingredient_source, i.quantity, i.unit_id, i.display_order, i.component_id, c.display_order as cdo
                         FROM recipe_ingredients i JOIN recipe_components c ON i.component_id = c.recipe_component_id
-                        WHERE i.recipe_ingredient_id = %s AND i.ingredient_source = %s AND i.recipe_id = %s AND i.is_active = TRUE
+                        WHERE i.recipe_ingredient_id = %s  AND i.recipe_id = %s AND i.is_active = TRUE
                         LIMIT 1
-                    """,(ing.get('recipe_ingredient_id'), ing.get('ingredient_source'), recipe_id))   
+                    """,(ing.get('recipe_ingredient_id'), recipe_id))   
                     row = cursor.fetchone()
                     if not row:
                         cursor.close()

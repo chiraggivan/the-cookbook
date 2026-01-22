@@ -50,6 +50,7 @@ def create_ingredient():
     # check if user id found in token
     if not user_id:
         return jsonify({'error': 'No user identity found in token'}), 401
+
     # check if user is having role as admin
     if not (user_role == "admin"):
         return jsonify({"error": "Admin privileges required"}), 403
@@ -149,7 +150,7 @@ def create_ingredient():
             return jsonify({'error': 'Database connection failed'}), 500
         cursor = conn.cursor(dictionary=True)
         
-       # Validate user_id exists & user has the privilege to delete the ingredient
+        # Validate user_id exists & user has the privilege to delete the ingredient
         cursor.execute("SELECT role FROM users WHERE user_id = %s", (user_id,))
         user = cursor.fetchone()
         if not user or not(user['role'] == 'admin'):
@@ -167,8 +168,8 @@ def create_ingredient():
             return jsonify({'error': f'{data["name"]} - already exists'}), 403
 
         #print("data is : ",data)
-        #return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200 # for postman
-        # return jsonify({"error":"Everything fine and ready to start adding ingredient details in ingredients table."}), 400
+        # return jsonify({"msg":"Everything fine and ready to start adding ingredient details in ingredients table."}), 200 # for postman
+        
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
         cursor.callproc('insert_ingredient_plus_units', (
                     data.get('name'), 

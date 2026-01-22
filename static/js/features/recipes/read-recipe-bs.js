@@ -190,14 +190,24 @@ async function loadRecipeDetails() {
       // Create ingredient rows for this component
       componentIngredients.forEach(i => {
         const ingredientRow = document.createElement("tr");
+        ingredientRow.dataset.ingredientSource = i.ingredient_source;
+        ingredientRow.dataset.ingredientBy = i.ingredient_by;
+        let ingName = i.name;
+        if(i.ingredient_by !== null && i.ingredient_by != loggedInUserId){
+          ingredientRow.style.backgroundColor = "#d9f2e6"; // light green
+          ingName = `<span>${ingName}</span><span> *</span>`;
+        }else{
+          ingName = `<span>${ingName}</span>`;
+        }
+        
         ingredientRow.innerHTML = `
-          <td>${i.name}</td>
-          <td>${i.quantity}</td>
-          <td>${i.unit_name}</td>
-          <td class="ingredient-price">${Number(i.price).toFixed(4)}</td>
-          <td>${Number(1)}</td>
-          <td>${i.unit}</td>
-          <td>${Number(i.cost).toFixed(2)}</td>
+          <td style="background-color: inherit;">${ingName}</td>
+          <td style="background-color: inherit;">${i.quantity}</td>
+          <td style="background-color: inherit;">${i.unit_name}</td>
+          <td class="ingredient-price" style="background-color: inherit;">${Number(i.price).toFixed(4)}</td>
+          <td style="background-color: inherit;">${parseFloat(i.base_quantity)}</td>
+          <td style="background-color: inherit;">${i.unit}</td>
+          <td style="background-color: inherit;">${Number(i.cost).toFixed(2)}</td>
         `;
 
         //attach for dish_data

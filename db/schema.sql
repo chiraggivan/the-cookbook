@@ -396,7 +396,6 @@ CREATE TABLE `units` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`unit_id`),
   UNIQUE KEY `unique_ingredient_unit` (`ingredient_id`,`unit_name`),
-  CONSTRAINT `units_ibfk_1` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`ingredient_id`) ON DELETE CASCADE,
   CONSTRAINT `units_chk_1` CHECK ((`conversion_factor` >= 0))
 ) ENGINE=InnoDB AUTO_INCREMENT=400 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

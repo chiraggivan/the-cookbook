@@ -29,6 +29,6 @@ CREATE TABLE `user_ingredients` (
   CONSTRAINT `user_ingredients_chk_3` CHECK ((`display_quantity` > 0)),
   CONSTRAINT `user_ingredients_chk_4` CHECK ((`cup_weight` > 0) OR (`cup_weight` IS NULL)),
   CONSTRAINT `user_ingredients_chk_5` CHECK ((`approval_status` in (_utf8mb4'pending',_utf8mb4'approved',_utf8mb4'rejected',_utf8mb4'on hold')))
-) ENGINE=InnoDB AUTO_INCREMENT=71 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

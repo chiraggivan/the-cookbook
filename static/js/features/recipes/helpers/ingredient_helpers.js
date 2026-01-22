@@ -51,6 +51,7 @@ export function getEmptyIngredientRow(rowIndex) {
 export async function populateUnits(row) {
     // get the ingredient id from row
     const ingredientId = row.dataset.ingredientId;
+    const ingredientSource = row.dataset.ingredientSource;
     // get the unit id from row
     const unitSelect = row.querySelector(".unit-select");
     const selectedUnitId = unitSelect?.value;
@@ -63,8 +64,14 @@ export async function populateUnits(row) {
     defaultOption.textContent = "Select";
     unitSelect.appendChild(defaultOption);
 
+    // parameters to be sent with url 
+    const params = new URLSearchParams({
+        ingredient: ingredientId,
+        source: ingredientSource
+    });
+    
     try {
-        const res = await fetch(`/recipes/api/ingredient-units?ingredient=${encodeURIComponent(ingredientId)}`, {
+        const res = await fetch(`/recipes/api/ingredient-units?${params.toString()}`, {
         headers: { "Authorization": `Bearer ${token}` }
         });
 

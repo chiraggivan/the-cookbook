@@ -44,7 +44,7 @@ export function recalcCost(row) {
     // figure out which group the base unit belongs to
     const unitGroups = {
         weight: { base: "kg", factors: { kg: 1, g: 0.001, oz: 0.0283495, lbs: 0.453592 } },
-        volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.0295735, pint: 0.473176 } },
+        volume: { base: "l", factors: { l: 1, ml: 0.001, "fl.oz": 0.028413, pint: 0.568261 } },
         bunch: {base: "bunch", factors: {bunch :1}},
         pc: {base: "pc", factors: {pc :1}}
     };
@@ -219,7 +219,7 @@ export async function renderRecipeDataOnScreen(data){
             tr.dataset.originalOrder = rowIndex || 0;
             tr.dataset.defaultBaseQuantity = i.base_quantity;
             tr.dataset.defaultBaseUnit = i.unit;
-            tr.dataset.defaultBasePrice = i.base_price;
+            tr.dataset.defaultBasePrice = i.cost;
             tr.innerHTML = `
                 <td style="position: relative;">
                     <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
@@ -238,7 +238,7 @@ export async function renderRecipeDataOnScreen(data){
                 </td>
                 <td class="cost-input" style="text-align: center;"></td>
                 <td>
-                    <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${Number(1)}">
+                    <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${i.base_quantity}">
                     <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
                 </td>
                 <td>
@@ -248,7 +248,7 @@ export async function renderRecipeDataOnScreen(data){
                     <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
                 </td>
                 <td>
-                    <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.base_price).toFixed(2)}">
+                    <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.cost).toFixed(2)}">
                     <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
                 </td>
                 <td>

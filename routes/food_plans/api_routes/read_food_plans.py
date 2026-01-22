@@ -4,7 +4,7 @@ from mysql.connector import Error
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from . import food_plans_api_bp
 
-# Update food plan 
+# get food plan 
 @food_plans_api_bp.route('/plan', methods=['GET'])
 @jwt_required()
 def get_food_plan():

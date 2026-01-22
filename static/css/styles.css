@@ -1396,3 +1396,8 @@ th.recipe-list{
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* for ingredient row with different colour for ingredient by user */
+.ingredient-system {
+  background-color: #88dc88; /* soft light green */
+}
