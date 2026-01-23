@@ -215,6 +215,7 @@ async function loadRecipeDetails() {
         dish_ingredient['base_price'] = parseFloat(i.cost);
         dish_ingredient['ingredient_id'] = parseInt(i.ingredient_id);
         dish_ingredient['name'] = i.name;
+        dish_ingredient['ingredient_source'] = i.ingredient_source;
         dish_ingredient['cost'] = parseFloat(i.price);
         dish_ingredient['quantity'] = parseFloat(i.quantity);
         dish_ingredient['base_unit'] = i.unit;

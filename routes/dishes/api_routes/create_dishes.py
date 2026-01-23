@@ -92,7 +92,7 @@ def create_dish():
                 ingredients = component['ingredients']
                 cleaned_ingredients = []
                 for ingredient in ingredients:
-                    ingredient_fields = ['ingredient_id', 'name', 'quantity', 'unit_id', 'unit_name', 'cost', 'base_price', 'base_unit', 'display_order' ]
+                    ingredient_fields = ['ingredient_id', 'name', 'ingredient_source', 'quantity', 'unit_id', 'unit_name', 'cost', 'base_price', 'base_unit', 'display_order' ]
                     cleaned_ingredient ={}
                     for field in ingredient_fields:
                         value = ingredient.get(field)
@@ -131,13 +131,23 @@ def create_dish():
 
             # --- preparation_date ---
             preparation_date = data['preparation_date']
-            if not isinstance(preparation_date, str) or len(preparation_date) > 50:
+            if not isinstance(preparation_date, str) or not preparation_date or len(preparation_date) > 50:
                 return f"Invalid preparation_date: must be a non-empty string ≤ 50 chars"
+            # check if date given as string is compatible
+            try:
+                datetime.strptime(preparation_date, "%Y-%m-%d")
+            except ValueError:
+                return "Invalid preparation_date: must be compatible with YYYY-MM-DD"
 
             # --- time_prepared ---
             time_prepared = data['time_prepared']
-            if not isinstance(time_prepared, str) or len(time_prepared) > 50:
+            if not isinstance(time_prepared, str) or not time_prepared or len(time_prepared) > 50:
                 return f"Invalid time_prepared: must be a non-empty string ≤ 50 chars"
+            # check if time given as string is compatible
+            try:
+                datetime.strptime(time_prepared, "%H:%M").time()
+            except ValueError:
+                return "Invalid preparation_date: must be compatible with HH:MM"
 
             # --- meal ---
             meal = data['meal']
@@ -192,7 +202,12 @@ def create_dish():
                     # --- name ---
                     name = ing['name']
                     if not isinstance(name, str) or len(name) > 255:
-                        return f"Invalid name: must be of length < 255"
+                        return f"Invalid name: must be string of length < 255"
+                    
+                    # --- ingredient_source ---
+                    ingredient_source = ing['ingredient_source']
+                    if not isinstance(ingredient_source, str) or len(ingredient_source) > 20:
+                        return f"Invalid ingredient_source: must be string of length < 20"
                     
                     # --- cost ---
                     cost = ing['cost']
@@ -244,9 +259,8 @@ def create_dish():
             
             return None 
 
-        #return jsonify({'submitted_data': request.get_json()})
         data, error = normalize_ingredient_data(request.get_json())
-        
+        # print("data is: ", data)
         if error:
             return jsonify({'error': error}), 400
         
@@ -299,10 +313,14 @@ def create_dish():
         for component in components:
             ingredients = component.get('ingredients')
             for ing in ingredients:
-                # Validate unit fers the ingredient                
-                cursor.execute("""SELECT 1 FROM units u JOIN ingredients i ON u.ingredient_id = i.ingredient_id
-                                WHERE u.unit_id = %s AND i.ingredient_id = %s AND i.name = %s AND u.unit_name = %s
-                                """, (ing['unit_id'], ing['ingredient_id'], ing['name'], ing['unit_name']))
+                # Validate unit for the ingredient                
+                cursor.execute("""
+                    SELECT 1 
+                    FROM units u 
+                        LEFT JOIN ingredients i ON u.ingredient_id = i.ingredient_id AND i.ingredient_id = %s AND i.name = %s AND i.is_active = 1 
+                        LEFT JOIN user_ingredients ui ON ui.user_ingredient_id = u.ingredient_id AND ui.user_ingredient_id = %s AND ui.name = %s
+                    WHERE u.unit_id = %s AND u.unit_name = %s AND u.ingredient_source = %s
+                """, (ing['ingredient_id'], ing['name'], ing['ingredient_id'], ing['name'], ing['unit_id'], ing['unit_name'], ing['ingredient_source']))
                 if not cursor.fetchone():
                     cursor.close()
                     conn.close()
@@ -325,10 +343,10 @@ def create_dish():
             for ing in component['ingredients']:
                 cursor.execute("""
                     INSERT INTO dish_ingredients(
-                        dish_id, component_text, component_display_order, ingredient_id, ingredient_name, 
+                        dish_id, component_text, component_display_order, ingredient_id, ingredient_source, ingredient_name, 
                         ingredient_display_order, quantity, unit_id, unit_name, cost, base_price, base_unit)
-                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """,(dish_id, component_text, component_display_order, ing['ingredient_id'], ing['name'], 
+                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,(dish_id, component_text, component_display_order, ing['ingredient_id'], ing['ingredient_source'], ing['name'], 
                     ing['display_order'], ing['quantity'], ing['unit_id'], ing['unit_name'], ing['cost'], ing['base_price'], ing['base_unit']))
         
         # send created date to front end 

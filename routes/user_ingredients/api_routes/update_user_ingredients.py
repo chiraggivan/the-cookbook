@@ -6,10 +6,10 @@ from . import user_ingredients_api_bp
 import re
 
 # Update food plan 
-@user_ingredients_api_bp.route('/create', methods=['POST'])
+@user_ingredients_api_bp.route('/edit', methods=['PUT'])
 @jwt_required()
-def create_user_ingredient():
-
+def edit_user_ingredient():
+    
     user_id = get_jwt_identity()
     print("logged in user id : ",user_id)
     
@@ -18,7 +18,7 @@ def create_user_ingredient():
         cleaned = {}
         
         # String fields: trim, collapse multiple spaces, convert to lowercase
-        fields = ["name", "quantity", "unit", "price", "cup_weight", "cup_unit",  "notes"]
+        fields = ["ingredient_id", "name", "quantity", "unit", "price", "cup_weight", "cup_unit",  "notes"]
         # ingredient_dict = data[0] 
         
         for field in fields:
@@ -36,6 +36,11 @@ def create_user_ingredient():
     def validate_ingredient(data):
         
         #print(data)
+        # --- ingredient_id ---
+        ingredient_id = data.get("ingredient_id")
+        if not ingredient_id or not isinstance(ingredient_id, int) or ingredient_id <= 0:
+            return f"Invalid ingredient_id: ({ingredient_id}) must be a int > 0"
+
         # --- name ---
         name = data.get("name")
         if not name or not isinstance(name, str) or len(name) > 30:
@@ -101,14 +106,19 @@ def create_user_ingredient():
         cursor = conn.cursor(dictionary=True)
 
         # Validate user_id exists & user has the privilege to delete the ingredient
-        cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND is_active = 1", (user_id,))
+        cursor.execute("""
+            SELECT 1 
+            FROM users u
+            JOIN user_ingredients ui ON ui.submitted_by = u.user_id AND u.is_active = 1 
+            WHERE u.user_id = %s AND ui.user_ingredient_id = %s
+        """, (user_id, data['ingredient_id']))
         user = cursor.fetchone()
         if not user:
             cursor.close()
             conn.close()
-            return jsonify({'error': 'User not found'}), 403
+            return jsonify({'error': 'User not active or not rightful owner of ingredient'}), 403
         
-        # validate if ingredient NAME already present in MAIN ingredients table 
+        # validate if new NAME already present in MAIN ingredients table 
         cursor.execute("SELECT 1 FROM ingredients WHERE name = %s and is_active = 1",(data['name'],))
         if cursor.fetchone():
             cursor.close()
@@ -116,15 +126,18 @@ def create_user_ingredient():
             return jsonify({'error': f'{data["name"]} - already exists'}), 403
         
         # validate if ingredient NAME already present in USER ingredients table by same user
-        cursor.execute("SELECT 1 FROM user_ingredients WHERE name = %s and submitted_by = %s AND is_active = 1",(data['name'],user_id))
+        cursor.execute("SELECT 1 FROM user_ingredients WHERE name = %s and submitted_by = %s AND user_ingredient_id != %s AND is_active = 1",
+            (data['name'],user_id, data['ingredient_id']))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'error':  f' you already have this ingredient({data["name"]})'}), 403
 
+        print("about to call procedure")
         # return jsonify({"msg":"Everything fine and ready to start adding ingredient details in user ingredients table."}), 200 # for postman
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
-        cursor.callproc('insert_user_ingredient_plus_units', (
+        cursor.callproc('update_user_ingredient_plus_units', (
+                    data['ingredient_id'],
                     data['name'], 
                     data['quantity'], 
                     data['unit'], 
@@ -141,7 +154,6 @@ def create_user_ingredient():
         return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
         return data
 
-    
     except Error as err:
         conn.rollback()
         cursor.close()
