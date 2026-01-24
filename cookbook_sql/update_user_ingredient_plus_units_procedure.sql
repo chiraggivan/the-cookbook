@@ -110,18 +110,43 @@ main_block: BEGIN
         SIGNAL SQLSTATE '45000' 
             SET MESSAGE_TEXT = 'Cup weight and unit must both be filled (weight > 0 + unit), or both empty (0/NULL + empty unit)';
     END IF;
+    -- -------------------------------------------- create temp tables --------------------------------------------------------------------
+    CREATE TEMPORARY TABLE tmp_units_before (
+        unit_id INT PRIMARY KEY
+    );
+
+    CREATE TEMPORARY TABLE tmp_recipe_ingredients_before (
+        recipe_ingredient_id INT PRIMARY KEY,
+        unit_id INT,
+        was_active TINYINT(1)
+    );
+
+    INSERT INTO tmp_units_before (unit_id)
+    SELECT unit_id
+    FROM units
+    WHERE ingredient_id = p_ingredient_id AND ingredient_source = 'user' AND is_active = 1;
+
+    INSERT INTO tmp_recipe_ingredients_before (recipe_ingredient_id, unit_id, was_active)
+    SELECT  ri.recipe_ingredient_id, ri.unit_id, ri.is_active
+    FROM recipe_ingredients ri
+    JOIN tmp_units_before t ON ri.unit_id = t.unit_id;
+
+    -- ---------------------------------------------------Deactivate units  rows --------------------------------------
+
+    -- deactivate units
+    UPDATE units
+    SET is_active = 0,
+        end_date = CURRENT_TIMESTAMP
+    WHERE ingredient_id = p_ingredient_id AND ingredient_source = 'user'; 
+
     -- ----------------------------------------------------UPDATE / INSERT Begins----------------------------------------------------------
-    -- update ingredient data in ingredients table 
+    -- update ingredient data in user_ingredients table 
     UPDATE user_ingredients
     SET name = p_name, base_unit = v_unit, base_price = v_price, display_quantity = d_quantity, display_unit = d_unit, display_price = d_price,
         notes = p_notes, cup_weight = p_cup_weight, cup_unit = p_cup_unit
     WHERE user_ingredient_id = p_ingredient_id;
 
-    -- de-activate the units associated with this ingredient in units table
-    UPDATE units
-    SET is_active = 0, end_date = CURRENT_TIMESTAMP
-    WHERE ingredient_id = p_ingredient_id AND ingredient_source = 'user';
-
+    SET v_ingredient_id = p_ingredient_id
     -- when reference unit is kg
     IF v_unit = 'kg' THEN
 
@@ -237,6 +262,50 @@ main_block: BEGIN
                 end_date = NULL;
         END IF;   
     END IF;
+
+    -- ------------------------------------------------ fetch the active units again ----------------------------------------------------
+
+    CREATE TEMPORARY TABLE IF NOT EXISTS tmp_units_after (
+        unit_id INT PRIMARY KEY
+    );
+
+    INSERT INTO tmp_units_after (unit_id)
+    SELECT u.unit_id
+    FROM units u
+    WHERE u.ingredient_id = p_ingredient_id AND u.ingredient_source = 'user' AND u.is_active = 1;
+
+    -- Deactivate recipe_ingredient rows for which unit_id not found in temp_after but present in temp_before
+    UPDATE recipe_ingredient ri
+    JOIN (
+        SELECT b.unit_id
+        FROM tmp_units_before b
+        LEFT JOIN tmp_units_after a ON a.unit_id = b.unit_id
+        WHERE a.unit_id IS NULL
+    ) AS units_to_deactivate
+    ON ri.unit_id = units_to_deactivate.unit_id
+    SET
+        ri.is_active = 0,
+        ri.end_date = CURRENT_TIMESTAMP;
+    
+    -- we reactivate only if all parents are active.
+    UPDATE recipe_ingredient ri
+    JOIN (
+        SELECT a.unit_id
+        FROM tmp_units_after a
+        LEFT JOIN tmp_units_before b ON b.unit_id = a.unit_id
+        WHERE b.unit_id IS NULL
+    ) AS units_to_activate
+        ON ri.unit_id = units_to_activate.unit_id
+    JOIN recipes r ON r.recipe_id = ri.recipe_id AND r.is_active = 1
+    JOIN user_ingredients ui ON ui.user_ingredient_id = ri.ingredient_id AND ui.is_active = 1
+    JOIN units u ON u.unit_id = ri.unit_id AND u.is_active = 1
+    SET
+        ri.is_active = 1,
+        ri.end_date = NULL;
+
+
+
+
 END //
 DELIMITER ;
 

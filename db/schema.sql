@@ -323,8 +323,7 @@ CREATE TABLE `recipe_ingredients` (
   KEY `fk_recipe_ingredients_component` (`component_id`),
   CONSTRAINT `fk_recipe_ingredients_component` FOREIGN KEY (`component_id`) REFERENCES `recipe_components` (`recipe_component_id`) ON DELETE SET NULL,
   CONSTRAINT `recipe_ingredients_ibfk_1` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`recipe_id`) ON DELETE CASCADE,
-  CONSTRAINT `recipe_ingredients_ibfk_2` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`ingredient_id`) ON DELETE CASCADE,
-  CONSTRAINT `recipe_ingredients_ibfk_3` FOREIGN KEY (`unit_id`) REFERENCES `units` (`unit_id`) ON DELETE RESTRICT,
+  CONSTRAINT `recipe_ingredients_ibfk_3` FOREIGN KEY (`unit_id`) REFERENCES `units` (`unit_id`) ON DELETE SET NULL,
   CONSTRAINT `recipe_ingredients_chk_1` CHECK ((`quantity` > 0))
 ) ENGINE=InnoDB AUTO_INCREMENT=116 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
