@@ -96,8 +96,20 @@ main_block: BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unsupported reference unit';
     END IF;
 
-    -- Validate if ingredient name is already present
+    -- Validate if user  is rightful owner of the ingredientin user ingredients table
+    SELECT COUNT(*) INTO v_exists FROM user_ingredients WHERE user_ingredient_id = p_ingredient_id AND submitted_by = p_user_id AND is_active = 1  ;
+    IF v_exists > 0 THEN  
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in db. Cant have duplicate';  
+    END IF;
+
+    -- Validate if ingredient name is already present in main ingredients table
     SELECT COUNT(*) INTO v_exists FROM ingredients WHERE name =  p_name;
+    IF v_exists > 0 THEN  
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in db. Cant have duplicate';  
+    END IF;
+
+    -- Validate if ingredient name is already present in user_ingredient table
+    SELECT COUNT(*) INTO v_exists FROM user_ingredients WHERE name =  p_name and user_ingredient_id != p_ingredient_id;
     IF v_exists > 0 THEN  
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in db. Cant have duplicate';  
     END IF;
@@ -126,10 +138,10 @@ main_block: BEGIN
     FROM units
     WHERE ingredient_id = p_ingredient_id AND ingredient_source = 'user' AND is_active = 1;
 
-    INSERT INTO tmp_recipe_ingredients_before (recipe_ingredient_id, unit_id, was_active)
-    SELECT  ri.recipe_ingredient_id, ri.unit_id, ri.is_active
-    FROM recipe_ingredients ri
-    JOIN tmp_units_before t ON ri.unit_id = t.unit_id;
+    -- INSERT INTO tmp_recipe_ingredients_before (recipe_ingredient_id, unit_id, was_active)
+    -- SELECT  ri.recipe_ingredient_id, ri.unit_id, ri.is_active
+    -- FROM recipe_ingredients ri
+    -- JOIN tmp_units_before t ON ri.unit_id = t.unit_id;
 
     -- ---------------------------------------------------Deactivate units  rows --------------------------------------
 
@@ -146,7 +158,7 @@ main_block: BEGIN
         notes = p_notes, cup_weight = p_cup_weight, cup_unit = p_cup_unit
     WHERE user_ingredient_id = p_ingredient_id;
 
-    SET v_ingredient_id = p_ingredient_id
+    SET v_ingredient_id = p_ingredient_id;
     -- when reference unit is kg
     IF v_unit = 'kg' THEN
 
@@ -199,14 +211,6 @@ main_block: BEGIN
     IF (p_cup_weight IS NOT NULL AND p_cup_weight > 0
     AND p_cup_unit IS NOT NULL AND p_cup_unit <> '') THEN
 
-         -- Validate cup weight
-        IF p_cup_weight IS NULL OR p_cup_weight <= 0 THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup equivalent weight. Must be a number and > 0';
-        END IF;
-        -- validate cup unit
-        IF p_cup_unit NOT IN ('kg', 'g', 'oz', 'lbs') THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid cup equivalent unit. Must be IN (kg, g, oz, lbs)';
-        END IF;
 
         -- IF reference unit in kg
         IF v_unit = 'kg' THEN
@@ -256,8 +260,9 @@ main_block: BEGIN
             INSERT INTO units (ingredient_id, unit_name, conversion_factor, ingredient_source)
             VALUES
                 (v_ingredient_id, 'kg', v_kg_weight, 'user'),
-                (v_ingredient_id, 'g', v_gm_weight, 'user')
+                (v_ingredient_id, 'g', v_gm_weight, 'user') AS new
                 ON DUPLICATE KEY UPDATE
+                conversion_factor = new.conversion_factor,
                 is_active = 1,
                 end_date = NULL;
         END IF;   
@@ -287,25 +292,24 @@ main_block: BEGIN
         ri.is_active = 0,
         ri.end_date = CURRENT_TIMESTAMP;
     
-    -- we reactivate only if all parents are active.
-    UPDATE recipe_ingredient ri
-    JOIN (
-        SELECT a.unit_id
-        FROM tmp_units_after a
-        LEFT JOIN tmp_units_before b ON b.unit_id = a.unit_id
-        WHERE b.unit_id IS NULL
-    ) AS units_to_activate
-        ON ri.unit_id = units_to_activate.unit_id
-    JOIN recipes r ON r.recipe_id = ri.recipe_id AND r.is_active = 1
-    JOIN user_ingredients ui ON ui.user_ingredient_id = ri.ingredient_id AND ui.is_active = 1
-    JOIN units u ON u.unit_id = ri.unit_id AND u.is_active = 1
-    SET
-        ri.is_active = 1,
-        ri.end_date = NULL;
-
-
-
+    DROP TEMPORARY TABLE IF EXISTS tmp_units_before;
+    DROP TEMPORARY TABLE IF EXISTS tmp_units_after;
 
 END //
 DELIMITER ;
 
+-- we reactivate only if all parents are active.
+    -- UPDATE recipe_ingredient ri
+    -- JOIN (
+    --     SELECT a.unit_id
+    --     FROM tmp_units_after a
+    --     LEFT JOIN tmp_units_before b ON b.unit_id = a.unit_id
+    --     WHERE b.unit_id IS NULL
+    -- ) AS units_to_activate
+    --     ON ri.unit_id = units_to_activate.unit_id
+    -- JOIN recipes r ON r.recipe_id = ri.recipe_id AND r.is_active = 1
+    -- JOIN user_ingredients ui ON ui.user_ingredient_id = ri.ingredient_id AND ui.is_active = 1
+    -- JOIN units u ON u.unit_id = ri.unit_id AND u.is_active = 1
+    -- SET
+    --     ri.is_active = 1,
+    --     ri.end_date = NULL;

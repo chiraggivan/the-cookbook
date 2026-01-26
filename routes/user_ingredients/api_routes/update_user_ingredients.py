@@ -134,6 +134,7 @@ def edit_user_ingredient():
             return jsonify({'error':  f' you already have this ingredient({data["name"]})'}), 403
 
         print("about to call procedure")
+        print("data for procedure is : ", data)
         # return jsonify({"msg":"Everything fine and ready to start adding ingredient details in user ingredients table."}), 200 # for postman
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
         cursor.callproc('update_user_ingredient_plus_units', (
