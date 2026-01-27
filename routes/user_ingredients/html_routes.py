@@ -4,6 +4,10 @@ from flask import Blueprint, render_template #, redirect, url_for, session, abor
 
 user_ingredients_html_bp = Blueprint("user_ingredients_html", __name__, url_prefix="/user_ingredients")
 
-@user_ingredients_html_bp.route('/new', methods=['POST'])  
+@user_ingredients_html_bp.route('/new', methods=['GET'])  
 def create_user_ingredients():
-    return render_template("user_ingredients/new_user_ingredient.html")
+    return render_template("user_ingredients/create_ingredient.html")
+
+@user_ingredients_html_bp.route('/update', methods=['GET'])  
+def update_user_ingredients():
+    return render_template("user_ingredients/edit_ingredient.html")
