@@ -22,7 +22,7 @@ from routes.food_plans.api_routes import food_plans_api_bp
 from routes.food_plans.html_routes import food_plans_html_bp
 from routes.weekly_dashboard.api_routes import weekly_dashboard_api_bp
 from routes.weekly_dashboard.html_routes import weekly_dashboard_html_bp
-from routes. user_ingredients.api_routes import user_ingredients_api_bp
+from routes.user_ingredients.api_routes import user_ingredients_api_bp
 from routes.user_ingredients.html_routes import user_ingredients_html_bp
 
 

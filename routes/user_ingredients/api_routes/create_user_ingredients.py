@@ -5,11 +5,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity #, create_access_t
 from . import user_ingredients_api_bp
 import re
 
-# Update food plan 
+# create user ingredient 
 @user_ingredients_api_bp.route('/create', methods=['POST'])
 @jwt_required()
 def create_user_ingredient():
-
+    
     user_id = get_jwt_identity()
     print("logged in user id : ",user_id)
     
@@ -33,6 +33,7 @@ def create_user_ingredient():
         
         return cleaned
     
+    #validate data
     def validate_ingredient(data):
         
         #print(data)
@@ -113,14 +114,14 @@ def create_user_ingredient():
         if cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'error': f'{data["name"]} - already exists'}), 403
+            return jsonify({'error': f'{data["name"]} - already exists','submitted_data': data}), 403
         
         # validate if ingredient NAME already present in USER ingredients table by same user
         cursor.execute("SELECT 1 FROM user_ingredients WHERE name = %s and submitted_by = %s AND is_active = 1",(data['name'],user_id))
         if cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'error':  f' you already have this ingredient({data["name"]})'}), 403
+            return jsonify({'error':  f' You already have this ingredient ({data["name"]})','submitted_data': data}), 403
 
         # return jsonify({"msg":"Everything fine and ready to start adding ingredient details in user ingredients table."}), 200 # for postman
         # ------------------------------ Now insert the data thru procedure ------------------------------------------
@@ -139,7 +140,7 @@ def create_user_ingredient():
         cursor.close()
         conn.close()
         return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
-        return data
+        
 
     
     except Error as err:
