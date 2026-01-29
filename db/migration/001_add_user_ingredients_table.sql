@@ -20,7 +20,6 @@ CREATE TABLE `user_ingredients` (
   `end_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_ingredient_id`),
-  UNIQUE KEY `name_UserId` (`name`,`submitted_by`),
   KEY `submitted_by` (`submitted_by`),
   CONSTRAINT `user_ingredients_fk_1` FOREIGN KEY (`submitted_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
   CONSTRAINT `user_ingredients_fk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,

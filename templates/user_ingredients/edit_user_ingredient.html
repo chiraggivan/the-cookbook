@@ -56,6 +56,7 @@
                             placeholder="e.g. Basmati Rice"
                             required
                         >
+                        <div id="nameError" class="text-danger"></div>
                     </div>
 
                     <!-- Price + Quantity + Weighing Unit -->
@@ -155,14 +156,13 @@
                             <button type="submit" class="btn btn-success">
                                 Update Ingredient
                             </button>
-                            <a href="/user_ingredients/" class="btn btn-outline-secondary">
+                            <a href="#" id="cancelBtn" class="btn btn-outline-secondary">
                                 Cancel
                             </a>
                         </div>
-
-                        <!-- Right side button  REMOVE THIS BUTTON AS THIS IS NOT SUPPOSE TO BE HERE. Here only for testing how update ingredient link will work-->
+                        <!-- right side -->
                         <div>
-                            <a href="#" class="btn btn-danger">
+                            <a id="deleteBtn" href="#" class="btn btn-danger">
                                 Delete
                             </a>
                         </div>

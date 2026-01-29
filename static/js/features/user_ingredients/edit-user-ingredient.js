@@ -1,8 +1,8 @@
 import { isTokenValid } from "../../core/utils.js"; 
+import { showConfirm, showAlert, showMessage } from "../../core/confirmModal.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
-const decoded = parseJwt(token); // 
-console.log("decoded : ",decoded);
+const decoded = parseJwt(token); //console.log("decoded : ",decoded);
 const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
 let ingredientData;
 
@@ -37,13 +37,14 @@ const ingredient = JSON.parse(
     sessionStorage.getItem("editIngredient")
 );
 
+// console.log("ingredient in session is: ", ingredient);
 // if session variable not found 
 if (!ingredient) {
     console.log("something went wrong while retreiving session variable")
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("name").value = escapeHtml(ingredient.name);
+    document.getElementById("name").value = ingredient.name;
     document.getElementById("price").value = ingredient.price;
     document.getElementById("quantity").value = ingredient.quantity;
     document.getElementById("unit").value = ingredient.unit;
@@ -96,9 +97,58 @@ document.addEventListener("DOMContentLoaded", () => {
         })
     })
 
+    // clear nameError if display
+    document.getElementById("name").addEventListener("click", () =>{
+        if(document.getElementById("name").value.trim() == ''){
+            document.getElementById("name").value ='';
+        }
+        nameError.textContent ='';
+    })
+
+    // cancel button
+    document.getElementById("cancelBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.history.back();
+    });
+
+    // delete ingredient button
+    const deleteBtn = document.getElementById("deleteBtn");
+    deleteBtn.addEventListener("click", async () => {
+        //use custom modal confirm instead of native confirm
+        const confirmed = await showConfirm(`Are you sure you want to delete ingredient : ${(ingredient.name)}`);
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/user_ingredients/api/delete/${ingredient.ingredient_id}`, {
+                method: "DELETE",
+                headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+                }
+            });
+            const data = await response.json(); // console.log("data is : ", data);
+
+            if (response.ok) {
+                showMessage(data.message || "Ingredient deleted successfully!");
+                setTimeout(() => { window.location.href = "/user_ingredients/"; }, 1000);
+            } else {
+                showMessage(data.error || "Failed to delete recipe.", true);
+            }
+        } catch (err) {
+                console.error("Error deleting recipe:", err);
+                showMessage("Something went wrong.", true);
+        }
+    })
+
     // submit form (update button)
     document.querySelector("form").addEventListener("submit", async function (e) {
         e.preventDefault();
+
+        //check if ingredient name is available
+        if(document.getElementById("name").value.trim() == ''){
+            nameError.textContent ="Name required";
+            return;
+        }
 
         let i_cup_weight;
         let i_cup_unit;
@@ -151,14 +201,13 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             // Display success message and redirect
-            // showAlert(data.message || "Recipe updated successfully!");
-            setTimeout(() => { window.location.href = `/user_ingredients/`; }, 1000);
+            showMessage(data.message || "Recipe updated successfully!");
+            setTimeout(() => { window.location.href = `/user_ingredients/`; }, 1500);
             
         } catch(error){
             console.error("Fetch failed:", error);
         }
         
     });
-
-
 })
+

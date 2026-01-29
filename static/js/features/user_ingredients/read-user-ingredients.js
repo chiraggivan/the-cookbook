@@ -1,11 +1,10 @@
 import { isTokenValid } from "../../core/utils.js"; 
 
 const token = localStorage.getItem("access_token");//console.log(token)
-const decoded = parseJwt(token); // 
-console.log("decoded : ",decoded);
+const decoded = parseJwt(token); // console.log("decoded : ",decoded);
 const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
 let ingredientData;
-
+let totalIngredients;
 function parseJwt(token) {
     try {
         const base64Payload = token.split('.')[1]; 
@@ -27,39 +26,117 @@ getIngredients();
 const ingredientsContainer = document.getElementById('ingredients-container');
 const errorBox = document.getElementById('errorBox');
 const emptyState = document.getElementById('empty-state');
+const addIngredientBtn = document.getElementById("addIngredientBtn");
+const searchBar = document.getElementById("ingredientSearch");
+const heading = document.getElementById("heading");
+const allIngredients = [];
 
-// After successful fetch:
+
+// Main list of user ingredients decides the top section of page
 function renderIngredients(data) {
-  if (data.count === 0) {
-    ingredientsContainer.innerHTML = '';                // clear loading
-    emptyState?.classList.remove('d-none');             // show empty message
-    return;
-  }
 
-  emptyState?.classList.add('d-none');
+    if (data.count === 0) {
+        ingredientsContainer.innerHTML = '';                // clear loading
+        heading.classList.remove("mb-4");               
+        emptyState?.classList.remove('d-none');             // show empty message
+        return;
+    }  
+    addIngredientBtn.classList.remove("d-none");
+    
+    // If total ingredients more than 5 then show search bar
+    if (data.count > 5) {
+        searchBar.classList.remove("d-none");
+    }
+    emptyState?.classList.add('d-none');
 
-  let html = '';   // start Bootstrap grid (optional)
-  const ingredients =data.ingredients;
-  ingredients.forEach(ingredient => {
+    data.ingredients.forEach(ingredient => allIngredients.push(ingredient));    
+    renderIngredientList(allIngredients);
 
-    // <div class="col-auto">
-    //     <img
-    //         src="/static/images/sugar.png"
-    //         alt="Sugar"
-    //         class="ingredient-image"
-    //     >
-    // </div>
-    html += `
-    <!-- Ingredient Card -->
-    <div class="card ingredient-card mb-3" 
-        data-name="${ingredient.name.toLowerCase()}" 
-        data-ingredient-id = "${ingredient.ingredient_id}"
-        data-unit ="${ingredient.unit}"
+    // let html = '';  
+    
+    // ingredients.forEach(ingredient => {
+
+    //     // <div class="col-auto">
+    //     //     <img
+    //     //         src="/static/images/sugar.png"
+    //     //         alt="Sugar"
+    //     //         class="ingredient-image"
+    //     //     >
+    //     // </div>
+    //     html += `
+    //     <!-- Ingredient Card -->
+    //     <div class="card ingredient-card mb-3" 
+    //         data-name="${ingredient.name.toLowerCase()}" 
+    //         data-ingredient-id = "${ingredient.ingredient_id}"
+    //         data-unit ="${ingredient.unit}"
+    //         data-price="${ingredient.price}"
+    //         data-quantity="${ingredient.quantity}"
+    //         data-notes ="${ingredient.notes}"
+    //         ${ingredient.cup_weight != null ? `data-cup-weight="${ingredient.cup_weight}"` : ''}
+    //         ${ingredient.cup_unit   != null ? `data-cup-unit="${ingredient.cup_unit}"`   : ''}>
+    //         <div class="card-body">
+    //             <div class="row align-items-center">
+
+    //                 <div class="col">
+    //                     <div class="ingredient-name">
+    //                         ${ingredient.name}
+    //                     </div>
+    //                     <div class="ingredient-meta">
+    //                         <Span class="ingredient-price">£ ${ingredient.price}</span> for 
+    //                         <span class="ingredient-units">${ingredient.quantity} ${ingredient.unit}</span>`
+    //     if(ingredient.cup_weight){
+    //         html += `,  Cup weight: <span class="cup-units">${ingredient.cup_weight} ${ingredient.cup_unit}</span>
+    //                     </div>
+    //                 </div>`
+    //     }else{
+    //         html += `   </div>
+    //                 </div>`
+    //     }    
+
+    //     html += `   <div class="col-auto">
+    //                     <a href="#" class="btn btn-success edit-ingredient-btn">
+    //                         Edit
+    //                         <i class="bi bi-pencil ms-1"></i>
+    //                     </a>
+    //                 </div>
+
+    //             </div>
+    //         </div>
+    //     </div>
+    //     `;
+
+    // });
+//   ingredientsContainer.innerHTML = html;
+}
+
+function renderIngredientList(ingredients) {
+    let html = '';
+
+    ingredients.forEach(ingredient => {
+        html += buildIngredientCard(ingredient);
+    });
+
+    ingredientsContainer.innerHTML = html;
+}
+
+function buildIngredientCard(ingredient) {
+    const cupInfo = ingredient.cup_weight
+        ? `, Cup weight: <span class="cup-units">
+                ${ingredient.cup_weight} ${ingredient.cup_unit}
+           </span>`
+        : '';
+
+    return `
+    <div class="card ingredient-card mb-3"
+        data-name="${escapeHtml(ingredient.name.toLowerCase())}"
+        data-ingredient-id="${ingredient.ingredient_id}"
+        data-unit="${ingredient.unit}"
         data-price="${ingredient.price}"
         data-quantity="${ingredient.quantity}"
-        data-notes ="${ingredient.notes}"
+        data-notes="${ingredient.notes || ''}"
         ${ingredient.cup_weight != null ? `data-cup-weight="${ingredient.cup_weight}"` : ''}
         ${ingredient.cup_unit   != null ? `data-cup-unit="${ingredient.cup_unit}"`   : ''}>
+
         <div class="card-body">
             <div class="row align-items-center">
 
@@ -68,40 +145,23 @@ function renderIngredients(data) {
                         ${ingredient.name}
                     </div>
                     <div class="ingredient-meta">
-                        <Span class="ingredient-price">£ ${ingredient.price}</span> for 
-                        <span class="ingredient-units">${ingredient.quantity} ${ingredient.unit}</span>`
-    if(ingredient.cup_weight){
-        html += `,  Cup weight: <span class="cup-units">${ingredient.cup_weight} ${ingredient.cup_unit}</span>
+                        <span class="ingredient-price">£ ${ingredient.price}</span>for 
+                        <span class="ingredient-units">${ingredient.quantity} ${ingredient.unit}</span>${cupInfo}
                     </div>
-                </div>`
-    }else{
-        html += `   </div>
-                </div>`
-    }    
+                </div>
 
-    html += `   <div class="col-auto">
-                    <a href="#" class="btn btn-success edit-ingredient-btn">
+                <div class="col-auto">
+                    <button
+                        class="btn btn-success edit-ingredient-btn"
+                        data-id="${ingredient.ingredient_id}">
                         Edit
                         <i class="bi bi-pencil ms-1"></i>
-                    </a>
+                    </button>
                 </div>
 
             </div>
         </div>
-    </div>
-    `;
-
-  });
-
-  
-
-  ingredientsContainer.innerHTML = html;
-}
-
-function showError(msg) {
-  errorBox.textContent = msg;
-  errorBox.classList.remove('d-none');
-  ingredientsContainer.innerHTML = '';   // clear loading
+    </div>`;
 }
 
 // get all the ingredients of user
@@ -115,20 +175,29 @@ async function getIngredients() {
 
         const responseData = await response.json();
         ingredientData = responseData.ingredients;
-        console.log("ingredientdata is: ", ingredientData);
+        totalIngredients = responseData.count;
+        // console.log("ingredientdata is: ", ingredientData);
+        // console.log("totalIngredients are: ", totalIngredients);
         if (!response.ok) {
             errorBox.textContent = responseData.error || "Something went wrong while doing api fetch for update-recipe.";
             console.log("Submitted data (for debug):", data.submitted_data);
             return;
         };
         
-        console.log("backend data:", responseData);
+        // console.log("backend data:", responseData);
         renderIngredients(responseData);
     }
     catch (err) {
         console.log("error is :", err.message);
         showError(err.message);
     } 
+}
+
+//  function to display error
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove('d-none');
+  ingredientsContainer.innerHTML = '';   // clear loading
 }
 
 //to store the user ingredient data in session
@@ -141,13 +210,28 @@ function handleEditIngredient(ingredient) {
     window.location.href = "/user_ingredients/update";
 }
 
+// safely for XSS attack/ html injection
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g,  "&amp;")
+    .replace(/</g,  "&lt;")
+    .replace(/>/g,  "&gt;")
+    .replace(/"/g,  "&quot;")
+    .replace(/'/g,  "&#039;");
+}
+// DOMContentLoaded 
 document.addEventListener("DOMContentLoaded", () => {
-    const ingSearch = document.getElementById("ingredientSearch");
 
-    ingSearch.addEventListener("input", () => {
-        const q = ingSearch.value;
-        ingredientData.forEach(ing => ing.name.filter(ingSearch))
-    })
+    // search bar filter
+    searchBar.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        
+        const filtered = allIngredients.filter(ing =>
+            ing.name.toLowerCase().includes(query)
+        );
+    
+        renderIngredientList(filtered);
+    });
 
     // update button clicked
     document.addEventListener("click", async (e) => {

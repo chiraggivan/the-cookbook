@@ -2,7 +2,7 @@ DELIMITER //
 
 DROP PROCEDURE IF EXISTS update_user_ingredient_plus_units //
 -- its for user's to use this procedure
--- the following procedure accepts new ingredient name,  quantity,  unit,  price, cup weight and its unit and notes
+-- the following procedure accepts ingredient name,  quantity,  unit,  price, cup weight and its unit and notes
 -- and it will convert the  unit to kg or l and corresponding price for 1 unit of quantity to be stored in db. for eg: 500 gm of salt at £1 
 -- will be converted to 1 kg and the corresponding price will be £2 and stored in db for simplicity AND also if the weight of 1 cup is given then
 -- conversion factor will be calculated for 1 tsp, 1 tbsp and 1 cup 

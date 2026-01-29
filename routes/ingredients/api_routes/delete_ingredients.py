@@ -26,7 +26,7 @@ def delete_recipe(ingredient_id):
         cursor = conn.cursor(dictionary=True)
 
         # Validate user_id exists & user has the privilege to delete the ingredient
-        cursor.execute("SELECT role FROM users WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT role FROM users WHERE user_id = %s AND is_active = 1", (user_id,))
         user = cursor.fetchone()
         if not user or not(user['role'] == 'admin'):
             cursor.close()

@@ -57,6 +57,7 @@
                             placeholder="e.g. Basmati Rice"
                             required
                         >
+                        <div id="nameError" class="text-danger"></div>
                     </div>
 
                     <!-- Price + Quantity + Weighing Unit -->
@@ -69,8 +70,7 @@
                                 type="number"
                                 class="form-control no-invalid-number"
                                 placeholder="e.g. 4.50"
-                                min="0"
-                                inputmode="decimal"
+                                step="0.01"
                                 required
                             >
                         </div>
@@ -83,6 +83,7 @@
                                 type="number"
                                 class="form-control no-invalid-number"
                                 placeholder="e.g. 1"
+                                step="0.001"
                                 required
                             >
                         </div>
@@ -128,6 +129,7 @@
                                 type="number"
                                 class="form-control no-invalid-number"
                                 placeholder="e.g. 120"
+                                step="0.001"
                             >
                         </div>
 
@@ -153,15 +155,8 @@
                             <button type="submit" class="btn btn-success">
                                 Save Ingredient
                             </button>
-                            <a href="#" class="btn btn-outline-secondary">
+                            <a href="#" id="cancelBtn" class="btn btn-outline-secondary">
                                 Cancel
-                            </a>
-                        </div>
-
-                        <!-- Right side button  REMOVE THIS BUTTON AS THIS IS NOT SUPPOSE TO BE HERE. Here only for testing how update ingredient link will work-->
-                        <div>
-                            <a href="/user_ingredients/update" class="btn btn-primary">
-                                Update Ingredient(test)
                             </a>
                         </div>
                     </div>

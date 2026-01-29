@@ -1,5 +1,5 @@
 import { isTokenValid } from "../../core/utils.js";
-
+import { showMessage } from "../../core/confirmModal.js"
 
 const token = localStorage.getItem("access_token");//console.log(token)
 const decoded = parseJwt(token); // console.log("decoded : ",decoded);
@@ -22,8 +22,43 @@ if (!isTokenValid(token)) {
 }
 console.log("logged in user is: ",loggedInUserId);
 
+// block invalid keys in number input field
+const numberValue = document.querySelectorAll(".no-invalid-number");
+numberValue.forEach(input => {
+
+    // blocking signs,arrow button, alphabets, etc
+    input.addEventListener("keydown", (e) =>{
+        const blockedKeys = ["+", "-", "e", "E", "ArrowUp", "ArrowDown"];
+        if(blockedKeys.includes(e.key)){
+            e.preventDefault();
+        }
+    })
+
+    // safety + maximum digits after demical
+    input.addEventListener("input", () =>{
+        if(input.value < 0){
+            input.value = "";
+        }
+        
+        if (input.value.includes(".")) {
+            const [int, dec] = input.value.split(".");
+            if(input.id == 'price'){
+                    if (dec.length > 2) {
+                    input.value = int + "." + dec.slice(0, 2);
+                }
+            }else{
+                if (dec.length > 3) {
+                    input.value = int + "." + dec.slice(0, 3);
+                }
+            }
+                
+        }
+    })
+})
+
 document.addEventListener("DOMContentLoaded", () => {
     const errorBox = document.getElementById("error");
+    const nameError = document.getElementById("nameError");
     const cupErrorBox = document.getElementById("cupError");
 
     // making sure to remove cup error message on input of cup weight
@@ -45,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 e.preventDefault();
             }
         })
+
         // safety
         input.addEventListener("input", () =>{
             if(input.value < 0){
@@ -53,8 +89,29 @@ document.addEventListener("DOMContentLoaded", () => {
         })
     })
 
+    // clear nameError if display
+    document.getElementById("ingredient_name").addEventListener("click", () =>{
+        if(document.getElementById("ingredient_name").value.trim() == ''){
+            document.getElementById("ingredient_name").value ='';
+        }
+        nameError.textContent ='';
+    })
+
+    // cancel button
+    document.getElementById("cancelBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.history.back();
+    });
+
+    // add button (submit form)
     document.querySelector("form").addEventListener("submit", async function (e) {
         e.preventDefault();
+
+        //check if ingredient name is available
+        if(document.getElementById("ingredient_name").value.trim() == ''){
+            nameError.textContent ="Name required";
+            return;
+        }
 
         let i_cup_weight;
         let i_cup_unit;
@@ -106,9 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             // Display success message and redirect
-            showAlert(data.message || "Recipe updated successfully!");
-            const recipeId = data.recipe_id;
-            setTimeout(() => { window.location.href = `/recipes/details/${recipeId}`; }, 1000);
+            showMessage(data.message || "Recipe updated successfully!");
+            setTimeout(() => { window.location.href = `/user_ingredients/`; }, 1500);
             
         } catch(error){
             console.error("Fetch failed:", error);

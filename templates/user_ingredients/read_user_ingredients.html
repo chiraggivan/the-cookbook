@@ -65,12 +65,12 @@
 {% block content %}
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h2 class="mb-2">Your Ingredients</h2>
-            <a class="btn btn-primary" href="/user_ingredients/create">Add Ingredient</a>
+            <h2 id="heading" class="mb-4">Your Ingredients</h2>
+            <a id="addIngredientBtn" class="btn btn-primary d-none" href="/user_ingredients/create">Add Ingredient</a>
         </div>
         
 
-        <input type="text" id="ingredientSearch" class="form-control w-25" placeholder="Search ingredients...">
+        <input type="text" id="ingredientSearch" class="form-control w-25 d-none" placeholder="Search ingredients...">
     </div>
 
     <!-- Dynamic area where JS will insert the list of ingredients -->

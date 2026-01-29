@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity #, create_access_t
 from . import user_ingredients_api_bp
 import re
 
-# Update food plan 
+# Update user ingredient 
 @user_ingredients_api_bp.route('/edit', methods=['PUT'])
 @jwt_required()
 def edit_user_ingredient():
@@ -152,7 +152,7 @@ def edit_user_ingredient():
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
+        return jsonify({'message': f'{data.get("name")} - Updated successfully'}), 201
         return data
 
     except Error as err:

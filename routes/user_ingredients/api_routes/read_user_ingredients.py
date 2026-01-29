@@ -5,12 +5,46 @@ from flask_jwt_extended import jwt_required, get_jwt_identity #, create_access_t
 from . import user_ingredients_api_bp
 import re
 
+# search ingredients for recipe
+@user_ingredients_api_bp.route("/search")
+@jwt_required()
+def search__user_ingredients():
+
+    s_user_id = get_jwt_identity()
+    q = request.args.get("q", "").strip().lower()
+    #print("user id:",s_user_id," value of q :", q)
+    if not q:
+        return jsonify([])
+
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT user_ingredient_id as id, name, display_price as price, display_unit as base_unit, display_quantity
+            FROM user_ingredients
+            WHERE submitted_by = %s AND LOWER(name) LIKE %s AND  is_active = 1
+            LIMIT 20
+        """,(s_user_id, f"%{q}%"))
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        print("Error in search_ingredients:", e)
+        return jsonify([])
+
 
 # read user ingredients
 @user_ingredients_api_bp.route('/get_user_all_ingredients', methods=['GET'])
 @jwt_required()
 def read_user_ingredients():
-    print("within all ingredients")
+    
     user_id = get_jwt_identity()
     print("logged in user id : ",user_id)
 
