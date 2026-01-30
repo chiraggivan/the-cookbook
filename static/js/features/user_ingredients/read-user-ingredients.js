@@ -1,115 +1,66 @@
 import { isTokenValid } from "../../core/utils.js"; 
 
 const token = localStorage.getItem("access_token");//console.log(token)
-const decoded = parseJwt(token); // console.log("decoded : ",decoded);
-const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
+
 let ingredientData;
 let totalIngredients;
-function parseJwt(token) {
-    try {
-        const base64Payload = token.split('.')[1]; 
-        const payload = atob(base64Payload);  // decode base64
-        return JSON.parse(payload);
-    } catch (e) {
-        console.error("Invalid token", e);
-        return null;
-    }
-}
+const infinity = true; // change ingredient search for fixed or infinity
+// for infinite scroll
+let ingredients = [];
+let limit = 10;
+let offset = 0;
+let hasMore = true;
+let isLoading = false;
+let searchQuery = "";
+let debounceTimer = null;
+let activeController = null;
 
 // validate token
 if (!isTokenValid(token)) {
     setTimeout(() => { window.location.href = "/auth/login"; }, 10);
 }
 
-getIngredients();
+// select which way to show ingredient on screen. Traditional or infinity scroll;
+if (infinity){
+    getScrollIngredients();
+}else{
+    getIngredients();
+}
 
 const ingredientsContainer = document.getElementById('ingredients-container');
 const errorBox = document.getElementById('errorBox');
 const emptyState = document.getElementById('empty-state');
+const noSuchIngredient = document.getElementById('no-such-ingredient');
 const addIngredientBtn = document.getElementById("addIngredientBtn");
 const searchBar = document.getElementById("ingredientSearch");
 const heading = document.getElementById("heading");
-const allIngredients = [];
 
 
 // Main list of user ingredients decides the top section of page
-function renderIngredients(data) {
+function renderIngredients(ingredients) {
 
-    if (data.count === 0) {
+    if ( totalIngredients === 0 && searchQuery =="") {
         ingredientsContainer.innerHTML = '';                // clear loading
         heading.classList.remove("mb-4");               
         emptyState?.classList.remove('d-none');             // show empty message
         return;
+    }
+    // if no such ingredient found in user's ingredient list
+    noSuchIngredient?.classList.add('d-none');
+    if ( ingredients.length === 0 && searchQuery !="") {
+        ingredientsContainer.innerHTML = '';                // clear loading              
+        noSuchIngredient?.classList.remove('d-none');             // show empty message
+        return;
     }  
-    addIngredientBtn.classList.remove("d-none");
+    addIngredientBtn.classList.remove("d-none"); // done as the emptyState has a link/button to add ingredient
     
     // If total ingredients more than 5 then show search bar
-    if (data.count > 5) {
+    if (totalIngredients > 5) {
         searchBar.classList.remove("d-none");
     }
     emptyState?.classList.add('d-none');
 
-    data.ingredients.forEach(ingredient => allIngredients.push(ingredient));    
-    renderIngredientList(allIngredients);
-
-    // let html = '';  
-    
-    // ingredients.forEach(ingredient => {
-
-    //     // <div class="col-auto">
-    //     //     <img
-    //     //         src="/static/images/sugar.png"
-    //     //         alt="Sugar"
-    //     //         class="ingredient-image"
-    //     //     >
-    //     // </div>
-    //     html += `
-    //     <!-- Ingredient Card -->
-    //     <div class="card ingredient-card mb-3" 
-    //         data-name="${ingredient.name.toLowerCase()}" 
-    //         data-ingredient-id = "${ingredient.ingredient_id}"
-    //         data-unit ="${ingredient.unit}"
-    //         data-price="${ingredient.price}"
-    //         data-quantity="${ingredient.quantity}"
-    //         data-notes ="${ingredient.notes}"
-    //         ${ingredient.cup_weight != null ? `data-cup-weight="${ingredient.cup_weight}"` : ''}
-    //         ${ingredient.cup_unit   != null ? `data-cup-unit="${ingredient.cup_unit}"`   : ''}>
-    //         <div class="card-body">
-    //             <div class="row align-items-center">
-
-    //                 <div class="col">
-    //                     <div class="ingredient-name">
-    //                         ${ingredient.name}
-    //                     </div>
-    //                     <div class="ingredient-meta">
-    //                         <Span class="ingredient-price">£ ${ingredient.price}</span> for 
-    //                         <span class="ingredient-units">${ingredient.quantity} ${ingredient.unit}</span>`
-    //     if(ingredient.cup_weight){
-    //         html += `,  Cup weight: <span class="cup-units">${ingredient.cup_weight} ${ingredient.cup_unit}</span>
-    //                     </div>
-    //                 </div>`
-    //     }else{
-    //         html += `   </div>
-    //                 </div>`
-    //     }    
-
-    //     html += `   <div class="col-auto">
-    //                     <a href="#" class="btn btn-success edit-ingredient-btn">
-    //                         Edit
-    //                         <i class="bi bi-pencil ms-1"></i>
-    //                     </a>
-    //                 </div>
-
-    //             </div>
-    //         </div>
-    //     </div>
-    //     `;
-
-    // });
-//   ingredientsContainer.innerHTML = html;
-}
-
-function renderIngredientList(ingredients) {
+    // start building ingredientContainer with html
     let html = '';
 
     ingredients.forEach(ingredient => {
@@ -164,6 +115,17 @@ function buildIngredientCard(ingredient) {
     </div>`;
 }
 
+//spinner while data is is being fetched for searched ingredient
+function loadSpinner(){
+    let html = `<div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Loading your ingredients...</p>
+            </div>`;
+    
+    ingredientsContainer.innerHTML = html;
+}
 // get all the ingredients of user
 async function getIngredients() {
     
@@ -185,7 +147,8 @@ async function getIngredients() {
         };
         
         // console.log("backend data:", responseData);
-        renderIngredients(responseData);
+        ingredients.push(...ingredientData); // used for non infinity scroll search
+        renderIngredients(ingredientData);
     }
     catch (err) {
         console.log("error is :", err.message);
@@ -193,22 +156,83 @@ async function getIngredients() {
     } 
 }
 
-//  function to display error
-function showError(msg) {
-  errorBox.textContent = msg;
-  errorBox.classList.remove('d-none');
-  ingredientsContainer.innerHTML = '';   // clear loading
-}
+// ---------- for infinite scroll ---------------
+async function getScrollIngredients(reset = false) {
+    console.log("entered scroll ingredient function");
+    if (isLoading) return;
+    if (!hasMore && !reset) return;
+    console.log("isLoading : ", isLoading, " hasMore :", hasMore, " offset is : ", offset, " reset :", reset);
+    // Abort previous request on reset (new search)
+    if (reset && activeController) {
+        activeController.abort();
+    }
 
-//to store the user ingredient data in session
-function handleEditIngredient(ingredient) {
-    sessionStorage.setItem(
-        "editIngredient",
-        JSON.stringify(ingredient)
-    );
+    isLoading = true;
 
-    window.location.href = "/user_ingredients/update";
+    const bottomSpinner = document.getElementById("loadingSpinner");
+    if (!reset && offset > 0) {
+        console.log("about to remove d-none from bottom spinner");
+        bottomSpinner.classList.remove("d-none");
+    }
+
+    // aborting the fetch result due to another fetch
+    activeController = new AbortController();
+    const signal = activeController.signal
+    
+    if (reset) {
+        offset = 0;
+        ingredients = [];
+        hasMore = true;
+    }
+    console.log("about to create fetch url");
+    // build the url
+    const url = new URL("/user_ingredients/api/user_ingredients", window.location.origin);
+    url.searchParams.set("limit", limit);
+    url.searchParams.set("offset", offset);
+
+    if (searchQuery) {
+        url.searchParams.set("q", searchQuery);
+    }
+    console.log("url :", url);
+
+    // fetch data based on url
+    try {
+        
+        const response = await fetch(url, {
+            headers: { "Authorization": `Bearer ${token}` },
+            signal
+        });
+        const data = await response.json();
+        
+        
+        ingredients.push(...data.data);
+        
+        // get the count of user ingredients on load AND dont update it on search
+        if(searchQuery == ''){
+            totalIngredients = ingredients.length;
+        }
+        console.log("data.data :", data.data);
+        if(offset > 0){
+             data.data.forEach(item => {
+                setTimeout(()=>{ingredientsContainer.innerHTML += buildIngredientCard(item);},2000);
+                
+             })
+        }else{
+            renderIngredients(ingredients);
+        }
+        
+        offset += limit;
+        hasMore = data.hasMore;
+
+    } catch (err) {
+        console.error(err);
+        showError(err.message);
+    } finally {
+        isLoading = false;
+        bottomSpinner.classList.add("d-none");
+    }
 }
+// ----------------------------------------------
 
 // safely for XSS attack/ html injection
 function escapeHtml(unsafe) {
@@ -219,6 +243,33 @@ function escapeHtml(unsafe) {
     .replace(/"/g,  "&quot;")
     .replace(/'/g,  "&#039;");
 }
+
+// SCROLL WINDOW decide when to fetch the new list at the scroll of the page
+// console.log("scroll height :",document.documentElement.scrollHeight);
+// console.log("inner height :",window.innerHeight);
+window.addEventListener("scroll", () => {
+    if (isLoading || !hasMore) return;
+
+    const scrollTop = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const fullHeight = document.documentElement.scrollHeight;
+
+    const scrolledPercentage = (scrollTop + windowHeight) / fullHeight;
+    console.log("scroll % is : ", scrolledPercentage*100);
+    if (scrolledPercentage >= 0.9) {
+        getScrollIngredients();
+    }
+});
+
+//  function to display error
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove('d-none');
+  ingredientsContainer.innerHTML = '';   // clear loading
+}
+
+
+
 // DOMContentLoaded 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -226,11 +277,26 @@ document.addEventListener("DOMContentLoaded", () => {
     searchBar.addEventListener("input", (e) => {
         const query = e.target.value.toLowerCase().trim();
         
-        const filtered = allIngredients.filter(ing =>
-            ing.name.toLowerCase().includes(query)
-        );
-    
-        renderIngredientList(filtered);
+        if(infinity){
+            if(query.length >= 0){
+                noSuchIngredient?.classList.add('d-none');
+                loadSpinner();
+                searchQuery = query;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    searchQuery = query;
+                    getScrollIngredients(true); 
+                }, 1000);
+                
+            }
+        }else{
+            searchQuery = query;
+            const filtered = ingredients.filter(ing =>
+                ing.name.toLowerCase().includes(query)
+            );
+        
+            renderIngredients(filtered);
+        }   
     });
 
     // update button clicked
@@ -260,11 +326,14 @@ document.addEventListener("DOMContentLoaded", () => {
             cup_weight: cupWeight ?? null,
             cup_unit: card.dataset.cupUnit ?? null,
             notes: ""
-        };
+        };   // console.log("Editing ingredient:", ingredientData);
 
-        console.log("Editing ingredient:", ingredientData);
-        handleEditIngredient(ingredientData);
+        // store ingredientData in session
+        sessionStorage.setItem(
+            "editIngredient",
+            JSON.stringify(ingredientData)
+        );
 
-    })
-
+        window.location.href = "/user_ingredients/update";
+    });
 })

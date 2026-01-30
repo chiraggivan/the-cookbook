@@ -109,7 +109,7 @@ main_block: BEGIN
     END IF;
 
     -- Validate if ingredient name is already present in user_ingredient table
-    SELECT COUNT(*) INTO v_exists FROM user_ingredients WHERE name =  p_name and user_ingredient_id != p_ingredient_id;
+    SELECT COUNT(*) INTO v_exists FROM user_ingredients WHERE name =  p_name and user_ingredient_id != p_ingredient_id and is_active = 1;
     IF v_exists > 0 THEN  
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Name already exists in user_ingredient db. Cant have duplicate';  
     END IF;
