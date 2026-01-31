@@ -80,11 +80,16 @@ async function loadRecipeDetails() {
       document.getElementById('recipe-buttons').classList.remove("d-none");
       actionsEl.innerHTML = `
         <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-          <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Private"}</span>
-          <label class="switch">
-            <input type="checkbox" id="privacy-toggle" ${recipe.privacy === "private" ? "checked" : ""}>
-            <span class="slider round"></span>
+          <label class="form-check-label ms-2" for="privacy-toggle">
+            <span id="privacy-label">${recipe.privacy === "private" ? "Private" : "Public"}</span>
           </label>
+          <div class="form-check form-switch">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="privacy-toggle"
+              ${recipe.privacy === "private" ? "checked" : ""}>          
+          </div>  
         </span>
       `;
 
@@ -308,38 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Error deleting recipe:", err);
         showAlert("Something went wrong.", true);
     }
-  });
-
-  // const dishCreatedBtn = document.getElementById("dish-created-btn"); 
-  // dishCreatedBtn.addEventListener("click", async () => {
-  //   try {
-  //     const response = await fetch(`/dishes/api/`,{
-  //       method: "POST",
-  //       headers: {
-  //         "Authorization": `Bearer ${token}`,
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify(dish_data)
-  //     }); //console.log("response is :" , response);
-      
-  //     const data = await response.json(); //console.log("data received :",data);
-  //     if (response.ok) {
-  //       const createdDate = data.date_prepared; 
-  //       const createdTime = data.time_prepared;
-
-  //       if(createdDate !== "" && createdTime !== ""){
-  //         let createDishBtnPressed = true;
-  //         const display_text = recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed);
-  //         document.getElementById("dish-created-info").textContent = display_text
-  //       }
-  //     } else {
-  //       showAlert(data.error || "Failed to create dish.", true);
-  //     }
-  //   } catch(err){
-  //     showAlert("Something went wrong.", true);
-  //   }
-  // });  
-  
+  });  
 
   const overlay = document.getElementById("wizard-overlay");
   const modal = new bootstrap.Modal(overlay);
@@ -371,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (active) active.classList.remove("d-none"); 
   }
 
+  // dish created button 
   const dishCreatedBtn = document.getElementById("dish-created-btn"); 
   dishCreatedBtn.addEventListener("click", async () => {
     

@@ -1,0 +1,15 @@
+.form-switch .form-check-input {
+    width: 3.2rem;      /* default ~2rem */
+    height: 1.6rem;     /* default ~1rem */
+    cursor: pointer;
+}
+
+.form-switch .form-check-input::before {
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+#privacy-toggle:checked {
+    background-color: #1d652e;   /* your color */
+    border-color: #1d652e;
+}

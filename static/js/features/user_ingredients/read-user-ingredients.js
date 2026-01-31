@@ -14,6 +14,7 @@ let isLoading = false;
 let searchQuery = "";
 let debounceTimer = null;
 let activeController = null;
+let scrollPagePercentage = 0.8;
 
 // validate token
 if (!isTokenValid(token)) {
@@ -34,11 +35,12 @@ const noSuchIngredient = document.getElementById('no-such-ingredient');
 const addIngredientBtn = document.getElementById("addIngredientBtn");
 const searchBar = document.getElementById("ingredientSearch");
 const heading = document.getElementById("heading");
-
+const bottomSpinner = document.getElementById("loadingSpinner");
 
 // Main list of user ingredients decides the top section of page
 function renderIngredients(ingredients) {
 
+    // initial page load when search is default empty
     if ( totalIngredients === 0 && searchQuery =="") {
         ingredientsContainer.innerHTML = '';                // clear loading
         heading.classList.remove("mb-4");               
@@ -158,10 +160,10 @@ async function getIngredients() {
 
 // ---------- for infinite scroll ---------------
 async function getScrollIngredients(reset = false) {
-    console.log("entered scroll ingredient function");
+    
     if (isLoading) return;
     if (!hasMore && !reset) return;
-    console.log("isLoading : ", isLoading, " hasMore :", hasMore, " offset is : ", offset, " reset :", reset);
+    // console.log("isLoading : ", isLoading, " hasMore :", hasMore, " offset is : ", offset, " reset :", reset);
     // Abort previous request on reset (new search)
     if (reset && activeController) {
         activeController.abort();
@@ -169,10 +171,9 @@ async function getScrollIngredients(reset = false) {
 
     isLoading = true;
 
-    const bottomSpinner = document.getElementById("loadingSpinner");
     if (!reset && offset > 0) {
-        console.log("about to remove d-none from bottom spinner");
         bottomSpinner.classList.remove("d-none");
+        await sleep(1000);                          //just for testing to show how spinner will look for 1 second at the bottom 
     }
 
     // aborting the fetch result due to another fetch
@@ -184,7 +185,7 @@ async function getScrollIngredients(reset = false) {
         ingredients = [];
         hasMore = true;
     }
-    console.log("about to create fetch url");
+
     // build the url
     const url = new URL("/user_ingredients/api/user_ingredients", window.location.origin);
     url.searchParams.set("limit", limit);
@@ -192,8 +193,7 @@ async function getScrollIngredients(reset = false) {
 
     if (searchQuery) {
         url.searchParams.set("q", searchQuery);
-    }
-    console.log("url :", url);
+    }                                                       //console.log("url :", url);
 
     // fetch data based on url
     try {
@@ -211,11 +211,10 @@ async function getScrollIngredients(reset = false) {
         if(searchQuery == ''){
             totalIngredients = ingredients.length;
         }
-        console.log("data.data :", data.data);
+        
         if(offset > 0){
              data.data.forEach(item => {
-                setTimeout(()=>{ingredientsContainer.innerHTML += buildIngredientCard(item);},2000);
-                
+                ingredientsContainer.innerHTML += buildIngredientCard(item);                
              })
         }else{
             renderIngredients(ingredients);
@@ -255,8 +254,7 @@ window.addEventListener("scroll", () => {
     const fullHeight = document.documentElement.scrollHeight;
 
     const scrolledPercentage = (scrollTop + windowHeight) / fullHeight;
-    console.log("scroll % is : ", scrolledPercentage*100);
-    if (scrolledPercentage >= 0.9) {
+    if (scrolledPercentage >= scrollPagePercentage) {
         getScrollIngredients();
     }
 });
@@ -337,3 +335,9 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.href = "/user_ingredients/update";
     });
 })
+
+
+// test functions-------------------------------------------------------
+function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve,ms));
+}
