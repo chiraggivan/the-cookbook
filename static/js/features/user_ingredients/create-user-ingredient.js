@@ -61,6 +61,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const nameError = document.getElementById("nameError");
     const cupErrorBox = document.getElementById("cupError");
 
+    const imageInput = document.getElementById("imageInput");
+    const imagePreview = document.getElementById("imagePreview");
+
     // making sure to remove cup error message on input of cup weight
     document.getElementById("cup_weight").addEventListener("input", ()=> {
         document.getElementById("cupError").classList.add("d-none");
@@ -70,6 +73,22 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cup_unit").addEventListener("input", ()=> {
         document.getElementById("cupError").classList.add("d-none");
     })
+
+    // upload image for ingredient
+    imageInput.addEventListener("change", function () {
+        const file = this.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+    });
+
 
     // block invalid keys in number input field
     const numberValue = document.querySelectorAll(".no-invalid-number");
@@ -104,6 +123,75 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // add button (submit form)
+    // document.querySelector("form-old").addEventListener("submit", async function (e) {
+    //     e.preventDefault();
+
+    //     //check if ingredient name is available
+    //     if(document.getElementById("ingredient_name").value.trim() == ''){
+    //         nameError.textContent ="Name required";
+    //         return;
+    //     }
+
+    //     let i_cup_weight;
+    //     let i_cup_unit;
+        
+    //     //  check cup weight and cup unit- Both field or both empty
+    //     if((document.getElementById("cup_weight").value && !document.getElementById("cup_unit").value) ||
+    //         (!document.getElementById("cup_weight").value && document.getElementById("cup_unit").value)){
+    //             cupErrorBox.textContent = " Both weight and unit should be provided or keep both empty.";
+    //             cupErrorBox.classList.remove("d-none");
+    //             return;
+    //         }
+
+    //     if(document.getElementById("cup_weight").value){
+    //         i_cup_weight = parseFloat(document.getElementById("cup_weight").value);
+    //         i_cup_unit = document.getElementById("cup_unit").value
+    //     } else {
+    //         i_cup_weight = null;
+    //         i_cup_unit = null;
+    //     }
+
+    //     // Read inputs
+    //     const payload = {
+    //         name: document.getElementById("ingredient_name").value,
+    //         price: parseFloat(document.getElementById("price").value),
+    //         quantity: parseFloat(document.getElementById("quantity").value),
+    //         unit: document.getElementById("unit").value,
+    //         cup_weight: i_cup_weight,
+    //         cup_unit: i_cup_unit,
+    //         notes: ""
+    //     };
+
+    //     // console.log("sent payload is :", payload);
+    //     try{
+    //         const response = await fetch("/user_ingredients/api/create", {
+    //             method: "POST",
+    //             headers: {
+    //                 "Content-Type": "application/json",
+    //                 "Authorization": `Bearer ${token}`
+    //             },
+    //             body: JSON.stringify(payload)
+    //         });
+
+    //         const data = await response.json(); // console.log("After fetch command for update-recipe", response)
+
+    //         if (!response.ok) {
+    //             errorBox.textContent = data.error || "Something went wrong while doing api fetch for update-recipe.";
+    //             console.log("Submitted data (for debug):", data.submitted_data);
+    //             return;
+    //         };
+
+    //         // Display success message and redirect
+    //         showMessage(data.message || "Recipe updated successfully!");
+    //         setTimeout(() => { window.location.href = `/user_ingredients/`; }, 1500);
+            
+    //     } catch(error){
+    //         console.error("Fetch failed:", error);
+    //     }
+        
+    // });
+
+    // add button (submit form) with image file
     document.querySelector("form").addEventListener("submit", async function (e) {
         e.preventDefault();
 
@@ -128,30 +216,46 @@ document.addEventListener("DOMContentLoaded", () => {
             i_cup_weight = parseFloat(document.getElementById("cup_weight").value);
             i_cup_unit = document.getElementById("cup_unit").value
         } else {
-            i_cup_weight = null;
-            i_cup_unit = null;
+            i_cup_weight = '';
+            i_cup_unit = '';
         }
 
         // Read inputs
-        const payload = {
-            name: document.getElementById("ingredient_name").value,
-            price: parseFloat(document.getElementById("price").value),
-            quantity: parseFloat(document.getElementById("quantity").value),
-            unit: document.getElementById("unit").value,
-            cup_weight: i_cup_weight,
-            cup_unit: i_cup_unit,
-            notes: ""
-        };
+        // const payload = {
+        //     name: document.getElementById("ingredient_name").value,
+        //     price: parseFloat(document.getElementById("price").value),
+        //     quantity: parseFloat(document.getElementById("quantity").value),
+        //     unit: document.getElementById("unit").value,
+        //     cup_weight: i_cup_weight,
+        //     cup_unit: i_cup_unit,
+        //     notes: ""
+        // };
+
+        const formData = new FormData();
+
+        formData.append("name", document.getElementById("ingredient_name").value);
+        formData.append("price", parseFloat(document.getElementById("price").value));
+        formData.append("quantity", parseFloat(document.getElementById("quantity").value));
+        formData.append("unit", document.getElementById("unit").value);
+        formData.append("cup_weight", i_cup_weight);
+        formData.append("cup_unit", i_cup_unit);
+        formData.append("notes", "");
+
+        const file = document.getElementById("imageInput").files[0];
+        if (file) {
+            formData.append("image", file);
+        }
 
         // console.log("sent payload is :", payload);
         try{
             const response = await fetch("/user_ingredients/api/create", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    // "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify(payload)
+                // body: JSON.stringify(payload)
+                body: formData
             });
 
             const data = await response.json(); // console.log("After fetch command for update-recipe", response)
@@ -171,6 +275,5 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
     });
-
 
 })

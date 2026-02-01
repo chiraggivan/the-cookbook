@@ -171,11 +171,24 @@
 
         <!-- Right: Image -->
         <div class="col-lg-5 text-center">
-            <img
-                src="https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2"
-                alt="Ingredient"
-                class="ingredient-image"
+            <label  for="imageInput" style="cursor:pointer;">
+                    <img
+                    id="imagePreview"
+                    src="https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2"
+                    alt="Ingredient"
+                    class="ingredient-image"
+                >    
+            </label>
+
+            <input 
+                type="file" 
+                id="imageInput" 
+                name="image"
+                accept="image/*"
+                hidden
             >
+
+            <p class="text-muted mt-2">Click image to upload</p>
         </div>
 
     </div>

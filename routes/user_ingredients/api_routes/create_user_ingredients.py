@@ -86,14 +86,46 @@ def create_user_ingredient():
         return None 
 
     try:
-        data = request.get_json()
-        # print(" data is :", data)
+        # data = request.get_json() # used when image file was not attached to save.
 
-        data = normalize_ingredient_data(request.get_json())
-        
+        # Read text fields from form
+        recData = {
+            "name": request.form.get("name"),
+            "price": float(request.form.get("price")),
+            "quantity": float(request.form.get("quantity")),
+            "unit": request.form.get("unit"),
+            "cup_weight": float(request.form.get("cup_weight")) if request.form.get("cup_weight") else None,
+            "cup_unit": request.form.get("cup_unit"),
+            "notes": request.form.get("notes")
+        }
+        print(" data is :", recData)
+        # data = normalize_ingredient_data(request.get_json())
+        data = normalize_ingredient_data(recData)
+        print(" DATA is :", data)
         error = validate_ingredient(data)
         if error:
-            return jsonify({"error": error, "submitted_data": data}), 400  
+            return jsonify({"error": error, "submitted_data": data}), 400 
+
+        print(" data after validation is :", data)
+        # save image file
+        # Read image file
+        image_file = request.files.get("image")
+        if image_file:
+            print("image found with data")
+            # generate unique filename
+            import uuid, os
+            ext = os.path.splitext(image_file.filename)[1]
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            save_path = os.path.join("static/images/user_ingredients", unique_filename)
+            print("ext is :", ext)
+            print("unique_filename : ", unique_filename)
+            print("save_path :", save_path)
+            image_file.save(save_path)
+            data["image_path"] = f"ingredients/{unique_filename}"
+        else:
+            print("no image came with data")
+            data["image_path"] = None 
+        return jsonify({"message":" done with noramlisation and validation with image file"}), 200
         #------------------------------------------- field normalised and validated ------------------------------------------
         # connect to db        
         conn = get_db_connection()
