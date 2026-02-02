@@ -19,7 +19,7 @@ Users can also plan meals for the week by assigning recipes to specific days and
 Future enhancements include nutrition and calorie calculations derived from ingredient data to further support informed meal planning.
 
 # Table of Contents
-
+<a name="table-of-contents"></a>
 - [1. User Features](#user-features)
 - [2. Admin Features](#admin-features)
 - [3. Tech Stack & Architecture](#tech-stack--architecture-highlights)
@@ -77,7 +77,7 @@ Future enhancements include nutrition and calorie calculations derived from ingr
 - Use the plan as a shopping list and preparation guide for the week.
 
 ## Admin Features
-
+### [Table of content](#table-of-contents)
 ### Ingredient Moderation
 - Review ingredients created by users for accuracy and completeness.
 - Approve validated ingredients to make them publicly available to all users.
