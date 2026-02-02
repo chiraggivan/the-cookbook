@@ -89,7 +89,7 @@ Future enhancements include nutrition and calorie calculations derived from ingr
 - Support scalability by separating user-created data from public data.
 
 ## Tech Stack & Architecture Highlights
-
+### [Table of content](#table-of-contents)
 ### Backend
 - **Python / Flask** – Core backend framework for handling routing, business logic, and server-side rendering.
 - **JWT Authentication** – Secure user authentication with role-based access control (User / Admin).
@@ -148,7 +148,7 @@ Future enhancements include nutrition and calorie calculations derived from ingr
 - GitHub  
 
 ## Architecture Highlights
-
+### [Table of content](#table-of-contents)
 This project is designed as a server-rendered, database-driven web application with a strong focus on clean backend logic, data consistency, and real-world feature behavior.
 
 - **Backend Architecture** — Flask structured with clear separation of concerns (routes, business logic, database layer)  
