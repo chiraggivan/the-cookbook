@@ -98,18 +98,21 @@ def create_user_ingredient():
             "cup_unit": request.form.get("cup_unit"),
             "notes": request.form.get("notes")
         }
-        print(" data is :", recData)
+    
         # data = normalize_ingredient_data(request.get_json())
         data = normalize_ingredient_data(recData)
-        print(" DATA is :", data)
+        
         error = validate_ingredient(data)
         if error:
             return jsonify({"error": error, "submitted_data": data}), 400 
 
-        print(" data after validation is :", data)
-        # save image file
-        # Read image file
+        # Read & save image file 
         image_file = request.files.get("image")
+
+        # check if file is really jpeg or png and not some malicious file
+        if image_file.mimetype not in ["image/jpeg", "image/png"]:
+            return jsonify({"error": "Invalid image type"}), 400
+
         if image_file:
             print("image found with data")
             # generate unique filename
@@ -120,7 +123,7 @@ def create_user_ingredient():
             print("ext is :", ext)
             print("unique_filename : ", unique_filename)
             print("save_path :", save_path)
-            image_file.save(save_path)
+            # image_file.save(save_path)
             data["image_path"] = f"ingredients/{unique_filename}"
         else:
             print("no image came with data")
@@ -171,6 +174,8 @@ def create_user_ingredient():
         conn.commit()
         cursor.close()
         conn.close()
+        if image_file:
+            image_file.save(save_path)
         return jsonify({'message': f'{data.get("name")} : Ingredient added successfully'}), 201
         
 

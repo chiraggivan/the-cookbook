@@ -11,7 +11,7 @@ from config import Config
 from db import get_db_connection
 from routes.auth import auth_bp
 
-#from routes.recipes import recipes_html_bp,  recipes_api_bp
+#routes
 from routes.recipes.html_routes import recipes_html_bp
 from routes.recipes.api_routes import recipes_api_bp
 from routes.dishes.html_routes import dishes_html_bp
