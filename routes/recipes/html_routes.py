@@ -53,26 +53,9 @@ def recipe_detail_page(recipe_id):
 
 @recipes_html_bp.route('/create_recipe', methods=['GET'])
 def create_recipe_page():
-    return render_template("recipes/create_recipe.html")
+    return render_template("recipes/bs/create_recipe_bs.html")
 
 @recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
 def edit_recipe_page(recipe_id):
    return render_template("recipes/edit_recipe.html", recipe_id=recipe_id)
 
-
-
-# @recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
-# @jwt_required()
-# def edit_recipe_page(recipe_id):
-#     user_id = get_jwt_identity()
-#     print("user_id :", user_id)
-#     recipe = Recipe.query.get_or_404(recipe_id)
-#     print("recipe is :", recipe)
-#     if recipe.owner_id != user_id:
-#         # Not the owner → redirect to view-only page
-#         return redirect(url_for("recipes/recipe_details.html", recipe_id=recipe_id))
-#         # OR abort(403) if you want to block entirely:
-#         # abort(403)
-
-#     # Owner → render edit page
-#     return render_template("recipes/edit_recipe.html", recipe_id=recipe_id)

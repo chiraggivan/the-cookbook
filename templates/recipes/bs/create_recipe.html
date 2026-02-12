@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Recipe</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="recipes-page">
+
+  <a href="/recipes/" class="back-link">← All Recipes</a>
+  <h1>Create New Recipe</h1>
+
+  <!-- Recipe Info -->
+  <section id="recipe-info-section">
+    <div class="form-field" id="recipe-name-row">
+      
+
+      <div class="recipe-name-flex">
+        <div class="recipe-name-flex-left">
+          <label for="recipe-name-input">Recipe Name:</label>
+          <input type="text" id="recipe-name-input" name="recipe-name" placeholder="Eg. Aglio Olio, Red Sauce Pasta, etc...."/>
+        </div>
+        
+        <!-- Privacy Toggle (Right Aligned) -->
+        <span id="privacy-actions">
+          <span id="privacy-label-select"> Private </span>
+          <label class="switch">
+            <input type="checkbox" id="privacy-toggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </span>
+      </div>
+
+      <div class="error-create-recipe" id="errorName"></div>
+    </div>
+
+    <div class="form-field">
+      <label>Portion Size:</label>
+      <input type="text" id="portion-size-input" name="portion-size" placeholder="e.g., 2 portion or 3 people or 1.5 kg, etc."/>
+      <div class="error-create-recipe" id="errorPS"></div>
+    </div>
+
+    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+      <label for="description-input" style="margin-right: 0.5rem;">Description:</label>
+      <textarea id="description-input" rows="4" style="width: 250px;" placeholder="Describe your dish here..."></textarea>
+      <div class="error-create-recipe" id="errorDesc"></div>
+    </div>
+
+    <!-- Total cost display -->
+    <div id="recipe-total-cost" style="text-align: right; font-weight: bold; margin-top: 0.5rem;">
+      Total Cost: £0.00
+    </div>
+
+  <!-- Placeholder for Recipe Image -->
+  <section id="recipe-image-section">
+    <p>Recipe image placeholder (to be added later)</p>
+    <div class="image-placeholder"></div>
+  </section>
+  <!-- Ingredients info-->
+  <h2>Ingredients</h2>
+  <button id="add-first-component-btn" class="action-btn"> Add Sub Heading at start </button>
+  <table id="ingredients-table">
+    <thead>
+      <tr>
+        <th>Ingredient</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Cost</th>
+        <th>Base Quantity</th>        
+        <th>Base Unit</th>
+        <th>Base Price</th>
+        <th>Re Arrange</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="ingredients-tbody">
+      <tr class="component-row" style="display: none;">
+        <td colspan="8" style="background-color:#f2f2f2; font-weight:bold;">
+          <input type="text" name="component_text_0" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
+          <div class="error-create-recipe" id="errorCompText_0"></div>
+        </td>
+        <td>
+          <button class="remove-component-btn">Remove</button>
+        </td>
+      </tr>
+      <tr class="ingredient-row">
+        <td style="position: relative;">
+          <input type="text" name="ingredient_name_1" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
+          <div class="suggestions" id="suggestions_1"></div>
+          <div class="error-create-recipe" id="errorIngName_1"></div>
+        </td>
+        <td><input type="number" step="any" name="quantity_1" placeholder="Qty" min="0.000" class="validated-number">
+            <div class="error-create-recipe" id="errorQuantity_1"></div>
+        </td>
+        <td>
+          <select name="unit_1" class="unit-select">
+            <option value=""> Select unit </option>
+          </select>
+          <div class="error-create-recipe" id="errorUnit_1"></div>
+        </td>
+        <td class="cost-input"></td>
+        
+        <td><input type="number" step="any" name="base_quantity_1" placeholder="Base Qty" min="0.000" class="validated-number">
+            <div class="error-create-recipe" id="errorBaseQuantity_1"></div>
+        </td>
+        <td>
+          <select name="base_unit_1" class="base-unit-select">
+            <option value=""> Select unit </option>
+          </select>
+          <div class="error-create-recipe" id="errorBaseUnit_1"></div>
+        </td>
+        <td><input type="number" step="any" name="base_price_1" placeholder="Base Price" min="0.00" class="validated-number">
+            <div class="error-create-recipe" id="errorBasePrice_1"></div>
+        </td>
+        <td>
+          <button class="move-ing-up-btn" style="display: none;">Move ↑ </button>
+          <button class="move-ing-down-btn" style="display: none;">Move ↓ </button>
+        </td>
+        <td>
+          <button class="remove-ingredient-btn">Remove</button>
+        </td>
+      </tr>
+      <tr class="ingredient-row">
+        <td style="position: relative;">
+          <input type="text" name="ingredient_name_2" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
+          <div class="suggestions" id="suggestions_2"></div>
+          <div class="error-create-recipe" id="errorIngName_2"></div>
+        </td>
+        <td><input type="number" step="any" name="quantity_2" placeholder="Qty" class="validated-number">
+            <div class="error-create-recipe" id="errorQuantity_2"></div>
+        </td>
+        <td>
+          <select name="unit_1" class="unit-select">
+            <option value=""> Select unit </option>
+          </select>
+          <div class="error-create-recipe" id="errorUnit_2"></div>
+        </td>
+        <td class="cost-input"></td>
+
+        <td><input type="number" step="any" name="base_quantity_2" placeholder="Base Qty" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBaseQuantity_2"></div>
+        </td>
+        <td>
+          <select name="base_unit_2" class="base-unit-select">
+            <option value=""> Select unit </option>
+          </select>
+          <div class="error-create-recipe" id="errorBaseUnit_2"></div>
+        </td>
+        <td><input type="number" step="any" name="base_price_2" placeholder="Base Price" min="0.01" class="validated-number">
+            <div class="error-create-recipe" id="errorBasePrice_2"></div>
+        </td>
+        <td>
+          <button class="move-ing-up-btn" style="display: none;">Move ↑ </button>
+          <button class="move-ing-down-btn" style="display: none;">Move ↓ </button>
+        </td>
+        <td>
+          <button class="remove-ingredient-btn" style="display: none;">Remove</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <button id="add-component-btn" class="action-btn">Add Sub Heading</button>
+
+  <!-- Steps info-->
+  <h2>Steps</h2>
+  <table id="steps-table">
+    <thead>
+      <tr>
+        <th>Step Number</th>
+        <th>Step Text</th>
+      </tr>
+    </thead>
+    <tbody id="steps-tbody">
+      <!-- Initially only 1 row -->
+      <tr>
+        <td>1</td>
+        <td>
+          <input type="text" name="step_text_0" class="step-input" placeholder="Step description">
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div id="error" class="error-message"></div>
+  <button type="submit" id="save-recipe-btn">Save Recipe</button>
+
+  <!-- Modal overlay below -->
+ <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div id="alert-box" class="alert-box">
+      <p id="alert-message"></p>
+      <div id="alert-actions"></div>
+    </div>
+  </div>
+  
+  <!-- Multi-Choice Confirm Modal -->
+  <div id="multi-modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="multi-alert-box">
+      <p id="multi-alert-message"></p>
+      <div id="multi-alert-actions" class="multi-alert-actions"></div>
+    </div>
+  </div>
+
+<!-- <script src="/static/js/utils.js"></script> -->
+<script type="module" src="/static/js/features/recipes/create-recipe.js"></script>
+</body>
+</html>
+
+

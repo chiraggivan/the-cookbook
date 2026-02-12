@@ -13,3 +13,103 @@
     background-color: #1d652e;   /* your color */
     border-color: #1d652e;
 }
+
+/* Below - for create/edit recipe table */
+#recipeList {
+  table-layout: fixed;       /* ← This is the key: forces % widths to be respected */
+  width: 100%;               /* takes full available space */
+  min-width: 0;              /* prevents forcing wider than parent */
+  text-align: center;
+  vertical-align: middle;   /* centers vertically too – very important for inputs/buttons */
+  border-radius: 1rem;
+  border: 1px solid #dee6e2;
+}
+
+#recipeList td,
+#recipeList th {
+  overflow: hidden;          /* clips overflowing content */
+  text-overflow: ellipsis;   /* shows ... for long text */
+  white-space: nowrap;       /* prevents wrapping → keeps single line */
+  padding: 0.4rem;           /* tighter padding = more room */
+  text-align: left;
+  vertical-align: middle;   /* centers vertically too – very important for inputs/buttons */
+}
+
+/* Make form elements fill cell without pushing size */
+
+#recipeList select,
+#recipeList button {
+  width: 100%;
+  box-sizing: border-box;    /* includes padding/border in width */
+  font-size: 0.9rem;         /* smaller text helps on mobile */
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+/* For the sub-heading row input – override colspan width issue */
+.component-input {
+  width: 50% !important;    /* force it to fill the available colspan space */
+  box-sizing: border-box;
+  text-align: left;          /* usually better left-aligned for long text */
+  width: 100%;
+}
+
+/* Optional: even smaller on mobile */
+@media (max-width: 768px) {
+  #recipeList td,
+  #recipeList th {
+    padding: 0.4rem;
+    font-size: 0.85rem;
+  }
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Make dropdown options follow the same smaller font size */
+#recipeList .form-select {
+  --bs-form-select-font-size: 0.5rem;     /* same as your visible select */
+}
+
+/* Optional: also make option padding smaller so it looks balanced */
+#recipeList .form-select option {
+  padding: 0.4rem 0.75rem;                /* tighter than default */
+  font-size: 0.9rem;
+}
+/* Above - for create/edit recipe table */
+
+.recipe-tabs{
+    text-align: center;
+}
+
+/* Style the active tab */
+.recipe-tabs .nav-link.active {
+    background-color: rgb(127, 255, 191);
+    color: #000;                    /* or any readable color – black works well here */
+    border-color: #a0d9b8;          /* optional: slightly darker border for contrast */
+    border-width: 0.1rem 0.1rem 0rem 0.1rem;
+}
+/* Optional: hover effect for better UX */
+.recipe-tabs .nav-link:not(.active):hover {
+    background-color: rgba(127, 255, 191, 0.3);  /* light version of your color */
+    border-color: rgba(127, 255, 191, 0.6);
+}
+
+/* Optional: make inactive tabs look different */
+.recipe-tabs .nav-link {
+    background-color: #f8f9fa;      /* light gray or white for inactive */
+    color: #495057;
+    border-color: #a0d9b8;
+    border-width: 0 0 0.1rem 0;
+}
+
+/* table top  */
+.table-top{
+    background-color: rgb(127, 255, 191);
+    color: #000;
+    border-left:  0.1rem solid #a0d9b8;
+    border-right: 0.1rem solid #a0d9b8;
+}
