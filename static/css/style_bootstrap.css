@@ -21,12 +21,20 @@
   min-width: 0;              /* prevents forcing wider than parent */
   text-align: center;
   vertical-align: middle;   /* centers vertically too – very important for inputs/buttons */
-  border-radius: 1rem;
-  border: 1px solid #dee6e2;
+  border: 0.1rem solid #dee6e2;
+  border-bottom-left-radius: 0.4rem;
+  border-bottom-right-radius: 0.4rem;
 }
-
-#recipeList td,
-#recipeList th {
+#stepsTable{
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom-left-radius: 0.4rem;
+  border-bottom-right-radius: 0.4rem;
+}
+#stepsTable th {
   overflow: hidden;          /* clips overflowing content */
   text-overflow: ellipsis;   /* shows ... for long text */
   white-space: nowrap;       /* prevents wrapping → keeps single line */
@@ -34,6 +42,47 @@
   text-align: left;
   vertical-align: middle;   /* centers vertically too – very important for inputs/buttons */
 }
+
+#stepsTable textarea {
+  field-sizing: content;       /* ← magic modern property (2024–2025 browsers) */
+  min-height: 30px;
+  max-height: 120px;
+}
+
+table {
+  border-collapse: separate;     /* very important! */
+  border-spacing: 0;             /* removes gaps between cells */
+  width: 100%;
+  /* optional: background + border for the whole table */
+  background: #fff;
+  border: 1px solid #ddd;
+}
+
+/* Optional: remove double borders if you want clean look */
+th, td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+/* ─── Bottom rounded corners ─── */
+tr:last-child td:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+tr:last-child td:last-child {
+  border-bottom-right-radius: 12px;
+}
+
+#recipeList td,
+#recipeList th {
+  text-overflow: ellipsis;   /* shows ... for long text */
+  white-space: nowrap;       /* prevents wrapping → keeps single line */
+  padding: 0.4rem;           /* tighter padding = more room */
+  text-align: left;
+  vertical-align: middle;   /* centers vertically too – very important for inputs/buttons */
+}
+
 
 /* Make form elements fill cell without pushing size */
 
@@ -112,4 +161,38 @@
     color: #000;
     border-left:  0.1rem solid #a0d9b8;
     border-right: 0.1rem solid #a0d9b8;
+}
+
+/* tab page */
+.tab-page{
+  background-color: #fafafa;
+  border-left:  0.1rem solid #a0d9b8;
+  border-right: 0.1rem solid #a0d9b8;
+  border-bottom: 0.1rem solid #a0d9b8;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  box-shadow: #dee6e2;
+}
+
+/* Suggestion Box - Make the cell itself behave normally */
+td {
+  position: relative;
+}
+/* The suggestions popup */
+.suggestions {
+  position: absolute;
+  top: 100%;                    /* right below the input */
+  left: 0;
+  right: 0;                     /* same width as input */
+  z-index: 100;                 /* above other content / table rows */
+  max-height: 120px;            /* ≈5–8 rows depending on your font/line-height */
+  overflow-y: auto;             /* scroll when too many suggestions */
+  background: white;
+  border: 1px solid #ccc;
+  border-top: none;             /* nicer look – connects to input */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  display: none;                /* hidden by default – show via JS when suggestions exist */
+  margin: 0;
+  padding: 0;
+  list-style: none;             /* if you're using <ul>/<li> inside */
 }
