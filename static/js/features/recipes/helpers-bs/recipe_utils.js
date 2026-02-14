@@ -16,9 +16,11 @@ export function updateTotalRecipeCost() {
         total += value;
     });
    
-    const totalCostEl = document.getElementById("recipe-total-cost");
-    if (totalCostEl) {
-        totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
+    const totalCostEl = document.getElementById("totalCost");
+    if (total != 0) {
+        totalCostEl.textContent = `${total.toFixed(2).replace(/\.00$/, "")}`;
+    } else{
+        totalCostEl.textContent = `0.00`;
     }
 }
 
@@ -99,7 +101,7 @@ export function attachCostEvents(row) {
 // enforce quantities to be positive and more than zero and not more  than 1000000
 export function restrictNumberInput(el, maxInt, maxDec) {
   el.addEventListener("keydown", e => {
-    if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+    if (['e', 'E', '+', '-','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
   });
 
   el.addEventListener("input", function() {
@@ -138,6 +140,11 @@ export async function loadRecipeForEdit(recipeId, token) {
     } catch (err) {
         console.error("Error loading recipe for edit:", err);
     }
+}
+
+// reload recipe for edit via reset button
+export async function resetLoadRecipeForEdit(data){
+    renderRecipeDataOnScreen(data);
 }
 
 // function to load the recipe data into table for loadRecipeForEdit and ResetRecipe
@@ -310,8 +317,5 @@ export async function renderRecipeDataOnScreen(data){
     });
 }
 
-// reload recipe for edit via reset button
-export async function resetLoadRecipeForEdit(data){
-    renderRecipeDataOnScreen(data);
-}
+
 

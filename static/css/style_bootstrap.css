@@ -74,6 +74,9 @@ tr:last-child td:last-child {
   border-bottom-right-radius: 12px;
 }
 
+#recipeList th {
+  overflow: hidden;
+}
 #recipeList td,
 #recipeList th {
   text-overflow: ellipsis;   /* shows ... for long text */

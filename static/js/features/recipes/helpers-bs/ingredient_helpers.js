@@ -34,42 +34,59 @@ export function initializeIngredientRow(row, token) {
 
 // function to create empty ingredient row (any changes can be made here and get applied everywhere)
 export function getEmptyIngredientRow(rowIndex) {
+    
   return `
-    <td style="position: relative;">
-        <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" placeholder="Eg. Milk" autocomplete="off">
+    <td>
+        <div>
+        <div class="d-flex" style="justify-content: center; gap: 0.5rem">
+            <i class="btn btn-sm btn-outline-success bi bi-arrow-up"></i>
+            <i class="btn btn-sm btn-outline-success bi bi-arrow-down"></i>
+        </div>
+        </div>
+    </td>
+
+    <td>
+        <input type="text" name="ingredient_name_${rowIndex}" class="form-control form-control-sm" placeholder="Eg. Milk" autocomplete="off"/>
         <div class="suggestions" id="suggestions_${rowIndex}"></div>
         <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
     </td>
+
     <td>
-        <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number">
+        <input type="number" step="0.001" name="quantity_${rowIndex}" class="form-control form-control-sm" min="0.000" />
         <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
     </td>
+
     <td>
-        <select name="unit_${rowIndex}" class="unit-select">
-            <option value="">Select Unit</option>
+        <select name="unit_${rowIndex}" class="form-select form-select-sm unit-select" >
+            <option value="">Select unit</option>
         </select>
         <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
     </td>
-    <td class="cost-input" style="text-align: center;"></td>
+
+    <td class="cost-input"></td>
+
     <td>
-        <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number">
+        <input type="number" step="any" name="base_quantity_${rowIndex}" class="form-control form-control-sm validated-number" placeholder="Base Qty" min="0.000"/>
         <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
     </td>
+
     <td>
-        <select name="base_unit_${rowIndex}" class="base-unit-select">
-            <option value="">Select Unit</option>
+        <select name="base_unit_${rowIndex}" class="form-select form-select-sm unit-select">
+            <option value="">Select unit</option>
         </select>
         <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
     </td>
+
     <td>
-        <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number">
+        <input type="number" step="0.001" name="base_price_${rowIndex}" class="form-control form-control-sm validated-number" placeholder="Base Qty" min="0.000"/>
         <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
     </td>
+
     <td>
-        <button class="move-ing-up-btn" style="display : none;">Move ↑ </button>
-        <button class="move-ing-down-btn" style="display : none;">Move ↓ </button>
+        <button class="btn btn-sm btn-outline-danger remove-ingredient-btn" style="display:none">
+            <i class="bi bi-trash remove-ingredient-btn"></i>
+        </button>
     </td>
-    <td><button class="remove-ingredient-btn" style="display:none">Remove</button></td>
   `;
 }
 
@@ -166,8 +183,8 @@ export function populateBaseUnits(row) {
 export function initializeIngredientInput(row, token) {
     const input = row.querySelector('input[name^="ingredient_name_"]');
     const suggestionBox = row.querySelector(".suggestions");
-    let fetchedIngredients = [];
-    let ingredientData = [];
+    let fetchedIngredientNames = [];
+    let ingredientsData = [];
     let activeIndex = -1;
     let initialValue = ""; // Track initial input value on focus
 
@@ -214,22 +231,23 @@ export function initializeIngredientInput(row, token) {
 
                 spinner.remove();
 
-                ingredientData = data;
-                fetchedIngredients = data.map(item => item.name.toLowerCase());
+                ingredientsData = data;
+                fetchedIngredientNames = data.map(item => item.name.toLowerCase());
 
                 // if (data.length === 0) {
                 //     suggestionBox.innerHTML = "<div class='suggestion-empty'>No results</div>";
                 //     return;
                 // }
-                if (data.length === 0) return;
+                if (ingredientsData.length === 0) return;
 
-                data.forEach(item => {
+                ingredientsData.forEach(ingredient => {
                     const div = document.createElement("div");
-                    div.dataset.id = item.id;
-                    div.dataset.source = item.ingredient_source;
-                    div.textContent = item.name;
+                    div.dataset.id = ingredient.id;
+                    div.dataset.source = ingredient.ingredient_source;
+                    div.textContent = ingredient.name;
                     div.classList.add("suggestion-item");
-                    div.addEventListener("click", async () => await selectIngredient(item, row));
+                    div.classList.add("px-1");
+                    div.addEventListener("click", async () => await selectIngredient(ingredient, row));
                     suggestionBox.appendChild(div);
                 });
 
@@ -279,7 +297,7 @@ export function initializeIngredientInput(row, token) {
         } else if (e.key === "Enter" || e.key === "Tab") {
             e.preventDefault();
             if (activeIndex >= 0) {
-                const selectedItem = ingredientData.find(d => d.name === items[activeIndex].textContent);
+                const selectedItem = ingredientsData.find(d => d.name === items[activeIndex].textContent);
                 selectIngredient(selectedItem, row);
 
                 // Move focus to the next input (quantity)
@@ -295,7 +313,7 @@ export function initializeIngredientInput(row, token) {
         setTimeout(() => {
             const currentValue = this.value.trim().toLowerCase();
             // Clear row if input is empty or user typed an invalid value
-            if (!currentValue || (currentValue !== initialValue && !fetchedIngredients.includes(currentValue))) {
+            if (!currentValue || (currentValue !== initialValue && !fetchedIngredientNames.includes(currentValue))) {
                 this.value = "";
                 delete row.dataset.ingredientId;
                 row.querySelector('input[name^="quantity_"]').value = "";
@@ -318,24 +336,24 @@ export function initializeIngredientInput(row, token) {
     }
 
     // Select an ingredient (new or existing) and populate fields
-    async function selectIngredient(item, row) {
-        input.value = item.name;
-        row.dataset.ingredientId = item.id;
-        row.dataset.ingredientSource = item.ingredient_source;
+    async function selectIngredient(ingredient, row) {
+        input.value = ingredient.name;
+        row.dataset.ingredientId = ingredient.id;
+        row.dataset.ingredientSource = ingredient.ingredient_source;
 
-        row.querySelector('input[name^="base_quantity_"]').value = item.display_quantity ? Number(item.display_quantity) : 1;
-        row.querySelector('input[name^="base_price_"]').value = item.price ? Number(item.price).toFixed(2) : "";
-        row.querySelector('select[name^="base_unit_"]').innerHTML = `<option selected>${item.base_unit || ""}</option>`;
+        row.querySelector('input[name^="base_quantity_"]').value = ingredient.display_quantity ? Number(ingredient.display_quantity) : 1;
+        row.querySelector('input[name^="base_price_"]').value = ingredient.price ? Number(ingredient.price).toFixed(2) : "";
+        row.querySelector('select[name^="base_unit_"]').innerHTML = `<option selected>${ingredient.base_unit || ""}</option>`;
 
         // Store defaults for payload comparison
-        if (item.display_quantity){
-            row.dataset.defaultBaseQuantity = item.display_quantity;
+        if (ingredient.display_quantity){
+            row.dataset.defaultBaseQuantity = ingredient.display_quantity;
         }else{
             row.dataset.defaultBaseQuantity = 1;
         }
         
-        row.dataset.defaultBasePrice = item.price ? Number(item.price).toFixed(2) : 0;
-        row.dataset.defaultBaseUnit = item.base_unit || "";
+        row.dataset.defaultBasePrice = ingredient.price ? Number(ingredient.price).toFixed(2) : 0;
+        row.dataset.defaultBaseUnit = ingredient.base_unit || "";
 
         // Populate the units dropdown using the correct 4 params
         await populateUnits(row);

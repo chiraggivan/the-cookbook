@@ -85,7 +85,7 @@ content %}
               Add Sub Heading at start
             </button>
           </div>
-          <div class="fs-3 pe-5">Cost: £ 0.00</div>
+          <div class="fs-3 pe-5">Cost: £ <span id="totalCost">0.00</span></div>
         </div>
 
         <!-- ingredients details in table-->
@@ -130,7 +130,7 @@ content %}
             </thead>
 
             <tbody id="ingredients-tbody">
-              <tr style="display: none">
+              <tr class="component-row" style="display: none">
                 <td></td>
                 <td
                   colspan="7"
@@ -163,10 +163,11 @@ content %}
                       style="justify-content: center; gap: 0.5rem"
                     >
                       <i
-                        class="btn btn-sm btn-outline-success bi bi-arrow-up"
+                        class="btn btn-sm btn-outline-success bi bi-arrow-up move-ing-up-btn"
+                        style="display: none"
                       ></i>
                       <i
-                        class="btn btn-sm btn-outline-success bi bi-arrow-down"
+                        class="btn btn-sm btn-outline-success bi bi-arrow-down move-ing-down-btn"
                       ></i>
                     </div>
                   </div>
@@ -248,7 +249,7 @@ content %}
                   <button
                     class="btn btn-sm btn-outline-danger remove-ingredient-btn"
                   >
-                    <i class="bi bi-trash"></i>
+                    <i class="bi bi-trash remove-ingredient-btn"></i>
                   </button>
                 </td>
               </tr>
@@ -261,10 +262,11 @@ content %}
                       style="justify-content: center; gap: 0.5rem"
                     >
                       <i
-                        class="btn btn-sm btn-outline-success bi bi-arrow-up"
+                        class="btn btn-sm btn-outline-success bi bi-arrow-up move-ing-up-btn"
                       ></i>
                       <i
-                        class="btn btn-sm btn-outline-success bi bi-arrow-down"
+                        class="btn btn-sm btn-outline-success bi bi-arrow-down move-ing-down-btn"
+                        style="display: none"
                       ></i>
                     </div>
                   </div>
@@ -345,8 +347,9 @@ content %}
                 <td>
                   <button
                     class="btn btn-sm btn-outline-danger remove-ingredient-btn"
+                    style="display: none"
                   >
-                    <i class="bi bi-trash"></i>
+                    <i class="bi bi-trash remove-ingredient-btn"></i>
                   </button>
                 </td>
               </tr>
