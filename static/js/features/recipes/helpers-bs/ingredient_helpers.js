@@ -39,8 +39,8 @@ export function getEmptyIngredientRow(rowIndex) {
     <td>
         <div>
         <div class="d-flex" style="justify-content: center; gap: 0.5rem">
-            <i class="btn btn-sm btn-outline-success bi bi-arrow-up"></i>
-            <i class="btn btn-sm btn-outline-success bi bi-arrow-down"></i>
+            <div class="btn btn-sm btn-outline-success bi bi-arrow-up move-ing-up-btn" style="display:none"></div>
+            <div class="btn btn-sm btn-outline-success bi bi-arrow-down move-ing-down-btn" style="display:none"></div>
         </div>
         </div>
     </td>

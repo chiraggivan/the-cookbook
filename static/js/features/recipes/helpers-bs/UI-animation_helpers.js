@@ -76,12 +76,11 @@ export function updateMoveButtons() {
     const rows = Array.from(tbody.querySelectorAll("tr")).filter(
         r => r.dataset.removed !== "true"
     );
-
+    
     rows.forEach((row, i) => {
         const isIngredient = row.classList.contains("ingredient-row");
         if (!isIngredient) return;
         const upBtn = row.querySelector(".move-ing-up-btn");
-        upBtn.style.display = 'none';
         const downBtn = row.querySelector(".move-ing-down-btn");
         const input = row.querySelector('input[name^="ingredient_name_"]');
         const isEmpty = input?.value.trim() === "";
