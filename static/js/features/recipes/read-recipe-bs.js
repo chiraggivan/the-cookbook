@@ -279,6 +279,7 @@ function updateTotalRecipeCost() {
 document.addEventListener("DOMContentLoaded", () => {
   
   const editBtn = document.getElementById("edit-recipe-btn");
+  // clicked edit recipe button
   editBtn.addEventListener("click", async () => {
     try{
       window.location.href = `/recipes/edit/${recipeId}`;          
@@ -289,8 +290,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const deleteBtn = document.getElementById("delete-recipe-btn");
   deleteBtn.addEventListener("click", async () => {
-    //use custom modal confirm instead of native confirm
-    const confirmed = await showConfirm("Are you sure you want to delete this recipe?");
+    //use custom modal - showConfirm(message, buttonName for OK)
+    const confirmed = await showConfirm("Are you sure you want to delete this recipe?", `Delete`);
     if (!confirmed) return;
 
     try {
@@ -362,7 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dish_data.meal = mealSelect.value;
   });
 
-  // click buttons on modal listener
+  // click buttons on modal listener for create dish
   overlay.addEventListener("click", async (e) => {
     const btn = e.target;
 

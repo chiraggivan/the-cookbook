@@ -7,11 +7,10 @@ export function getEmptyComponentRow(rowIndex){
         <input type="text" name="component_text_${rowIndex}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
         <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
         </td>
-        <td>
-        <button class="btn btn-sm btn-outline-danger remove-component-btn">
-        <i class="bi bi-trash"></i>
-        </button>
-        </td>
+        <td style="text-align: center">
+        <div class="btn btn-sm btn-outline-danger bi bi-trash remove-component-btn" >
+        </div>
+    </td>
     `;
 }
 

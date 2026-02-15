@@ -104,6 +104,13 @@ export function restrictNumberInput(el, maxInt, maxDec) {
     if (['e', 'E', '+', '-','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
   });
 
+  // Optional: block mouse wheel increment/decrement
+  el.addEventListener("wheel", e => {
+    if (document.activeElement === el) {   // only when focused
+      e.preventDefault();
+    }
+  }, { passive: false });   // passive: false needed to allow preventDefault
+
   el.addEventListener("input", function() {
     let value = this.value;
     if (value.includes(".")) {

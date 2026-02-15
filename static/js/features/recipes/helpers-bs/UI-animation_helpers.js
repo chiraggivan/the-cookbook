@@ -12,7 +12,7 @@ export function attachRowListeners(row) {
 // Handle row input changes to add new rows dynamically
 export function handleRowChange(row, event) {
     if(row.classList.contains("ingredient-row")){
-        row.querySelector(".remove-ingredient-btn").style.display="block";
+        row.querySelector(".remove-ingredient-btn").style.display="inline-block";
         const tbody = document.getElementById("ingredients-tbody");
         const rows = Array.from(tbody.querySelectorAll("tr"));
         const currentRow = event.target.closest("tr"); // Get the row containing the input
@@ -64,7 +64,7 @@ export function handleRowChange(row, event) {
         
             initializeIngredientRow(newRow, token);
             updateMoveButtons();
-            document.getElementById(`add-component-btn`).style.display="block";   
+            document.getElementById(`add-component-btn`).style.display="inline-block";   
         };
 
     };
@@ -73,6 +73,8 @@ export function handleRowChange(row, event) {
 // display 'move' button of ingredients according to their position in table
 export function updateMoveButtons() {
     const tbody = document.getElementById("ingredients-tbody");
+
+    // during update make sure only those visible rows and not the ones deleted are considered
     const rows = Array.from(tbody.querySelectorAll("tr")).filter(
         r => r.dataset.removed !== "true"
     );
@@ -100,7 +102,7 @@ export function updateMoveButtons() {
             }
             return;   
         }
-        // if next row is component, most likely the row is empty ingredient row - disable both buttons 
+        // if next row is component, most likely(~100%) the row is empty ingredient row - disable both buttons 
         if (nextRow && nextRow.classList.contains("component-row")&& (i+1) != (rows.length - 1)){
             upBtn.style.display = 'none';
             downBtn.style.display = 'none';
@@ -124,7 +126,7 @@ export function updateMoveButtons() {
             return;
         }
         // if its the last row and no next row then dont show the move buttons
-        // THIS CODE NOT REQUIRED. just kept to show how move down button will vanish if there is only one ingredient
+        // Hypothetical case -THIS CODE NOT REQUIRED. just kept to show how move down button will vanish if there is only one ingredient
         if (!nextRow){
             upBtn.style.display = 'none';
             downBtn.style.display = 'none';
