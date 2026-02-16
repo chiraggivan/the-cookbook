@@ -18,6 +18,7 @@ export function showConfirm(message, buttonName = null) {
     function cleanup() {
       okBtn.removeEventListener("click", onConfirm);
       cancelBtn.removeEventListener("click", onCancel);
+      xBtn.removeEventListener("click", onCancel);
     }
 
     const onConfirm = () => {
@@ -27,15 +28,15 @@ export function showConfirm(message, buttonName = null) {
     };
 
     const onCancel = () => {
-      // console.log("inside onCancel");
+      console.log("inside onCancel");
       cleanup();
       modal.hide();
       resolve(false);
     };
 
     okBtn.addEventListener("click", onConfirm);
-    // cancelBtn.addEventListener("click", onCancel);
-    [cancelBtn, xBtn].forEach((btn) => btn.addEventListener("click", onCancel));
+    cancelBtn.addEventListener("click", onCancel);
+    xBtn.addEventListener("click", onCancel);
   });
 }
 

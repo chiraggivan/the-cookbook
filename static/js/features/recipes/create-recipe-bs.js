@@ -1,28 +1,19 @@
-import { isTokenValid, showMultiConfirm } from "../../core/utils.js";
+import { isTokenValid } from "../../core/utils.js";
 import { showConfirm, showAlert } from "../../core/confirmModal.js";
-import {
-  getEmptyIngredientRow,
-  populateUnits,
-  populateBaseUnits,
-  initializeIngredientRow,
-} from "./helpers-bs/ingredient_helpers.js";
+import { showMultiConfirm } from "./helpers-bs/delete_component_modal.js";
+import { initializeIngredientRow } from "./helpers-bs/ingredient_helpers.js";
 import { getEmptyComponentRow } from "./helpers-bs/component_helpers.js";
+import { updateTotalRecipeCost } from "./helpers-bs/recipe_utils.js";
 import {
-  updateTotalRecipeCost,
-  loadRecipeForEdit,
-  recalcCost,
-  attachCostEvents,
-  restrictNumberInput,
-  resetLoadRecipeForEdit,
-} from "./helpers-bs/recipe_utils.js";
+  initializeStepRow,
+  updateSerialNo,
+} from "./helpers-bs/step_helpers.js";
 import {
   attachRowListeners,
-  handleRowChange,
   updateMoveButtons,
 } from "./helpers-bs/UI-animation_helpers.js";
 import {
   validateRecipeForm,
-  getRecipePayload,
   validateIngredientRows,
 } from "./helpers-bs/validation_helpers.js";
 
@@ -38,6 +29,7 @@ if (!isTokenValid(token)) {
 // Initialize page functionality on load
 document.addEventListener("DOMContentLoaded", async () => {
   const tbody = document.getElementById("ingredients-tbody");
+  const stepTbody = document.getElementById("steps-tbody");
   const addFirstComponentBtn = document.getElementById(
     `add-first-component-btn`,
   );
@@ -47,6 +39,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize existing ingredient rows
   tbody.querySelectorAll("tr.ingredient-row").forEach((row, index) => {
     initializeIngredientRow(row, token);
+  });
+
+  // Initialize existing step rows
+  stepTbody.querySelectorAll("tr").forEach((row, index) => {
+    initializeStepRow(row, token);
   });
 
   // component buttons to add the heading for the ingredient list
@@ -176,11 +173,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Ask for confirmation using the modal
-      const confirmed = await showMultiConfirm(
-        `Remove ${componentName}?`,
-        componentName,
-      );
+      // Ask for confirmation using the modal - showMultiConfirm(message, buttonA = null, buttonB = null)
+      const modalMessage = `<div class="mb-2 fs-4"> Remove "${componentName ? componentName : "Heading"}" along with its ingredient?</div>
+                            <small>Option A : Remove Heading along with its ingredients.</small></br>
+                            <small>Option B : Remove Heading only.</small>`;
+
+      const confirmed = await showMultiConfirm(`${modalMessage}`);
 
       // component text present and if recipeComponentId DOESNT exist
       if (componentName && !rows[currentRowIndex].dataset.recipeComponentId) {
@@ -239,6 +237,84 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Recalculate total cost if needed
       updateTotalRecipeCost();
+    }
+  });
+
+  // remove-button logic for steps
+  document.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("remove-step-btn")) {
+      const row = e.target.closest("tr");
+      const stepText = row.querySelector(
+        'textarea[name^="recipe_step_"]',
+      ).value;
+      const stepNo = row.querySelector(".step-no").textContent;
+
+      // Freeze current height so we can animate nicely
+      row.style.height = row.offsetHeight + "px";
+      // Force reflow — required for smooth animation
+      void row.offsetHeight;
+
+      // If ingredient name is empty and recipeIngredientId NOT there for the row, remove row immediately
+      if (!stepText) {
+        // Add fade out class for animation
+        row.classList.add("row-fade-out");
+        setTimeout(() => {
+          row.remove();
+          // updateMoveButtons();
+          updateSerialNo();
+        }, 400);
+        return;
+      }
+
+      // Ask for confirmation using the modal
+      const confirmed = await showConfirm(
+        `Remove Step No ${stepNo}: ${stepText} ?`,
+        `Delete`,
+      );
+
+      if (!confirmed) return; // user cancelled
+
+      // Add fade out class for animation as user dint cancel BUT accepted to remove
+      row.classList.add("row-fade-out");
+      setTimeout(() => {
+        row.remove();
+        // updateMoveButtons();
+        updateSerialNo();
+      }, 400);
+    }
+  });
+
+  // tab click on ingredients and steps
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest(".nav-link");
+    if (!link) return;
+
+    const tabName = link.dataset.tab;
+    if (!tabName) return;
+
+    // Remove active from all links
+    document
+      .querySelectorAll(".recipe-tabs .nav-link")
+      .forEach((l) => l.classList.remove("active"));
+
+    // Add active to clicked
+    link.classList.add("active");
+
+    // // Show selected tab content, hide others
+    // document.querySelectorAll(".tab-page > div").forEach((tabContent) => {
+    //   tabContent.style.display =
+    //     tabContent.id === `${tabName}-tab` ? "block" : "none";
+    // });
+
+    const ingredientsTab = document.getElementById("ingredients-tab");
+    const stepsTab = document.getElementById("steps-tab");
+    if (link.classList.contains("ingredient-tabs")) {
+      ingredientsTab.style.display = "block";
+      stepsTab.style.display = "none";
+    }
+    if (link.classList.contains("step-tabs")) {
+      ingredientsTab.style.display = "none";
+      stepsTab.style.display = "block";
     }
   });
 

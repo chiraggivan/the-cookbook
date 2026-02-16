@@ -68,10 +68,17 @@ content %}
     <!-- tabs for ingredients and steps -->
     <ul class="nav nav-tabs d-flex recipe-tabs">
       <li class="nav-item flex-fill">
-        <a class="nav-link active" aria-current="page" href="#">Ingredients</a>
+        <a
+          class="nav-link active ingredient-tabs"
+          data-tab="ingredient-tabs"
+          aria-current="page"
+          >Ingredients</a
+        >
       </li>
       <li class="nav-item flex-fill">
-        <a class="nav-link" aria-current="page" href="#">Steps</a>
+        <a class="nav-link step-tabs" data-tab="step-tabs" aria-current="page"
+          >Steps</a
+        >
       </li>
     </ul>
 
@@ -365,7 +372,7 @@ content %}
       </div>
 
       <!-- STEPS tab page -->
-      <div id="steps-tab" style="display: block">
+      <div id="steps-tab" style="display: none">
         <div class="fs-4 mb-2">Recipe Prodecure</div>
 
         <div>
@@ -396,7 +403,7 @@ content %}
               </tr>
             </thead>
 
-            <tbody>
+            <tbody id="steps-tbody">
               <tr>
                 <td>
                   <div
@@ -405,15 +412,17 @@ content %}
                   >
                     <i
                       class="btn btn-sm btn-outline-success bi bi-arrow-up"
+                      style="display: none"
                     ></i>
                     <i
                       class="btn btn-sm btn-outline-success bi bi-arrow-down"
+                      style="display: none"
                     ></i>
                   </div>
                 </td>
 
                 <td>
-                  <div class="text-end">1</div>
+                  <div class="step-no text-end">1</div>
                 </td>
 
                 <td>
@@ -436,12 +445,11 @@ content %}
                   <div class="error-create-recipe" id="errorStepTime_1"></div>
                 </td>
 
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-danger remove-ingredient-btn"
-                  >
-                    <i class="bi bi-trash"></i>
-                  </button>
+                <td style="text-align: center">
+                  <div
+                    class="btn btn-sm btn-outline-danger bi bi-trash remove-step-btn"
+                    style="display: none"
+                  ></div>
                 </td>
               </tr>
             </tbody>
@@ -460,7 +468,8 @@ content %}
   <div id="error" class="alert alert-danger mt-3 d-none"></div>
 </div>
 
-{% endblock %} {% block scripts %}
+{% include "recipes/bs/_delete_component_modal.html" %} {% endblock %} {% block
+scripts %}
 
 <!-- Page Script -->
 <script
