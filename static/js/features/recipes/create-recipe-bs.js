@@ -7,6 +7,7 @@ import { updateTotalRecipeCost } from "./helpers-bs/recipe_utils.js";
 import {
   initializeStepRow,
   updateSerialNo,
+  updateStepMoveButtons,
 } from "./helpers-bs/step_helpers.js";
 import {
   attachRowListeners,
@@ -43,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialize existing step rows
   stepTbody.querySelectorAll("tr").forEach((row, index) => {
-    initializeStepRow(row, token);
+    initializeStepRow(row);
   });
 
   // component buttons to add the heading for the ingredient list
@@ -244,9 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", async (e) => {
     if (e.target.classList.contains("remove-step-btn")) {
       const row = e.target.closest("tr");
-      const stepText = row.querySelector(
-        'textarea[name^="recipe_step_"]',
-      ).value;
+      let stepText = row.querySelector('textarea[name^="recipe_step_"]').value;
       const stepNo = row.querySelector(".step-no").textContent;
 
       // Freeze current height so we can animate nicely
@@ -260,7 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         row.classList.add("row-fade-out");
         setTimeout(() => {
           row.remove();
-          // updateMoveButtons();
+          updateStepMoveButtons();
           updateSerialNo();
         }, 400);
         return;
@@ -268,7 +267,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Ask for confirmation using the modal
       const confirmed = await showConfirm(
-        `Remove Step No ${stepNo}: ${stepText} ?`,
+        `Remove Step ${stepNo}: ${stepText} ?`,
         `Delete`,
       );
 
@@ -278,7 +277,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       row.classList.add("row-fade-out");
       setTimeout(() => {
         row.remove();
-        // updateMoveButtons();
+        updateStepMoveButtons();
         updateSerialNo();
       }, 400);
     }
@@ -362,6 +361,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //call updateMoveButtons
     updateMoveButtons();
+  });
+
+  // up/down arrow logic for STEPS rows
+  document.addEventListener("click", (event) => {
+    // move up button pressed
+    if (event.target.classList.contains("move-step-up-btn")) {
+      const row = event.target.closest("tr");
+      let prev = row.previousElementSibling;
+      row.parentNode.insertBefore(row, prev);
+    }
+
+    // move down button pressed
+    if (event.target.classList.contains("move-step-down-btn")) {
+      const row = event.target.closest("tr");
+      let next = row.nextElementSibling;
+      row.parentNode.insertBefore(next, row);
+    }
+    updateStepMoveButtons();
+    updateSerialNo();
   });
 
   // submitting changes of recipe Save BUTTON

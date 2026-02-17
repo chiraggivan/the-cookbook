@@ -30,34 +30,34 @@ export function showAlert(message, isError = false, autoClose = true) {
   }
 }
 // show confirm message
-export function showConfirm(message) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("modal-overlay");
-    const alertBox = document.getElementById("alert-box");
-    const alertMessage = document.getElementById("alert-message");
-    const alertActions = document.getElementById("alert-actions");
+// export function showConfirm(message) {
+//   return new Promise((resolve) => {
+//     const overlay = document.getElementById("modal-overlay");
+//     const alertBox = document.getElementById("alert-box");
+//     const alertMessage = document.getElementById("alert-message");
+//     const alertActions = document.getElementById("alert-actions");
 
-    alertMessage.textContent = message;
-    alertBox.className = "alert-box";
-    overlay.style.display = "flex";
+//     alertMessage.textContent = message;
+//     alertBox.className = "alert-box";
+//     overlay.style.display = "flex";
 
-    // Replace actions with Yes/No buttons
-    alertActions.innerHTML = `
-      <button id="confirm-yes">Yes</button>
-      <button id="confirm-no" style="background:#f44336;">No</button>
-    `;
-    alertActions.style.display = "block";
+//     // Replace actions with Yes/No buttons
+//     alertActions.innerHTML = `
+//       <button id="confirm-yes">Yes</button>
+//       <button id="confirm-no" style="background:#f44336;">No</button>
+//     `;
+//     alertActions.style.display = "block";
 
-    document.getElementById("confirm-yes").onclick = () => {
-      overlay.style.display = "none";
-      resolve(true);
-    };
-    document.getElementById("confirm-no").onclick = () => {
-      overlay.style.display = "none";
-      resolve(false);
-    };
-  });
-}
+//     document.getElementById("confirm-yes").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(true);
+//     };
+//     document.getElementById("confirm-no").onclick = () => {
+//       overlay.style.display = "none";
+//       resolve(false);
+//     };
+//   });
+// }
 
 // show bootstrap confirm message
 export function showBootstrapConfirm(message) {
@@ -126,13 +126,13 @@ export function showMultiConfirm(message, componentName) {
 }
 
 // validate recipe table data for create and update recipe
-function validateRecipeForm({rName, portion_size, rDescription } ={}) {
+function validateRecipeForm({ rName, portion_size, rDescription } = {}) {
   let errors = {};
 
   // Normalize inputs
   const recipeName = normalizeInput(rName);
   const portionSize = normalizeInput(portion_size);
-  const  description = normalizeInput(rDescription);
+  const description = normalizeInput(rDescription);
 
   // Recipe name
   if (!recipeName) {
@@ -145,7 +145,8 @@ function validateRecipeForm({rName, portion_size, rDescription } ={}) {
   if (!portionSize) {
     errors.portion_size = "Portion size is required.";
   } else if (portionSize.length < 1 || portionSize.length > 20) {
-    errors.portion_size = "Portion size must not be empty and be less than 20 characters.";
+    errors.portion_size =
+      "Portion size must not be empty and be less than 20 characters.";
   }
 
   // Description
@@ -157,39 +158,44 @@ function validateRecipeForm({rName, portion_size, rDescription } ={}) {
   //if (!["public", "private"].includes(privacy)) {
   //  errors.privacy = "Privacy must be public or private.";
   //}
-  
-  return {errors, data: { recipeName, portionSize, description} };
+
+  return { errors, data: { recipeName, portionSize, description } };
 }
 
 // check if token is valid
 export function isTokenValid(token) {
-    if (!token) return true; // no token = treat as expired
-    
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1])); // decode the middle part
-        const exp = payload.exp;
-        if (!exp) return true; // no exp field? treat as invalid
-        const now = Math.floor(Date.now() / 1000); // current time in seconds
-        return exp > now; // true if valid
-    } catch (err) {
-        console.error("Invalid token:", err);
-        return true; // if token can’t be decoded → treat as invalid
-    }
+  if (!token) return true; // no token = treat as expired
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])); // decode the middle part
+    const exp = payload.exp;
+    if (!exp) return true; // no exp field? treat as invalid
+    const now = Math.floor(Date.now() / 1000); // current time in seconds
+    return exp > now; // true if valid
+  } catch (err) {
+    console.error("Invalid token:", err);
+    return true; // if token can’t be decoded → treat as invalid
+  }
 }
 
 // Function to decode JWT, check role and get user_i
 export function getUserFromToken(token) {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join(""),
+    );
     const payload = JSON.parse(jsonPayload);
 
     return {
-      user_id: payload.sub,  
-      role: payload.role
+      user_id: payload.sub,
+      role: payload.role,
     };
   } catch (e) {
     return null;
@@ -197,17 +203,16 @@ export function getUserFromToken(token) {
 }
 // Function to create spinner when api is being fetched
 export function createSpinner() {
-    const div = document.createElement("div");
-    div.classList.add("suggestion-spinner");
-    div.innerHTML = `<span class="loader"></span>`;
-    return div;
+  const div = document.createElement("div");
+  div.classList.add("suggestion-spinner");
+  div.innerHTML = `<span class="loader"></span>`;
+  return div;
 }
-
 
 // --- Hybrid global compatibility (for non-module scripts) ---
 if (typeof window !== "undefined") {
   window.isTokenValid = isTokenValid;
-  window.showConfirm = showConfirm;
-  window.showMultiConfirm = showMultiConfirm;
-  window.showAlert = showAlert;
+  // window.showConfirm = showConfirm;
+  // window.showMultiConfirm = showMultiConfirm;
+  // window.showAlert = showAlert;
 }
