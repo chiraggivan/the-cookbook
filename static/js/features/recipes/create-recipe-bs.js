@@ -37,6 +37,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   const addComponentBtn = document.getElementById(`add-component-btn`);
   const myModal = new bootstrap.Modal(document.getElementById("global-modal"));
 
+  // Recipe fields eventListener for recipe name, portion size and description
+  document.getElementById("recipe-name-input").addEventListener("input", () => {
+    document.getElementById("errorName").style.display = "none";
+  });
+  document
+    .getElementById("portion-size-input")
+    .addEventListener("input", () => {
+      document.getElementById("errorPortionSize").style.display = "none";
+    });
+  document.getElementById("description-input").addEventListener("input", () => {
+    document.getElementById("errorDesc").style.display = "none";
+  });
+
   // Initialize existing ingredient rows
   tbody.querySelectorAll("tr.ingredient-row").forEach((row, index) => {
     initializeIngredientRow(row, token);
@@ -253,7 +266,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Force reflow — required for smooth animation
       void row.offsetHeight;
 
-      // If ingredient name is empty and recipeIngredientId NOT there for the row, remove row immediately
+      // If Step text is empty, remove row immediately
       if (!stepText) {
         // Add fade out class for animation
         row.classList.add("row-fade-out");
@@ -265,7 +278,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Ask for confirmation using the modal
+      // if step text exists, Ask for confirmation using the modal showConfirm(message, buttonName =null, titleName=null)
       const confirmed = await showConfirm(
         `Remove Step ${stepNo}: ${stepText} ?`,
         `Delete`,
@@ -389,6 +402,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       let completeRecipeData = {};
       const errorBox = document.getElementById(`error`);
       errorBox.textContent = "";
+
       // Validating all sections of the form. First with RECIPE table data
       const recipeData = validateRecipeForm();
       if (!recipeData) {
@@ -396,6 +410,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           "Check all the fields. One or more errors found.";
         return;
       }
+      return;
       // validating Ingredients(table) with the recipe of the form
       const componentsData = validateIngredientRows();
       if (componentsData.hasError) {

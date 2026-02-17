@@ -39,7 +39,7 @@ export function showMessage(message) {
 }
 
 // Confirm dialog
-export function showConfirm(message, buttonName = null) {
+export function showConfirm(message, buttonName = null, titleName = null) {
   return new Promise((resolve) => {
     // reduce the message to 150 characters
     if (message.length > 150) {
@@ -47,6 +47,9 @@ export function showConfirm(message, buttonName = null) {
     }
 
     messageEl.textContent = message;
+    if (titleName) {
+      modalTitle.textContent = titleName;
+    }
     if (buttonName) {
       okBtn.textContent = buttonName;
     }
@@ -86,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
   messageEl = document.getElementById("global-modal-message");
   okBtn = document.getElementById("global-modal-ok");
   cancelBtn = document.getElementById("global-modal-cancel");
-  xBtn = document.getElementById("modal-close-btn");
+  xBtn = document.getElementById("global-modal-x-btn");
 
   modal = new bootstrap.Modal(modalEl);
 });

@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
   modalTitle = document.getElementById("delete-component-modal-title");
   messageEl = document.getElementById("delete-component-modal-message");
   cancelBtn = document.getElementById("delete-component-modal-cancel");
-  xBtn = document.getElementById("modal-x-btn");
+  xBtn = document.getElementById("delete-component-modal-x-btn");
   optionABtn = document.getElementById("delete-component-modal-option-a");
   optionBBtn = document.getElementById("delete-component-modal-option-b");
 

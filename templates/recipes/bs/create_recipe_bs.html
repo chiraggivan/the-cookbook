@@ -6,43 +6,56 @@ content %}
   <!-- Recipe information -->
   <div class="mb-3 mb-lg-4">
     <!-- Recipe details-->
+
     <!-- first line -->
     <div class="row mb-2 mb-lg-3">
       <div class="col-1">
-        <label for="recipeName" class="col-form-label">Name :</label>
+        <label for="recipe-name-input" class="col-form-label mb-1"
+          >Name :</label
+        >
       </div>
       <div class="col-11 me-auto">
         <input
           type="text"
-          id="recipeName"
-          class="form-control"
+          id="recipe-name-input"
+          class="form-control mb-1"
           aria-describedby=""
         />
+        <div id="errorName" class="invalid-feedback" style="display: none">
+          Please write the recipe name.
+        </div>
       </div>
     </div>
     <!-- second line -->
     <div class="row mb-2 mb-lg-3">
       <div class="col-1">
-        <label for="portionSize" class="col-form-label">Portion Size :</label>
+        <label for="portion-size-input" class="col-form-label mb-1"
+          >Portion Size :</label
+        >
       </div>
       <div class="col-9">
         <input
           type="text"
-          id="portionSize"
+          id="portion-size-input"
           class="form-control"
           aria-describedby=""
           placeholder="2 portion, 1.5 kg, 4 people, etc., "
         />
+        <div id="errorPortionSize" class="invalid-feedback">
+          Please give the portion size.
+        </div>
       </div>
       <div class="col-1 text-end">
-        <label for="privacy" class="col-form-check-label">Privacy:</label>
+        <label for="privacy-toggle" class="col-form-check-label"
+          >Privacy:</label
+        >
       </div>
       <div class="col-1 form-check form-switch">
         <input
           class="form-check-input"
           type="checkbox"
           role="switch"
-          id="privacy"
+          id="privacy-toggle"
           checked
         />
       </div>
@@ -50,15 +63,20 @@ content %}
     <!-- third line -->
     <div class="mb-2 mb-lg-3">
       <div class="col-auto">
-        <label for="description" class="col-form-label">Description :</label>
+        <label for="description-input" class="col-form-label"
+          >Description :</label
+        >
       </div>
       <div class="col-auto">
         <textarea
-          id="description"
+          id="description-input"
           class="form-control"
           placeholder="Describe you recipe...... "
           rows="4"
         ></textarea>
+        <div id="errorDesc" class="invalid-feedback">
+          Customise error of Description.
+        </div>
       </div>
     </div>
   </div>
@@ -457,13 +475,13 @@ content %}
     </div>
   </div>
 
+  <!-- Error message -->
+  <div id="error" class="text-danger mt-3"></div>
+  <!-- buttons -->
   <div class="f-flex g-2 text-end">
     <div id="cancel-btn" class="btn btn-light">Cancel</div>
     <div id="save-recipe-btn" class="btn btn-success">Save Recipe</div>
   </div>
-
-  <!-- Error message -->
-  <div id="error" class="alert alert-danger mt-3 d-none"></div>
 </div>
 
 {% include "recipes/bs/_delete_component_modal.html" %} {% endblock %} {% block

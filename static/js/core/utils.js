@@ -30,34 +30,34 @@ export function showAlert(message, isError = false, autoClose = true) {
   }
 }
 // show confirm message
-// export function showConfirm(message) {
-//   return new Promise((resolve) => {
-//     const overlay = document.getElementById("modal-overlay");
-//     const alertBox = document.getElementById("alert-box");
-//     const alertMessage = document.getElementById("alert-message");
-//     const alertActions = document.getElementById("alert-actions");
+export function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modal-overlay");
+    const alertBox = document.getElementById("alert-box");
+    const alertMessage = document.getElementById("alert-message");
+    const alertActions = document.getElementById("alert-actions");
 
-//     alertMessage.textContent = message;
-//     alertBox.className = "alert-box";
-//     overlay.style.display = "flex";
+    alertMessage.textContent = message;
+    alertBox.className = "alert-box";
+    overlay.style.display = "flex";
 
-//     // Replace actions with Yes/No buttons
-//     alertActions.innerHTML = `
-//       <button id="confirm-yes">Yes</button>
-//       <button id="confirm-no" style="background:#f44336;">No</button>
-//     `;
-//     alertActions.style.display = "block";
+    // Replace actions with Yes/No buttons
+    alertActions.innerHTML = `
+      <button id="confirm-yes">Yes</button>
+      <button id="confirm-no" style="background:#f44336;">No</button>
+    `;
+    alertActions.style.display = "block";
 
-//     document.getElementById("confirm-yes").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(true);
-//     };
-//     document.getElementById("confirm-no").onclick = () => {
-//       overlay.style.display = "none";
-//       resolve(false);
-//     };
-//   });
-// }
+    document.getElementById("confirm-yes").onclick = () => {
+      overlay.style.display = "none";
+      resolve(true);
+    };
+    document.getElementById("confirm-no").onclick = () => {
+      overlay.style.display = "none";
+      resolve(false);
+    };
+  });
+}
 
 // show bootstrap confirm message
 export function showBootstrapConfirm(message) {
