@@ -1,38 +1,23 @@
 {% extends "base.html" %} {% block title %}Create Recipe{% endblock %} {% block content %}
-<div class="p-2 p-lg-3 p-xl-5">
-  <h2 class="mb-3 mb-lg-4">Create Recipe:</h2>
 
+<div class="p-2 p-lg-3 p-xl-5">
   <!-- Recipe information -->
   <div class="mb-3 mb-lg-4">
     <!-- Recipe details-->
 
     <!-- first line -->
     <div class="row mb-2 mb-lg-3">
-      <div class="col-1">
-        <label for="recipe-name-input" class="col-form-label">Name :</label>
-      </div>
-      <div class="col-11 me-auto">
-        <input type="text" id="recipe-name-input" class="form-control" aria-describedby="" />
-        <div id="errorName" class="invalid-feedback" style="display: none">
-          Please write the recipe name.
-        </div>
+      <div class="col-12 me-auto">
+        <div id="recipeName" class="fs-1"></div>
       </div>
     </div>
     <!-- second line -->
-    <div class="row mb-2 mb-lg-3">
-      <div class="col-1">
-        <label for="portion-size-input" class="col-form-label">Portion Size :</label>
+    <div class="row mb-2 mb-lg-3 align-items-center">
+      <div class="d-flex col-10 fs-4 align-items-end">
+        <div class="fs-4 pe-4">Portion Size:</div>
+        <div id="portionSize" class="fs-5"></div>
       </div>
-      <div class="col-9">
-        <input
-          type="text"
-          id="portion-size-input"
-          class="form-control"
-          aria-describedby=""
-          placeholder="2 portion, 1.5 kg, 4 people, etc., "
-        />
-        <div id="errorPortionSize" class="invalid-feedback">Please give the portion size.</div>
-      </div>
+
       <div class="col-1 text-end">
         <label for="privacy-toggle" class="col-form-check-label">Privacy:</label>
       </div>
@@ -43,17 +28,22 @@
     <!-- third line -->
     <div class="mb-2 mb-lg-3">
       <div class="col-auto">
-        <label for="description-input" class="col-form-label">Description :</label>
+        <label for="description" class="fs-4">Description :</label>
       </div>
-      <div class="col-auto">
-        <textarea
-          id="description-input"
-          class="form-control"
-          placeholder="Describe you recipe...... "
-          rows="4"
-        ></textarea>
-        <div id="errorDesc" class="invalid-feedback">Customise error of Description.</div>
-      </div>
+      <div id="description" class="col-12"></div>
+    </div>
+  </div>
+
+  <!-- Action Buttons (Owner only) -->
+  <div class="d-flex justify-content-between align-items-center mb-4 d-none">
+    <div class="dish-created-wrapper">
+      <button id="dish-created-btn" class="btn btn-success">Dish Created Now</button>
+      <div id="dish-created-info" class="mt-2"></div>
+    </div>
+
+    <div id="recipe-buttons" class="d-none">
+      <button id="edit-recipe-btn" class="btn btn-primary me-2">Edit Recipe</button>
+      <button id="delete-recipe-btn" class="btn btn-danger">Delete Recipe</button>
     </div>
   </div>
 
@@ -75,12 +65,7 @@
       <!-- INGREDIENTS tab page -->
       <div id="ingredients-tab">
         <!--  section to add button to add first row for component & Total cost of recipe -->
-        <div class="d-flex justify-content-between mb-2">
-          <div>
-            <button id="add-first-component-btn" class="btn btn-primary">
-              Add Sub Heading at start
-            </button>
-          </div>
+        <div class="d-flex justify-content-end mb-2">
           <div class="fs-3 pe-5">Cost: £ <span id="totalCost">0.00</span></div>
         </div>
 
@@ -319,11 +304,6 @@
             </tbody>
           </table>
         </div>
-
-        <!-- add new component button -->
-        <div>
-          <div id="add-component-btn" class="btn btn-primary action-btn">Add Sub Heading</div>
-        </div>
       </div>
 
       <!-- STEPS tab page -->
@@ -407,7 +387,8 @@
 
   <!-- Error message -->
   <div id="error" class="text-danger mt-3"></div>
-  <!-- buttons -->
+
+  <!-- buttons CANCEL/SAVE RECIPE -->
   <div class="f-flex g-2 text-end">
     <div id="cancel-btn" class="btn btn-light">Cancel</div>
     <div id="save-recipe-btn" class="btn btn-success">Save Recipe</div>
@@ -417,5 +398,5 @@
 {% include "recipes/bs/_delete_component_modal.html" %} {% endblock %} {% block scripts %}
 
 <!-- Page Script -->
-<script type="module" src="/static/js/features/recipes/create-recipe-bs.js"></script>
+<script type="module" src="/static/js/features/recipes/read-recipe-bs.js"></script>
 {% endblock %}

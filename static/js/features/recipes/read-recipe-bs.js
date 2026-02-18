@@ -1,38 +1,40 @@
 // import { isTokenValid, showConfirm, showMultiConfirm, showAlert} from "../../core/utils.js";
-import { isTokenValid } from "../../core/utils.js"; 
-import { showConfirm, showAlert } from "../../core/confirmModal.js"
-import { recipePreparedDateInfo } from "../dishes/helpers/dish_utils.js"
+import { isTokenValid } from "../../core/utils.js";
+import { showConfirm, showAlert } from "../../core/confirmModal.js";
+import { recipePreparedDateInfo } from "../dishes/helpers/dish_utils.js";
 
-const token = localStorage.getItem("access_token");//console.log(token)
+const token = localStorage.getItem("access_token"); //console.log(token)
 const decoded = parseJwt(token); // console.log("decoded : ",decoded);
 const loggedInUserId = parseInt(decoded ? decoded.sub : null); //console.log("user _id: ",loggedInUserId)
 const recipeId = window.location.pathname.split("/").pop(); //console.log("Recipe ID from Flask:", recipeId);
-let dish_data = {}
+let dish_data = {};
 let overlay, mealSelect, dateInput, timeInput, commentInput;
 
 // validate token
 if (!isTokenValid(token)) {
-    setTimeout(() => { window.location.href = "/auth/login"; }, 10);
+  setTimeout(() => {
+    window.location.href = "/auth/login";
+  }, 10);
 } else {
   loadRecipeDetails();
 }
 
 function parseJwt(token) {
-    try {
-        const base64Payload = token.split('.')[1]; 
-        const payload = atob(base64Payload);  // decode base64
-        return JSON.parse(payload);
-    } catch (e) {
-        console.error("Invalid token", e);
-        return null;
-    }
+  try {
+    const base64Payload = token.split(".")[1];
+    const payload = atob(base64Payload); // decode base64
+    return JSON.parse(payload);
+  } catch (e) {
+    console.error("Invalid token", e);
+    return null;
+  }
 }
 
 //load the data of recipe from the db to html page
 async function loadRecipeDetails() {
   try {
     const res = await fetch(`/recipes/api/recipe/${recipeId}`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
       throw new Error("Failed to load recipe details");
@@ -43,41 +45,36 @@ async function loadRecipeDetails() {
     const ingredients = data.ingredients; //console.log("ingredients data is :", ingredients);
     const steps = data.steps;
     const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
-    const isOwner = (loggedInUserId === recipeOwnerId); //console.log("isOwner:", isOwner);
+    const isOwner = loggedInUserId === recipeOwnerId; //console.log("isOwner:", isOwner);
 
-    // data for dishes created  
-    if (true) { 
+    // data for dishes created
+    if (true) {
       // const createdAt = new Date();  // Convert string to Date object
       // const dateOnly = createdAt.toLocaleDateString('en-GB');  // "24/12/2025" (UK format)
-      // const timeOnly = createdAt.toLocaleTimeString('en-GB', { 
-      //   hour: '2-digit', 
-      //   minute: '2-digit' 
+      // const timeOnly = createdAt.toLocaleTimeString('en-GB', {
+      //   hour: '2-digit',
+      //   minute: '2-digit'
       // });
-      dish_data['recipe_id'] = recipe.recipe_id;
-      dish_data['recipe_name'] = recipe.name;
-      dish_data['portion_size'] = recipe.portion_size;
+      dish_data["recipe_id"] = recipe.recipe_id;
+      dish_data["recipe_name"] = recipe.name;
+      dish_data["portion_size"] = recipe.portion_size;
       // dish_data['preparation_date'] = dateOnly;
       // dish_data['time_prepared'] = timeOnly;
       // dish_data['meal'] = 'lunch';
-      dish_data['recipe_by'] = recipe.user_id;
+      dish_data["recipe_by"] = recipe.user_id;
       // dish_data['comment'] = '';
     }
 
     // Title + Meta + Description
-    document.getElementById("recipe-name").textContent = recipe.name;
+    document.getElementById("recipeName").textContent = recipe.name;
+    document.getElementById("portionSize").innerHTML = recipe.portion_size;
+    document.getElementById("description").innerHTML = recipe.description;
 
-    document.getElementById("recipe-meta").innerHTML = `
-      <strong>Portion Size:</strong> ${recipe.portion_size}
-    `;
-
-    document.getElementById("recipe-description").innerHTML = `
-      <strong>Description:</strong> ${recipe.description}
-    `;
-    
     // Show Buttons - check logged in user and recipe owner same or not and show BUTTONS accordingly (toggle switch + buttons)
     const actionsEl = document.getElementById("recipe-actions");
-    if (isOwner) {  //console.log("Rendering privacy toggle for owner...");
-      document.getElementById('recipe-buttons').classList.remove("d-none");
+    if (isOwner) {
+      //console.log("Rendering privacy toggle for owner...");
+      document.getElementById("recipe-buttons").classList.remove("d-none");
       actionsEl.innerHTML = `
         <span id="privacy-actions" style="display: inline-flex; align-items: center; gap: 0.5rem;">
           <label class="form-check-label ms-2" for="privacy-toggle">
@@ -98,17 +95,17 @@ async function loadRecipeDetails() {
       const privacyLabel = document.getElementById("privacy-label");
 
       privacyToggle.addEventListener("change", async () => {
-        const newPrivacy = privacyToggle.checked ? "private" : "public";  //console.log("Privacy changed to:", newPrivacy);
+        const newPrivacy = privacyToggle.checked ? "private" : "public"; //console.log("Privacy changed to:", newPrivacy);
         privacyLabel.textContent = newPrivacy.charAt(0).toUpperCase() + newPrivacy.slice(1);
-        
+
         try {
           const response = await fetch(`/recipes/api/update-privacy/${recipeId}`, {
             method: "PUT",
             headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ privacy: newPrivacy })
+            body: JSON.stringify({ privacy: newPrivacy }),
           });
           const result = await response.json(); //console.log("privacy update response:", result);
 
@@ -122,36 +119,36 @@ async function loadRecipeDetails() {
           showAlert("Something went really wrong.", true);
         }
       });
-    } 
-    else { //console.log("Rendering 'By' section for viewer...");
-      document.getElementById('recipe-buttons').style.display = 'none';
+    } else {
+      //console.log("Rendering 'By' section for viewer...");
+      document.getElementById("recipe-buttons").style.display = "none";
       actionsEl.innerHTML = `
         <span><strong>By:</strong> ${recipe.username}</span>
       `;
     }
-    
+
     // add data below dish created button if old record found then show details
     try {
-      const response = await fetch(`/dishes/api/last_record/${recipeId}`,{
+      const response = await fetch(`/dishes/api/last_record/${recipeId}`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       }); //console.log("response is :" , response);
-      
-      const data = await response.json()//console.log("last record data:", data);
+
+      const data = await response.json(); //console.log("last record data:", data);
       if (response.ok) {
-        const createdDate = data.date_prepared; 
+        const createdDate = data.date_prepared;
         const createdTime = data.time_prepared;
-        
-        if(createdDate !== "" && createdTime !== ""){
+
+        if (createdDate !== "" && createdTime !== "") {
           let createDishBtnPressed = false;
           const display_text = `Last ${recipePreparedDateInfo(createdDate, createdTime, createDishBtnPressed)}`;
           document.getElementById("dish-created-info").textContent = display_text;
         }
       }
-    } catch(err){
+    } catch (err) {
       console.error("Error while fetching last record of dish created:", err);
       showAlert("Error while fetching last record of dish created", true);
     }
@@ -161,18 +158,20 @@ async function loadRecipeDetails() {
     tbody.innerHTML = "";
 
     // Get unique component_display_order values
-    const uniqueComponents = [...new Set(ingredients.map(item => item.component_display_order))].sort((a, b) => a - b);
+    const uniqueComponents = [
+      ...new Set(ingredients.map((item) => item.component_display_order)),
+    ].sort((a, b) => a - b);
 
     // Iterate through each component_display_order
-    const dish_data_components = []
-    uniqueComponents.forEach(order => {
+    const dish_data_components = [];
+    uniqueComponents.forEach((order) => {
       // Get the component_text for the first item of this component_display_order
-      const component = ingredients.find(item => item.component_display_order === order);
+      const component = ingredients.find((item) => item.component_display_order === order);
       const componentText = component.component_text ? component.component_text.trim() : "";
       // attached for dish_data
       const dish_component = {};
-      dish_component['component_text'] = componentText;
-      dish_component['display_order'] = order;
+      dish_component["component_text"] = componentText;
+      dish_component["display_order"] = order;
 
       // Only create a component row if component_text is non-empty
       if (componentText) {
@@ -188,23 +187,23 @@ async function loadRecipeDetails() {
 
       // Filter and sort ingredients for this component_display_order
       const componentIngredients = ingredients
-        .filter(item => item.component_display_order === order)
+        .filter((item) => item.component_display_order === order)
         .sort((a, b) => a.ingredient_display_order - b.ingredient_display_order);
 
       const dish_data_ingredients = [];
       // Create ingredient rows for this component
-      componentIngredients.forEach(i => {
+      componentIngredients.forEach((i) => {
         const ingredientRow = document.createElement("tr");
         ingredientRow.dataset.ingredientSource = i.ingredient_source;
         ingredientRow.dataset.ingredientBy = i.ingredient_by;
         let ingName = i.name;
-        if(i.ingredient_by !== null && i.ingredient_by != loggedInUserId){
+        if (i.ingredient_by !== null && i.ingredient_by != loggedInUserId) {
           ingredientRow.style.backgroundColor = "#d9f2e6"; // light green
           ingName = `<span>${ingName}</span><span> *</span>`;
-        }else{
+        } else {
           ingName = `<span>${ingName}</span>`;
         }
-        
+
         ingredientRow.innerHTML = `
           <td style="background-color: inherit;">${ingName}</td>
           <td style="background-color: inherit;">${i.quantity}</td>
@@ -217,25 +216,25 @@ async function loadRecipeDetails() {
 
         //attach for dish_data
         const dish_ingredient = {};
-        dish_ingredient['base_price'] = parseFloat(i.cost);
-        dish_ingredient['ingredient_id'] = parseInt(i.ingredient_id);
-        dish_ingredient['name'] = i.name;
-        dish_ingredient['ingredient_source'] = i.ingredient_source;
-        dish_ingredient['cost'] = parseFloat(i.price);
-        dish_ingredient['quantity'] = parseFloat(i.quantity);
-        dish_ingredient['base_unit'] = i.unit;
-        dish_ingredient['unit_id'] = i.unit_id;
-        dish_ingredient['unit_name'] = i.unit_name;
-        dish_ingredient['display_order'] = i.ingredient_display_order;
+        dish_ingredient["base_price"] = parseFloat(i.cost);
+        dish_ingredient["ingredient_id"] = parseInt(i.ingredient_id);
+        dish_ingredient["name"] = i.name;
+        dish_ingredient["ingredient_source"] = i.ingredient_source;
+        dish_ingredient["cost"] = parseFloat(i.price);
+        dish_ingredient["quantity"] = parseFloat(i.quantity);
+        dish_ingredient["base_unit"] = i.unit;
+        dish_ingredient["unit_id"] = i.unit_id;
+        dish_ingredient["unit_name"] = i.unit_name;
+        dish_ingredient["display_order"] = i.ingredient_display_order;
 
         tbody.appendChild(ingredientRow);
         dish_data_ingredients.push(dish_ingredient);
       });
-      dish_component['ingredients'] = dish_data_ingredients;
+      dish_component["ingredients"] = dish_data_ingredients;
       dish_data_components.push(dish_component);
     });
-    dish_data['components'] = dish_data_components
-      
+    dish_data["components"] = dish_data_components;
+
     updateTotalRecipeCost(); // get total cost of recipe. //console.log("dish data is :", dish_data);
 
     // Steps (numbered list)
@@ -247,29 +246,28 @@ async function loadRecipeDetails() {
       stepsContainer.appendChild(stepsTitle);
 
       const ol = document.createElement("ol");
-      steps.forEach(s => {
+      steps.forEach((s) => {
         const li = document.createElement("li");
         li.textContent = s.step_text;
         ol.appendChild(li);
       });
       stepsContainer.appendChild(ol);
     }
-
   } catch (err) {
     document.getElementById("error").textContent = err.message;
   }
 }
 
-// calculate the total cost of recipe 
+// calculate the total cost of recipe
 function updateTotalRecipeCost() {
   const priceCells = document.querySelectorAll(".ingredient-price");
   let total = 0;
 
-  priceCells.forEach(cell => {
+  priceCells.forEach((cell) => {
     const value = parseFloat(cell.textContent.replace(/,/g, "")) || 0;
     total += value;
   });
-  dish_data['total_cost'] = total;
+  dish_data["total_cost"] = total;
   const totalCostEl = document.getElementById("recipe-total-cost");
   if (totalCostEl) {
     totalCostEl.textContent = `Total Cost: £${total.toFixed(2).replace(/\.00$/, "")}`;
@@ -277,15 +275,12 @@ function updateTotalRecipeCost() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  
   const editBtn = document.getElementById("edit-recipe-btn");
   // clicked edit recipe button
   editBtn.addEventListener("click", async () => {
-    try{
-      window.location.href = `/recipes/edit/${recipeId}`;          
-    } catch(err) {
-
-    }
+    try {
+      window.location.href = `/recipes/edit/${recipeId}`;
+    } catch (err) {}
   });
 
   const deleteBtn = document.getElementById("delete-recipe-btn");
@@ -298,23 +293,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(`/recipes/api/delete_recipe/${recipeId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
       const data = await response.json(); //console.log("data is : ", data);
 
       if (response.ok) {
         showAlert(data.message || "Recipe deleted successfully!");
-        setTimeout(() => { window.location.href = "/recipes"; }, 2500);
+        setTimeout(() => {
+          window.location.href = "/recipes";
+        }, 2500);
       } else {
         showAlert(data.error || "Failed to delete recipe.", true);
       }
     } catch (err) {
-        console.error("Error deleting recipe:", err);
-        showAlert("Something went wrong.", true);
+      console.error("Error deleting recipe:", err);
+      showAlert("Something went wrong.", true);
     }
-  });  
+  });
 
   const overlay = document.getElementById("wizard-overlay");
   const modal = new bootstrap.Modal(overlay);
@@ -341,19 +338,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function showStep(step) {
     const steps = overlay.querySelectorAll(".step");
     currentStep = step;
-    steps.forEach(s => s.classList.add("d-none"));
+    steps.forEach((s) => s.classList.add("d-none"));
     const active = overlay.querySelector(`.step[data-step="${step}"]`);
-    if (active) active.classList.remove("d-none"); 
+    if (active) active.classList.remove("d-none");
   }
 
-  // dish created button 
-  const dishCreatedBtn = document.getElementById("dish-created-btn"); 
+  // dish created button
+  const dishCreatedBtn = document.getElementById("dish-created-btn");
   dishCreatedBtn.addEventListener("click", async () => {
-    
     // show modal
     resetWizard();
     modal.show();
-  
   });
 
   // meal select event listener
@@ -384,8 +379,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.classList.contains("next")) {
       if (currentStep === 2) {
         const now = new Date();
-        dish_data.preparation_date =
-          dateInput.value || now.toISOString().split("T")[0];
+        dish_data.preparation_date = dateInput.value || now.toISOString().split("T")[0];
         dish_data.time_prepared =
           timeInput.value ||
           now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -393,7 +387,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showStep(currentStep + 1);
       return;
     }
-    
+
     // save button
     if (btn.classList.contains("save")) {
       dish_data.comment = commentInput.value;
@@ -403,19 +397,15 @@ document.addEventListener("DOMContentLoaded", () => {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify(dish_data)
+          body: JSON.stringify(dish_data),
         });
 
         const data = await response.json();
 
         if (response.ok) {
-          const text = recipePreparedDateInfo(
-            data.date_prepared,
-            data.time_prepared,
-            true
-          );
+          const text = recipePreparedDateInfo(data.date_prepared, data.time_prepared, true);
           setTimeout(() => {
             document.getElementById("dish-created-info").textContent = text;
           }, 300);
@@ -431,4 +421,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-

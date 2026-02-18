@@ -2,20 +2,18 @@ import { isTokenValid } from "../../core/utils.js";
 import { showConfirm, showAlert } from "../../core/confirmModal.js";
 import { showMultiConfirm } from "./helpers-bs/delete_component_modal.js";
 import { initializeIngredientRow } from "./helpers-bs/ingredient_helpers.js";
-import { getEmptyComponentRow } from "./helpers-bs/component_helpers.js";
+import { getEmptyComponentRow, initializeComponentInput } from "./helpers-bs/component_helpers.js";
 import { updateTotalRecipeCost } from "./helpers-bs/recipe_utils.js";
 import {
   initializeStepRow,
   updateSerialNo,
   updateStepMoveButtons,
 } from "./helpers-bs/step_helpers.js";
-import {
-  attachRowListeners,
-  updateMoveButtons,
-} from "./helpers-bs/UI-animation_helpers.js";
+import { attachRowListeners, updateMoveButtons } from "./helpers-bs/UI-animation_helpers.js";
 import {
   validateRecipeForm,
   validateIngredientRows,
+  validateStepRows,
 } from "./helpers-bs/validation_helpers.js";
 
 const token = localStorage.getItem("access_token"); //console.log("token is :", token);
@@ -31,9 +29,7 @@ if (!isTokenValid(token)) {
 document.addEventListener("DOMContentLoaded", async () => {
   const tbody = document.getElementById("ingredients-tbody");
   const stepTbody = document.getElementById("steps-tbody");
-  const addFirstComponentBtn = document.getElementById(
-    `add-first-component-btn`,
-  );
+  const addFirstComponentBtn = document.getElementById(`add-first-component-btn`);
   const addComponentBtn = document.getElementById(`add-component-btn`);
   const myModal = new bootstrap.Modal(document.getElementById("global-modal"));
 
@@ -41,13 +37,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("recipe-name-input").addEventListener("input", () => {
     document.getElementById("errorName").style.display = "none";
   });
-  document
-    .getElementById("portion-size-input")
-    .addEventListener("input", () => {
-      document.getElementById("errorPortionSize").style.display = "none";
-    });
+  document.getElementById("portion-size-input").addEventListener("input", () => {
+    document.getElementById("errorPortionSize").style.display = "none";
+  });
   document.getElementById("description-input").addEventListener("input", () => {
     document.getElementById("errorDesc").style.display = "none";
+  });
+
+  // Initialize existing component rows
+  tbody.querySelectorAll("tr.component-row").forEach((row) => {
+    initializeComponentInput(row);
   });
 
   // Initialize existing ingredient rows
@@ -80,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         addComponentBtn.style.display = "none";
         attachRowListeners(tr);
         updateMoveButtons();
+        initializeComponentInput(tr);
       }
     }),
   );
@@ -89,9 +89,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.target.classList.contains("remove-ingredient-btn")) {
       const row = e.target.closest("tr");
       const recipeIngredientId = row.dataset.recipeIngredientId;
-      const ingredientName = row.querySelector(
-        'input[name^="ingredient_name_"]',
-      ).value;
+      const ingredientName = row.querySelector('input[name^="ingredient_name_"]').value;
 
       // Freeze current height so we can animate nicely
       row.style.height = row.offsetHeight + "px";
@@ -124,10 +122,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Ask for confirmation using the modal
-      const confirmed = await showConfirm(
-        `Remove ${ingredientName}?`,
-        `Delete`,
-      );
+      const confirmed = await showConfirm(`Remove ${ingredientName}?`, `Delete`);
 
       if (!confirmed) return; // user cancelled
 
@@ -162,9 +157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         (row) => row.dataset.removed !== "true",
       );
       const currentRowIndex = rows.indexOf(currentRow); //
-      const componentName = currentRow.querySelector(
-        'input[name^="component_text_"]',
-      ).value;
+      const componentName = currentRow.querySelector('input[name^="component_text_"]').value;
       const prevRow = rows[currentRowIndex - 1];
 
       // If current component index is 0 i.e. very first at the top component then display:none and addFirstComponentBtn display:block
@@ -204,10 +197,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         } else if (confirmed === "with-ingredients") {
           let nextIndex = currentRowIndex + 1;
-          while (
-            rows[nextIndex] &&
-            !rows[nextIndex].classList.contains("component-row")
-          ) {
+          while (rows[nextIndex] && !rows[nextIndex].classList.contains("component-row")) {
             const nextRow = rows[nextIndex];
             nextRow.remove();
             nextIndex++;
@@ -229,10 +219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         } else if (confirmed === "with-ingredients") {
           let nextIndex = currentRowIndex + 1;
-          while (
-            rows[nextIndex] &&
-            !rows[nextIndex].classList.contains("component-row")
-          ) {
+          while (rows[nextIndex] && !rows[nextIndex].classList.contains("component-row")) {
             const nextRow = rows[nextIndex];
             if (nextRow.dataset.recipeIngredientId) {
               nextRow.dataset.removed = "true";
@@ -279,10 +266,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // if step text exists, Ask for confirmation using the modal showConfirm(message, buttonName =null, titleName=null)
-      const confirmed = await showConfirm(
-        `Remove Step ${stepNo}: ${stepText} ?`,
-        `Delete`,
-      );
+      const confirmed = await showConfirm(`Remove Step ${stepNo}: ${stepText} ?`, `Delete`);
 
       if (!confirmed) return; // user cancelled
 
@@ -396,64 +380,60 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // submitting changes of recipe Save BUTTON
-  document
-    .getElementById("save-recipe-btn")
-    .addEventListener("click", async () => {
-      let completeRecipeData = {};
-      const errorBox = document.getElementById(`error`);
-      errorBox.textContent = "";
+  document.getElementById("save-recipe-btn").addEventListener("click", async () => {
+    let completeRecipeData = {};
+    const errorBox = document.getElementById(`error`);
+    errorBox.textContent = "";
 
-      // Validating all sections of the form. First with RECIPE table data
-      const recipeData = validateRecipeForm();
-      if (!recipeData) {
-        errorBox.textContent =
-          "Check all the fields. One or more errors found.";
-        return;
+    // Validating all sections of the form. First with RECIPE table data
+    const recipeData = validateRecipeForm();
+    const componentsData = validateIngredientRows();
+    const stepsData = validateStepRows();
+    if (!recipeData || componentsData.hasError) {
+      if (recipeData && componentsData.errorMessage) {
+        errorBox.textContent = componentsData.errorMessage;
+      } else {
+        errorBox.textContent = "Check all the fields. One or more errors found.";
       }
       return;
-      // validating Ingredients(table) with the recipe of the form
-      const componentsData = validateIngredientRows();
-      if (componentsData.hasError) {
+    }
+
+    const createRecipeData = {};
+    createRecipeData.name = recipeData.name;
+    createRecipeData.portion_size = recipeData.portion_size;
+    createRecipeData.description = recipeData.description;
+    createRecipeData.privacy = recipeData.privacy;
+    createRecipeData.components = componentsData.ingredientsData;
+    createRecipeData.steps = stepsData;
+    console.log("final data to be sent :", createRecipeData);
+    return;
+    try {
+      const response = await fetch("/recipes/api/new-recipe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(createRecipeData),
+      });
+      const data = await response.json(); // console.log("After fetch command for update-recipe", response)
+
+      if (!response.ok) {
+        errorBox.textContent =
+          data.error || "Something went wrong while doing api fetch for update-recipe.";
+        console.log("Submitted data (for debug):", data.submitted_data);
         return;
       }
 
-      const createRecipeData = {};
-      createRecipeData.name = recipeData.name;
-      createRecipeData.portion_size = recipeData.portion_size;
-      createRecipeData.description = recipeData.description;
-      createRecipeData.privacy = recipeData.privacy;
-      createRecipeData.components = componentsData.ingredientsData;
-      createRecipeData.steps = [];
-      console.log("final data to be sent :", createRecipeData);
-      // return;
-      try {
-        const response = await fetch("/recipes/api/new-recipe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(createRecipeData),
-        });
-        const data = await response.json(); // console.log("After fetch command for update-recipe", response)
-
-        if (!response.ok) {
-          errorBox.textContent =
-            data.error ||
-            "Something went wrong while doing api fetch for update-recipe.";
-          console.log("Submitted data (for debug):", data.submitted_data);
-          return;
-        }
-
-        // Display success message and redirect
-        showAlert(data.message || "Recipe updated successfully!");
-        const recipeId = data.recipe_id;
-        setTimeout(() => {
-          window.location.href = `/recipes/details/${recipeId}`;
-        }, 1000);
-      } catch (err) {
-        console.log("error is :", err.message);
-        errorBox.textContent = err.message;
-      }
-    });
+      // Display success message and redirect
+      showAlert(data.message || "Recipe updated successfully!");
+      const recipeId = data.recipe_id;
+      setTimeout(() => {
+        window.location.href = `/recipes/details/${recipeId}`;
+      }, 1000);
+    } catch (err) {
+      console.log("error is :", err.message);
+      errorBox.textContent = err.message;
+    }
+  });
 });

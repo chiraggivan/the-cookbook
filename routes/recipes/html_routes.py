@@ -42,14 +42,7 @@ def user_recipes_page(user_id):
     
 @recipes_html_bp.route('/details/<int:recipe_id>', methods=['GET']) 
 def recipe_detail_page(recipe_id):
-    # recipeDetails = get_recipe_details(recipe_id)   # has recipe.user_id
-    # recipe = recipeDetails.recipe
-    # user = g.user                    # current user
-
-    # is_owner = False
-    # if user and recipe["user_id"] == user["user_id"]:
-    #     is_owner = True
-    return render_template("recipes/bs/recipe_details.html", recipe_id=recipe_id) # , is_owner = is_owner  
+    return render_template("recipes/bs/recipe_details_bs.html", recipe_id=recipe_id) # , is_owner = is_owner  
 
 @recipes_html_bp.route('/create_recipe', methods=['GET'])
 def create_recipe_page():

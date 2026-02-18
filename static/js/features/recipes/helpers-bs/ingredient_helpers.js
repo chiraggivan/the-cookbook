@@ -1,10 +1,8 @@
 import { updateTotalRecipeCost, restrictNumberInput } from "./recipe_utils.js";
-import {
-  attachRowListeners,
-  updateMoveButtons,
-} from "./UI-animation_helpers.js";
+import { attachRowListeners, updateMoveButtons } from "./UI-animation_helpers.js";
 import { attachCostEvents, recalcCost } from "./recipe_utils.js";
 import { createSpinner } from "./../../../core/utils.js";
+
 const token = localStorage.getItem("access_token");
 let debounceTimer = null;
 let abortController = null;
@@ -115,15 +113,11 @@ export async function populateUnits(row) {
   });
 
   try {
-    const res = await fetch(
-      `/recipes/api/ingredient-units?${params.toString()}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
+    const res = await fetch(`/recipes/api/ingredient-units?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!res.ok)
-      throw new Error("Failed to load units for ingredient " + ingredientId);
+    if (!res.ok) throw new Error("Failed to load units for ingredient " + ingredientId);
 
     const units = await res.json(); // console.log("units of ", ingredientId," :", units)
     // store units with conversion factors in row for later use
@@ -134,8 +128,7 @@ export async function populateUnits(row) {
       option.value = u.unit_id;
       option.textContent = u.unit_name;
       option.dataset.conversionFactor = u.conversion_factor;
-      if (parseInt(u.unit_id) === parseInt(selectedUnitId))
-        option.selected = true; // keep current unit selected
+      if (parseInt(u.unit_id) === parseInt(selectedUnitId)) option.selected = true; // keep current unit selected
       unitSelect.appendChild(option);
     });
   } catch (err) {
@@ -232,14 +225,11 @@ export function initializeIngredientInput(row, token) {
         spinner = createSpinner();
         suggestionBox.appendChild(spinner);
 
-        const res = await fetch(
-          `/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`,
-          {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}` },
-            signal: abortController.signal,
-          },
-        );
+        const res = await fetch(`/recipes/api/ingredients/search?q=${encodeURIComponent(query)}`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortController.signal,
+        });
         if (!res.ok) throw new Error("Failed to fetch ingredients");
 
         const data = await res.json();
@@ -310,9 +300,7 @@ export function initializeIngredientInput(row, token) {
     } else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
       if (activeIndex >= 0) {
-        const selectedItem = ingredientsData.find(
-          (d) => d.name === items[activeIndex].textContent,
-        );
+        const selectedItem = ingredientsData.find((d) => d.name === items[activeIndex].textContent);
         selectIngredient(selectedItem, row);
 
         // Move focus to the next input (quantity)
@@ -331,8 +319,7 @@ export function initializeIngredientInput(row, token) {
       // Clear row if input is empty or user typed an invalid value
       if (
         !currentValue ||
-        (currentValue !== initialValue &&
-          !fetchedIngredientNames.includes(currentValue))
+        (currentValue !== initialValue && !fetchedIngredientNames.includes(currentValue))
       ) {
         this.value = "";
         delete row.dataset.ingredientId;
@@ -355,11 +342,8 @@ export function initializeIngredientInput(row, token) {
 
   // Highlight suggestion item
   function highlightItem(items, idx) {
-    items.forEach(
-      (item, i) => (item.style.background = i === idx ? "#ddd" : ""),
-    );
-    if (idx >= 0)
-      items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
+    items.forEach((item, i) => (item.style.background = i === idx ? "#ddd" : ""));
+    if (idx >= 0) items[idx].scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   // Select an ingredient (new or existing) and populate fields
@@ -368,13 +352,31 @@ export function initializeIngredientInput(row, token) {
     row.dataset.ingredientId = ingredient.id;
     row.dataset.ingredientSource = ingredient.ingredient_source;
 
-    row.querySelector('input[name^="base_quantity_"]').value =
-      ingredient.display_quantity ? Number(ingredient.display_quantity) : 1;
+    const errorName = row.querySelector('div[id^="errorIngName_"]');
+    errorName.textContent = "";
+    errorName.style.display = "none";
+    const errorBaseQuantity = row.querySelector('div[id^="errorBaseQuantity_"]');
+    const errorBaseUnit = row.querySelector('div[id^="errorBaseUnit_"]');
+    const errorBasePrice = row.querySelector('div[id^="errorBasePrice_"]');
+
+    row.querySelector('input[name^="base_quantity_"]').value = ingredient.display_quantity
+      ? Number(ingredient.display_quantity)
+      : 1;
+    errorBaseQuantity.textContent = "";
+    errorBaseQuantity.style.display = "none";
     row.querySelector('input[name^="base_price_"]').value = ingredient.price
       ? Number(ingredient.price).toFixed(2)
       : "";
+    if (ingredient.price) {
+      errorBasePrice.textContent = "";
+      errorBasePrice.style.display = "none";
+    }
     row.querySelector('select[name^="base_unit_"]').innerHTML =
       `<option selected>${ingredient.base_unit || ""}</option>`;
+    if (ingredient.base_unit) {
+      errorBaseUnit.textContent = "";
+      errorBaseUnit.style.display = "none";
+    }
 
     // Store defaults for payload comparison
     if (ingredient.display_quantity) {
@@ -383,9 +385,7 @@ export function initializeIngredientInput(row, token) {
       row.dataset.defaultBaseQuantity = 1;
     }
 
-    row.dataset.defaultBasePrice = ingredient.price
-      ? Number(ingredient.price).toFixed(2)
-      : 0;
+    row.dataset.defaultBasePrice = ingredient.price ? Number(ingredient.price).toFixed(2) : 0;
     row.dataset.defaultBaseUnit = ingredient.base_unit || "";
 
     // Populate the units dropdown using the correct 4 params

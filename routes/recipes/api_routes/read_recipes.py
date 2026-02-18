@@ -198,12 +198,32 @@ def get_recipe_details(recipe_id):
             """,(recipe_id,))
         steps = cursor.fetchall()
 
+        # Convert time datatype to string
+        formatted_steps = []
+        for step in steps:
+            step_order = step["step_order"]
+            step_text = step["step_text"]
+            estimated_time = step["estimated_time"]
+            if estimated_time:
+                total_seconds = int(estimated_time.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                time_str = f"{hours:02}:{minutes:02}"
+            else:
+                time_str = "00:00"  # or None if you prefer
+
+            formatted_steps.append({
+                "step_order": step_order,
+                "step_text": step_text,
+                "estimated_time": time_str
+            })
+
         cursor.close()
         conn.close()
         return jsonify({
             'recipe': recipe,
             'ingredients': ingredients,
-            'steps': steps
+            'steps': formatted_steps
             })
     except Error as err:
         return jsonify({'error': str(err)}), 500

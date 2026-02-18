@@ -5,6 +5,7 @@ from bcrypt import hashpw, checkpw, gensalt
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from . import recipes_api_bp
 import re
+from datetime import datetime
 
 
 # search ingredients for recipe
@@ -170,12 +171,13 @@ def create_recipe():
             if isinstance(steps, list):
                 normalized_steps = []
                 for step in steps:
-                    
-                    if isinstance(step, str):
-
-                        norm_step = re.sub(r"\s+", " ", step.strip()).lower()                        
-                    else:
-                       norm_step = step
+                    if isinstance(step, dict):
+                        norm_step ={}
+                        for key, value in step.items():
+                            if isinstance(value, str):
+                                norm_step[key] = re.sub(r"\s+", " ", value.strip()).lower()
+                            else:
+                                norm_step[key] = value     
                     normalized_steps.append(norm_step)
                 cleaned['steps'] = normalized_steps
             else:
@@ -208,7 +210,7 @@ def create_recipe():
             # --- Components ----
             components = recipe_dict.get("components", [])
             totalComponents = len(components)
-
+            
             # check any component not having ingredients array.
             for component in components:
                 if len(component["ingredients"]) < 1:
@@ -283,23 +285,44 @@ def create_recipe():
                 except ValueError as e:
                     return str(e) 
 
-            # validate steps data
+            # ----  validate steps data  -----------
             steps = recipe_dict.get("steps",[])
+            totalSteps =len(steps)
             for step in steps:
-                if not isinstance(step, (str, int, float)):
-                    return "Error in normalizing steps: step must be str, int, or float."
-                if isinstance(step, str) and len(step) > 100:
-                    return "Error in normalizing steps: string step longer than 100 characters."
+                # check : is each step is a dictonary
+                if not isinstance(step, dict):
+                    return "Error in validation of steps: step must be dict"
+                
+                # check if step display order is integer and in valid range
+                step_display_order = to_int(step.get("step_display_order"), "step_display_order")
+                if not isinstance(step_display_order, int) or step_display_order < 0 or step_display_order > totalSteps:
+                    return f"Invalid step display order: must be numeric >= 0  and <= total steps ({totalSteps})"
+
+                # check step text is string and in valid range
+                step_text = step.get("step_text")
+                if not isinstance(step_text, str) or len(step_text) > 500 or (step_display_order != 0 and step_text == ""):
+                    return f"Invalid step_text: must be a string ≤ 500 characters"
+
+                # check step time is string and convert it into time form
+                step_time = step.get("step_time")
+                if not isinstance(step_time, str):
+                    return "Invalid step_time: must be a string in HH:MM format"
+
+                try:
+                    parsed_time = datetime.strptime(step_time, "%H:%M").time()
+                except ValueError:
+                    return f"Invalid step_time: must be in HH:MM format (24-hour) for ({step_time})"
 
             # return none if validation doesnt throw any error
             return None 
-
-        data = normalize_ingredient_data(request.get_json())
         
+        data = normalize_ingredient_data(request.get_json())
+        print("data before validation :", data)
         error = validate_ingredient(data)
         if error:
             return jsonify({"error": error}), 400  
         print("data after validation :", data)
+        return jsonify({'message': "Every thing accepted and ready to insert recipe"}), 400
         name = data['name']
         portion_size = data['portion_size']
         privacy = data['privacy']
@@ -423,13 +446,21 @@ def create_recipe():
                         ing['location'] 
                     ))
 
+        # Insert data in steps 
+        for step in steps:
+            step_time = step.get("step_time") or "00:00"
+            parsed_time = datetime.strptime(step_time, "%H:%M").time()
+            cursor.execute("""
+                INSERT INTO recipe_procedures (recipe_id, step_order, step_text, estimated_time)
+                VALUES(%s, %s, %s, %s)
+            """,(recipe_id, step['step_display_order'], step['step_text'], parsed_time))
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({'message': f'{name} : Recipe created successfully!!!!!', 'recipe_id': recipe_id}), 201
 
     except Exception as e:
-        print("Error while trying to create recipe:", e)
+        print("Error while trying to create recipe: ", e)
         if conn and conn.is_connected():
             conn.rollback()
             cursor.close()

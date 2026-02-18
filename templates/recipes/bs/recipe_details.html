@@ -1,14 +1,5 @@
-{% extends "base.html" %}
-
-{% block title %}Recipe{% endblock %}
-
-{% block content %}
-
-    {% include "recipes/bs/_details_content.html" %}
-    {% include "recipes/bs/_create_dish_modal.html" %}
-   
-
-{% endblock %}
-{% block scripts %}
-<script type="module" src="/static/js/features/recipes/read-recipe-bs.js"> </script>
+{% extends "base.html" %} {% block title %}Recipe{% endblock %} {% block content %} {% include
+"recipes/bs/_details_content.html" %} {% include "recipes/bs/_create_dish_modal.html" %} {% endblock
+%} {% block scripts %}
+<script type="module" src="/static/js/features/recipes/read-recipe.js"></script>
 {% endblock %}
