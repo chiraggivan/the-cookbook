@@ -50,6 +50,7 @@ def create_dish():
 
     s_user_id = get_jwt_identity()
     print("logged in user id : ",s_user_id)
+    print("data received : ", request.get_json())
     # return jsonify({'error': 'data received in backend', 'submitted data': request.get_json()}), 400
 
     try:

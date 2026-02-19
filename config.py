@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-
+bootstrap = 'bs/' # value should be bs/ - created to show my initial frontend created to learn
 class Config:
     # Flask settings
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret")
