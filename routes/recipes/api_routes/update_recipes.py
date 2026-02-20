@@ -60,7 +60,8 @@ def get_recipe_details_for_update(recipe_id):
             cursor.close()
             conn.close()
             return jsonify({'error':'Recipe not found.'}), 404
-
+        recipe['created_at']=  recipe['created_at'].isoformat()
+        
         # Get recipe ingredients and its price
         cursor.execute("""
             SELECT 
@@ -96,16 +97,21 @@ def get_recipe_details_for_update(recipe_id):
 
         # Get recipe steps
         cursor.execute("""
-            SELECT step_order, step_text, estimated_time
+            SELECT procedure_id, step_order, step_text, estimated_time
             FROM recipe_procedures
             WHERE recipe_id = %s
             AND is_active = 1
             ORDER BY step_order
             """,(recipe_id,))
         steps = cursor.fetchall()
+        if steps:
+            for step in steps:
+                step['estimated_time'] = int(step['estimated_time'].total_seconds())
 
         cursor.close()
         conn.close()
+        # print("steps data:", steps)
+        # return jsonify({'error':'Recipe not found.'}), 404
         return jsonify({
             'recipe': recipe,
             'ingredients': ingredients,

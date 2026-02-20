@@ -1,9 +1,16 @@
+import { getEmptyComponentRow } from "./component_helpers.js";
 import {
   initializeIngredientRow,
   populateUnits,
   populateBaseUnits,
   getEmptyIngredientRow,
 } from "./ingredient_helpers.js";
+import {
+  getEmptyStepRow,
+  initializeStepInput,
+  updateSerialNo,
+  updateStepMoveButtons,
+} from "./step_helpers.js";
 import { updateMoveButtons } from "./UI-animation_helpers.js";
 const token = localStorage.getItem("access_token");
 
@@ -115,7 +122,7 @@ export function restrictNumberInput(el, maxInt, maxDec) {
     if (["e", "E", "+", "-", "ArrowUp", "ArrowDown"].includes(e.key)) e.preventDefault();
   });
 
-  // Optional: block mouse wheel increment/decrement
+  //block mouse wheel increment/decrement
   el.addEventListener(
     "wheel",
     (e) => {
@@ -160,6 +167,7 @@ export async function loadRecipeForEdit(recipeId, token) {
       window.location.href = `/recipes/details/${recipeId}`; // redirect to view
       return;
     }
+
     const data = await res.json(); // console.log("data is: ", data)
 
     const originalRecipeData = structuredClone(data); // deep copy to preserve original
@@ -180,13 +188,13 @@ export async function resetLoadRecipeForEdit(data) {
 
 // function to load the recipe data into table for loadRecipeForEdit and ResetRecipe
 export async function renderRecipeDataOnScreen(data) {
-  // populate form fields with data.recipe, ingredients, steps...
+  // populate fields with data.recipe, ingredients, steps...
   document.getElementById("recipe-name-input").value = data.recipe.name;
   document.getElementById("portion-size-input").value = data.recipe.portion_size;
   document.getElementById("description-input").value = data.recipe.description;
   // --- PRIVACY HANDLING ---
   const privacyToggle = document.getElementById("privacy-toggle");
-  const privacyLabel = document.getElementById("privacy-label-select");
+  const privacyLabel = document.getElementById("privacy-label");
 
   // Set checkbox checked state
   privacyToggle.checked = data.recipe.privacy === "private";
@@ -208,13 +216,15 @@ export async function renderRecipeDataOnScreen(data) {
   let rowIndex = 0;
   let ingredientIndex = 1;
   let componentIndex = 1;
+  let stepIndex = 1;
+
   // Iterate through each component_display_order
   for (const order of uniqueComponents) {
     // Get the component_text for the first item of this component_display_order
     const component = ingredients.find((item) => item.component_display_order === order);
     const componentText = component.component_text ? component.component_text.trim() : "";
 
-    // Before create component row, check if the rowIndex is more than 0 to add empty ingredient row
+    // Before create component row, if the rowIndex for component is more than 0 then add empty ingredient row before new component row
     if (rowIndex !== 0) {
       const tr = document.createElement("tr");
       tr.classList.add("ingredient-row");
@@ -226,14 +236,9 @@ export async function renderRecipeDataOnScreen(data) {
 
     const componentRow = document.createElement("tr");
     componentRow.classList.add("component-row");
-    componentRow.dataset.recipeComponentId = component.recipe_component_id || 0;
-    componentRow.innerHTML = `
-            <td colspan="8" style="background-color:#f2f2f2; font-weight:bold;">
-            <input type="text" name="component_text_${rowIndex}" value="${componentText}" class="component-input" placeholder="Sub Heading: (e.g., Sauce, Base)" style="width: calc(2 * 100% / 6);">
-            <div class="error-create-recipe" id="errorCompText_${rowIndex}"></div>
-            </td>
-            <td><button class="remove-component-btn">Remove</button></td>
-        `;
+    componentRow.dataset.recipeComponentId = component.recipe_component_id;
+    componentRow.innerHTML = getEmptyComponentRow(rowIndex);
+    componentRow.querySelector('input[name^="component_text_"]').value = componentText;
 
     // Only create a component row if component_text is non-empty
     if (componentText == "" && rowIndex == 0) {
@@ -262,57 +267,33 @@ export async function renderRecipeDataOnScreen(data) {
       tr.dataset.defaultBaseQuantity = i.base_quantity;
       tr.dataset.defaultBaseUnit = i.unit;
       tr.dataset.defaultBasePrice = i.cost;
-      tr.innerHTML = `
-                <td style="position: relative;">
-                    <input type="text" name="ingredient_name_${rowIndex}" class="ingredient-input" value="${i.name}" placeholder="Eg. Milk" autocomplete="off">
-                    <div class="suggestions" id="suggestions_${rowIndex}"></div>
-                    <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
-                </td>
-                <td>
-                    <input type="number" step="any" name="quantity_${rowIndex}" placeholder="Qty" class="validated-number" value="${i.quantity}">
-                    <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
-                </td>
-                <td>
-                    <select name="unit_${rowIndex}" class="unit-select">
-                        <option value="${i.unit_id}"> ${i.unit_name} </option>
-                    </select>
-                    <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
-                </td>
-                <td class="cost-input" style="text-align: center;"></td>
-                <td>
-                    <input type="number" step="any" name="base_quantity_${rowIndex}" placeholder="Base Qty" min="0.01" class="validated-number" value="${i.base_quantity}">
-                    <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
-                </td>
-                <td>
-                    <select name="base_unit_${rowIndex}" class="base-unit-select">
-                        <option value="${i.unit}"> ${i.unit} </option>
-                    </select>
-                    <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
-                </td>
-                <td>
-                    <input type="number" step="any" name="base_price_${rowIndex}" placeholder="Base Price" min="0.01" class="validated-number" value="${Number(i.cost).toFixed(2)}">
-                    <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
-                </td>
-                <td>
-                    <button class="move-ing-up-btn">Move ↑ </button>
-                    <button class="move-ing-down-btn">Move ↓ </button>
-                </td>
-                <td><button class="remove-ingredient-btn">Remove</button></td>
-            `;
+      tr.innerHTML = getEmptyIngredientRow(rowIndex);
+      tr.querySelector('input[name^="ingredient_name_"]').value = i.name;
+      tr.querySelector('input[name^="quantity_"]').value = i.quantity;
+      tr.querySelector('input[name^="base_quantity_"]').value = i.base_quantity;
+
+      tr.querySelector('input[name^="base_price_"]').value = Number(i.cost).toFixed(2);
+      tr.querySelector(".remove-ingredient-btn").style.display = "block";
+
+      const selectUnit = tr.querySelector('select[name^="unit_"]');
+      selectUnit.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.value = i.unit_id;
+      opt.textContent = i.unit_name;
+      selectUnit.appendChild(opt);
+
+      const selectBaseUnit = tr.querySelector('select[name^="base_unit_"]');
+      selectBaseUnit.innerHTML = "";
+      const optBase = document.createElement("option");
+      optBase.value = i.unit;
+      optBase.textContent = i.unit;
+      selectBaseUnit.appendChild(optBase);
+
       tbody.appendChild(tr);
-
-      //
-      if (ingredientIndex == 1) {
-        tr.querySelector(".move-ing-up-btn").style.display = "none";
-      }
-
-      //
-      if (componentIndex == totalComponents && ingredientIndex == ingredients.length) {
-        tr.querySelector(".move-ing-down-btn").style.display = "none";
-      }
       rowIndex++;
       ingredientIndex++;
 
+      updateMoveButtons();
       await populateUnits(tr, token); // runs without await
       populateBaseUnits(tr);
       recalcCost(tr);
@@ -328,25 +309,41 @@ export async function renderRecipeDataOnScreen(data) {
     tr.innerHTML = getEmptyIngredientRow(rowIndex);
     tbody.appendChild(tr);
     rowIndex++;
-    // await populateUnits(tr, token);
-    // populateBaseUnits(tr);
-    // recalcCost(tr);
     initializeIngredientRow(tr, token);
+    updateMoveButtons();
   }
   // update total cost
   updateTotalRecipeCost();
 
   // Populate steps
+  const stepTbody = document.getElementById("steps-tbody");
+  stepTbody.innerHTML = ""; // clear existing rows
   const steps = data.steps;
-  const stepsContainer = document.getElementById("steps-container");
-  stepsContainer.innerHTML = "";
-  steps.forEach((s) => {
-    const div = document.createElement("div");
-    div.classList.add("step-row");
-    div.innerHTML = `
-        <textarea class="step-text">${s.step_text}</textarea>
-        <button class="remove-step-btn">Remove</button>
-    `;
-    stepsContainer.appendChild(div);
+  steps.forEach((s, index) => {
+    const tr = document.createElement("tr");
+    tr.classList.add("step-row");
+    tr.dataset.procedureId = s.procedure_id;
+    tr.dataset.stepText = s.step_text;
+    tr.dataset.stepOrder = s.step_order;
+    tr.dataset.estimatedTime = s.estimated_time;
+    tr.innerHTML = getEmptyStepRow(index + 1);
+    tr.querySelector('textarea[name^="recipe_step_"]').value = s.step_text;
+    tr.querySelector(".remove-step-btn").style.display = "inline-block";
+    stepIndex++;
+    stepTbody.appendChild(tr);
+    updateSerialNo();
+    updateStepMoveButtons();
   });
+
+  // add an empty step row at the end of table. (kept in 'if' for easy understanding)
+  if (true) {
+    const tr = document.createElement("tr");
+    tr.classList.add("step-row");
+    tr.innerHTML = getEmptyStepRow(stepIndex);
+    tr.querySelector(".step-no").textContent = stepIndex;
+    stepTbody.appendChild(tr);
+    stepIndex++;
+    initializeStepInput(tr);
+    updateStepMoveButtons();
+  }
 }

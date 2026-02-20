@@ -1,8 +1,6 @@
 // import { updateStepMoveButtons } from "./UI-animation_helpers";
 
 export function initializeStepRow(row) {
-  //   attachRowListeners(row);
-  //   attachCostEvents(row);
   initializeStepInput(row);
   updateStepMoveButtons();
 }
@@ -139,7 +137,9 @@ export function updateSerialNo() {
   const tbody = document.getElementById("steps-tbody");
   if (!tbody) return;
 
-  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const rows = Array.from(tbody.querySelectorAll("tr")).filter(
+    (row) => row.dataset.removed != "true",
+  );
   rows.forEach((row, index) => {
     const stepNoCell = row.querySelector(".step-no");
 
