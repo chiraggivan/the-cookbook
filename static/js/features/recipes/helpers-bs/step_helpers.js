@@ -35,6 +35,7 @@ export function getEmptyStepRow(index) {
             type="time"
             name="step_time_${index}"
             class="form-control form-control-sm"
+            value="00:00:00"
             />
             <div class="error-create-recipe" id="errorStepTime_${index}"></div>
         </td>
@@ -121,6 +122,7 @@ export function initializeStepInput(row) {
     if (isCurrentRowLastRow) {
       const index = rows.length + 1;
       const newRow = document.createElement("tr");
+      newRow.classList.add("step-row");
       newRow.innerHTML = getEmptyStepRow(index);
       tbody.appendChild(newRow);
 

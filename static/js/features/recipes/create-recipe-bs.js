@@ -404,7 +404,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     createRecipeData.description = recipeData.description;
     createRecipeData.privacy = recipeData.privacy;
     createRecipeData.components = componentsData.ingredientsData;
-    createRecipeData.steps = stepsData;
+    createRecipeData.steps = stepsData.stepsData;
     console.log("final data to be sent :", createRecipeData);
     return;
     try {

@@ -60,123 +60,6 @@ export function validateRecipeForm() {
   return { name, portion_size: portionSize, description, privacy };
 }
 
-// validation of step data
-export function validateStepRows() {
-  const rows = Array.from(document.querySelectorAll("#steps-tbody tr"));
-  const add_steps = [];
-  const update_steps = [];
-  const remove_steps = [];
-  let filledRowsCount = 0;
-  const stepCheckWithOriginalData = [];
-  const errorBoxes = [];
-  let errorMessage = "";
-
-  rows.forEach((row, index) => {
-    const isThisRowStepText = row.classList.contains("step-row");
-
-    // provision for future if step heading is also added so this becomes easier
-    if (isThisRowStepText) {
-      const procedure_id = row.dataset.procedureId;
-
-      // if row removed
-      if (row.dataset.removed === "true") {
-        remove_steps.push({
-          procedure_id: parseInt(procedure_id),
-        });
-        return;
-      }
-
-      // Get input and select elements for the row
-      const stepText = row.querySelector(`textarea[name^="recipe_step_"]`);
-
-      // extract the index number attached to value fields like errorName_${index}
-      const match = stepText.name.match(/_(\d+)$/);
-      const realIndex = match ? match[1] : null;
-      if (!realIndex) return;
-
-      // Get error display elements
-      errorBoxes[`errorRecipeStep_${realIndex}`] = document.getElementById(
-        `errorRecipeStep_${realIndex}`,
-      );
-
-      // Reset Error messages
-      errorBoxes[`errorRecipeStep_${realIndex}`].textContent = "";
-
-      // Collect values from all fields
-      const values = [stepText.value.trim()];
-
-      // Check if any field is filled
-      const isAnyFieldFilled = values.some((v) => v !== "");
-      // Check if all fields are filled
-      const isAllFieldsFilled = values.every((v) => v !== "");
-
-      // Validate that partially filled rows are not allowed
-      // FUTURE provision if more field are there in a row and need to be checked
-      if (isAnyFieldFilled && !isAllFieldsFilled) {
-        if (stepText.value.trim() == "") {
-          errorBoxes[`errorRecipeStep_${realIndex}`].textContent = "Text Required";
-          errorBoxes[`errorRecipeStep_${realIndex}`].style.display = "block";
-        }
-        errorMessage = `Check all the fields. One or more errors found.`;
-      }
-
-      // check if procedure_id exists and no fields are field then push that row in remove_ingredient
-      if (procedure_id && !isAnyFieldFilled) {
-        remove_steps.push({
-          procedure_id: parseInt(procedure_id),
-        });
-        return;
-      }
-
-      // Process fully filled rows
-      if (isAllFieldsFilled) {
-        filledRowsCount++;
-
-        const stepObj = {
-          step_text: stepText.value.trim(),
-          estimated_time: row.dataset.estimated_time,
-          step_order: index + 1,
-        };
-
-        // stepCheckWithOriginalData[filledRowsCount - 1] = {};
-        // stepCheckWithOriginalData[filledRowsCount - 1].step_text = row.dataset.stepText;
-        // stepCheckWithOriginalData[filledRowsCount - 1].estimated_time = row.dataset.estimated_time;
-        // stepCheckWithOriginalData[filledRowsCount - 1].step_order = row.dataset.step_order;
-
-        if (row.dataset.procedureId !== undefined) {
-          // stepCheckWithOriginalData[filledRowsCount - 1].procedure_id = parseInt(
-          //   row.dataset.procedureId,
-          // );
-          stepObj.procedure_id = parseInt(row.dataset.procedureId);
-          update_steps.push(stepObj);
-        } else {
-          add_steps.push(stepObj);
-        }
-      }
-
-      if (errorMessage) {
-        document.getElementById("error").textContent = errorMessage;
-        // return false;
-        return {
-          hasError: true,
-          add_steps: null,
-          update_steps: null,
-          remove_steps: null,
-          errorMessage: errorMessage,
-        };
-      }
-    }
-  });
-
-  return {
-    hasError: false,
-    remove_steps,
-    add_steps,
-    update_steps,
-    errorMessage: null,
-  };
-}
-
 // validation of ingredient data
 export function validateIngredientRows() {
   const rows = Array.from(document.querySelectorAll("#ingredients-tbody tr")); //.filter(row => row.dataset.removed !== "true");
@@ -207,6 +90,7 @@ export function validateIngredientRows() {
     const isThisRowComponent = row.classList.contains("component-row");
     const isThisRowIngredient = row.classList.contains("ingredient-row");
 
+    // Check all the rows of components/ingredients and also find any errors in the fields
     if (isThisRowComponent) {
       // check if the rows is removed
       recipe_component_id = row.dataset.recipeComponentId; // may be undefined
@@ -529,6 +413,128 @@ export function validateIngredientRows() {
     add_ingredients,
     update_ingredients,
     ingredientsData,
+    errorMessage: null,
+  };
+}
+
+// validation of step data
+export function validateStepRows() {
+  const rows = Array.from(document.querySelectorAll("#steps-tbody tr"));
+  const add_steps = [];
+  const update_steps = [];
+  const remove_steps = [];
+  const stepsData = [];
+
+  let filledStepRowCount = 0;
+
+  const errorBoxes = [];
+  let errorMessage = "";
+
+  rows.forEach((row, index) => {
+    const isThisRowStepText = row.classList.contains("step-row");
+    const stepTime = row.querySelector('input[name^="step_time_"');
+
+    // provision for future if step heading is also added so this becomes easier
+    if (isThisRowStepText) {
+      const procedure_id = row.dataset.procedureId;
+
+      // if row removed
+      if (row.dataset.removed === "true") {
+        remove_steps.push({
+          procedure_id: parseInt(procedure_id),
+        });
+        return;
+      }
+
+      // Get input and select elements for the row
+      const stepText = row.querySelector(`textarea[name^="recipe_step_"]`);
+
+      // extract the index number attached to value fields like errorName_${index}
+      const match = stepText.name.match(/_(\d+)$/);
+      const realIndex = match ? match[1] : null;
+      if (!realIndex) return;
+
+      // Get error display elements
+      errorBoxes[`errorRecipeStep_${realIndex}`] = document.getElementById(
+        `errorRecipeStep_${realIndex}`,
+      );
+
+      // Reset Error messages
+      errorBoxes[`errorRecipeStep_${realIndex}`].textContent = "";
+
+      // Collect values from all fields
+      const values = [stepText.value.trim()];
+
+      // Check if any field is filled
+      const isAnyFieldFilled = values.some((v) => v !== "");
+      // Check if all fields are filled
+      const isAllFieldsFilled = values.every((v) => v !== "");
+
+      // Validate that partially filled rows are not allowed
+      // FUTURE provision if more field are there in a row and need to be checked
+      if (isAnyFieldFilled && !isAllFieldsFilled) {
+        if (stepText.value.trim() == "") {
+          errorBoxes[`errorRecipeStep_${realIndex}`].textContent = "Text Required";
+          errorBoxes[`errorRecipeStep_${realIndex}`].style.display = "block";
+        }
+        errorMessage = `Check all the fields. One or more errors found.`;
+      }
+
+      // check if procedure_id exists and no fields are field then push that row in remove_ingredient
+      if (procedure_id && !isAnyFieldFilled) {
+        remove_steps.push({
+          procedure_id: parseInt(procedure_id),
+        });
+        return;
+      }
+
+      // console.log(isAllFieldsFilled);
+      // Process fully filled rows
+      if (isAllFieldsFilled) {
+        filledStepRowCount++;
+        // console.log("step text field");
+        const stepObj = {
+          step_text: stepText.value.trim(),
+          estimated_time: row.dataset.estimated_time,
+          step_order: index + 1,
+        };
+        if (row.dataset.procedureId !== undefined) {
+          stepObj.procedure_id = parseInt(row.dataset.procedureId);
+          update_steps.push(stepObj);
+        } else {
+          add_steps.push(stepObj);
+        }
+
+        // for creating new recipe we send seperate dict(key and value)
+        const stepDataObj = {};
+        stepDataObj.step_display_order = filledStepRowCount;
+        stepDataObj.step_text = stepText.value;
+        stepDataObj.step_time = stepTime.value;
+
+        stepsData.push(stepDataObj);
+      }
+
+      // display error is exists
+      if (errorMessage) {
+        document.getElementById("error").textContent = errorMessage;
+        return {
+          hasError: true,
+          add_steps: null,
+          update_steps: null,
+          remove_steps: null,
+          stepsData: null,
+          errorMessage: errorMessage,
+        };
+      }
+    }
+  });
+
+  return {
+    hasError: false,
+    remove_steps,
+    add_steps,
+    update_steps,
+    stepsData,
     errorMessage: null,
   };
 }

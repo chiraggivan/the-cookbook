@@ -48,38 +48,38 @@ export function getEmptyIngredientRow(rowIndex) {
     <td>
         <input type="text" name="ingredient_name_${rowIndex}" class="form-control form-control-sm" placeholder="Eg. Milk" autocomplete="off"/>
         <div class="suggestions" id="suggestions_${rowIndex}"></div>
-        <div class="error-create-recipe" id="errorIngName_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorIngName_${rowIndex}"></div>
     </td>
 
     <td>
         <input type="number" step="0.001" name="quantity_${rowIndex}" class="form-control form-control-sm" min="0.000" />
-        <div class="error-create-recipe" id="errorQuantity_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorQuantity_${rowIndex}"></div>
     </td>
 
     <td>
         <select name="unit_${rowIndex}" class="form-select form-select-sm unit-select" >
             <option value="">Select unit</option>
         </select>
-        <div class="error-create-recipe" id="errorUnit_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorUnit_${rowIndex}"></div>
     </td>
 
     <td class="cost-input"></td>
 
     <td>
         <input type="number" step="any" name="base_quantity_${rowIndex}" class="form-control form-control-sm validated-number" placeholder="Base Qty" min="0.000"/>
-        <div class="error-create-recipe" id="errorBaseQuantity_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorBaseQuantity_${rowIndex}"></div>
     </td>
 
     <td>
         <select name="base_unit_${rowIndex}" class="form-select form-select-sm unit-select">
             <option value="">Select unit</option>
         </select>
-        <div class="error-create-recipe" id="errorBaseUnit_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorBaseUnit_${rowIndex}"></div>
     </td>
 
     <td>
         <input type="number" step="0.001" name="base_price_${rowIndex}" class="form-control form-control-sm validated-number" placeholder="Base Qty" min="0.000"/>
-        <div class="error-create-recipe" id="errorBasePrice_${rowIndex}"></div>
+        <div class="invalid-feedback" id="errorBasePrice_${rowIndex}"></div>
     </td>
 
     <td style="text-align: center">
@@ -182,6 +182,7 @@ export function populateBaseUnits(row) {
 // Initialize autocomplete for an ingredient
 export function initializeIngredientInput(row, token) {
   const input = row.querySelector('input[name^="ingredient_name_"]');
+  const selectUnit = row.querySelector('select[name^="unit_"]');
   const suggestionBox = row.querySelector(".suggestions");
   let fetchedIngredientNames = [];
   let ingredientsData = [];
@@ -394,4 +395,13 @@ export function initializeIngredientInput(row, token) {
 
     suggestionBox.style.display = "none";
   }
+
+  // hide error on unit select
+  selectUnit.addEventListener("change", () => {
+    if (selectUnit.value != "") {
+      const cell = selectUnit.closest("td").querySelector('div[id^="errorUnit_"]');
+      cell.innerHTML = "";
+      cell.style.display = "none";
+    }
+  });
 }

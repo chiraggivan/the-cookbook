@@ -55,24 +55,12 @@ async function loadRecipeDetails() {
     const steps = data.steps;
     const recipeOwnerId = recipe.user_id; //console.log(" recipe user id : ", recipe_user_id)
     const isOwner = loggedInUserId === recipeOwnerId; //console.log("isOwner:", isOwner);
-    // console.log("ingredients:", ingredients);
-    // return;
-    // data for dishes created
+
     if (true) {
-      // const createdAt = new Date();  // Convert string to Date object
-      // const dateOnly = createdAt.toLocaleDateString('en-GB');  // "24/12/2025" (UK format)
-      // const timeOnly = createdAt.toLocaleTimeString('en-GB', {
-      //   hour: '2-digit',
-      //   minute: '2-digit'
-      // });
       dish_data["recipe_id"] = recipe.recipe_id;
       dish_data["recipe_name"] = recipe.name;
       dish_data["portion_size"] = recipe.portion_size;
-      // dish_data['preparation_date'] = dateOnly;
-      // dish_data['time_prepared'] = timeOnly;
-      // dish_data['meal'] = 'lunch';
       dish_data["recipe_by"] = recipe.user_id;
-      // dish_data['comment'] = '';
     }
 
     // Title + Meta + Description
@@ -261,7 +249,7 @@ async function loadRecipeDetails() {
 
     updateTotalRecipeCost(); // get total cost of recipe. //console.log("dish data is :", dish_data);
 
-    // Steps (numbered list)
+    // Steps
     const stepsTbody = document.querySelector("#stepsTable tbody");
     stepsTbody.innerHTML = "";
     if (steps.length > 0) {
@@ -274,6 +262,14 @@ async function loadRecipeDetails() {
 
         stepsTbody.append(stepRow);
       });
+    } else {
+      const noStepsRow = document.createElement("tr");
+      noStepsRow.innerHTML = `
+    <td colspan="2" class="text-center py-4 text-muted fst-italic">
+      No Steps Given
+    </td>
+  `;
+      stepsTbody.append(noStepsRow);
     }
   } catch (err) {
     document.getElementById("error").textContent = err.message;
