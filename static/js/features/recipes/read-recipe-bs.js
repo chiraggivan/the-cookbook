@@ -86,10 +86,10 @@ async function loadRecipeDetails() {
 
       const privacyButton = document.getElementById("privacyButton");
       privacyButton.innerHTML = `
-        <div class="col-6 text-end pe-2">
-          <label id="privacy-label" for="privacy-toggle" class="col-form-check-label">Privacy:</label>
+        <div class="col-lg-6 text-end pe-2">
+          <label id="privacy-label" for="privacy-toggle" class="col-form-check-label fs-4 fw-semibold">Privacy:</label>
         </div>
-        <div class="col-6 form-check form-switch">
+        <div class="col-lg-6 form-check form-switch">
           <input
             class="form-check-input"
             type="checkbox"
@@ -265,10 +265,10 @@ async function loadRecipeDetails() {
     } else {
       const noStepsRow = document.createElement("tr");
       noStepsRow.innerHTML = `
-    <td colspan="2" class="text-center py-4 text-muted fst-italic">
-      No Steps Given
-    </td>
-  `;
+      <td colspan="2" class="text-center py-4 text-muted fst-italic">
+        No Steps Given
+      </td>
+      `;
       stepsTbody.append(noStepsRow);
     }
   } catch (err) {
