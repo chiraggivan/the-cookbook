@@ -30,7 +30,7 @@ block content %}
       const res = await fetch(`/recipes/api/user/${userId}/recipes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // console.log("Response object:", res);
+      //console.log("Response object:", res);
 
       if (!res.ok) {
         throw new Error("Failed to load recipes");
@@ -42,7 +42,7 @@ block content %}
         const tr = document.createElement("tr");
         tr.innerHTML = `
         <td>${r.recipe_id}</td>
-        <td><a href="/recipes/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
+        <td><a href="/recipes/details/${r.recipe_id}" class="recipe-link">${r.name}</a></td>
         <td>${r.portion_size}</td>
         <td>${r.description}</td>
     `;
