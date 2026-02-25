@@ -1,4 +1,165 @@
 List of APIs for cookbook app
+FOR RECIPES
+HTML ROUTES
+recipes_html_bp = Blueprint("recipes_html", __name__, url_prefix="/recipes")
+
+@recipes_html_bp.route('/', methods=['GET'])
+@recipes_html_bp.route('/my', methods=['GET'])
+@recipes_html_bp.route('/user/<int:user_id>', methods=['GET'])
+@recipes_html_bp.route('/details/<int:recipe_id>', methods=['GET'])
+@recipes_html_bp.route('/create_recipe', methods=['GET'])
+@recipes_html_bp.route("/edit/<int:recipe_id>", methods=['GET'])
+
+API ROUTES
+recipes_api_bp = Blueprint("recipes_api", __name__, url_prefix="/recipes/api")
+
+For read recipes
+@recipes_api_bp.route('/all_recipes', methods=['GET'])
+@recipes_api_bp.route('/user/<int:user_id>/recipes', methods=['GET'])
+@recipes_api_bp.route('/my_recipes', methods=['GET'])
+@recipes_api_bp.route('/recipe/<int:recipe_id>', methods=['GET'])
+
+For Create recipes
+@recipes_api_bp.route("/ingredients/search")
+@recipes_api_bp.route("/ingredient-units")
+@recipes_api_bp.route('/new-recipe', methods=['POST'])
+
+For update recipes
+@recipes_api_bp.route('/recipe/edit/<int:recipe_id>', methods=['GET'])
+@recipes_api_bp.route('/units/<int:ingredient_id>', methods=["GET"])
+@recipes_api_bp.route('/update-privacy/<int:recipe_id>', methods=['PUT'])
+@recipes_api_bp.route('/ingredient-order/<int:recipe_ingredient_id>', methods=['PATCH'])
+@recipes_api_bp.route('/update-recipe/<int:recipe_id>', methods=['PATCH'])
+
+For Delete recipes
+@recipes_api_bp.route('/delete_recipe/<int:recipe_id>', methods=['DELETE'])
+
+FOR INGREDIENTS
+HTML ROUTES
+None
+
+API ROUTES
+ingredients_api_bp = Blueprint("ingredients_api", __name__, url_prefix="/ingredients/api")
+
+For Create ingredients
+@ingredients_api_bp.route("/ingredients/search")
+@ingredients_api_bp.route('/new-ingredient', methods=['POST'])
+
+For Read ingredients
+@ingredients_api_bp.route('/all_ingredients', methods=['GET'])
+@ingredients_api_bp.route('/ingredient/<int:ingredient_id>', methods=['GET'])
+@ingredients_api_bp.route('/deleted_ingredients', methods=['GET'])
+
+For Update ingredients
+@ingredients_api_bp.route("/editIngredients/search")
+@ingredients_api_bp.route('/edit-ingredient/<int:ingredient_id>', methods=['PUT'])
+
+For delete ingredients
+@ingredients_api_bp.route('/delete_ingredient/<int:ingredient_id>', methods=['DELETE'])
+@ingredients_api_bp.route('/activate_ingredient/<int:ingredient_id>', methods=['DELETE'])
+
+
+
+For DISHES
+HTML ROUTES
+dishes_html_bp = Blueprint("dishes_html", __name__, url_prefix="/dishes")
+
+@dishes_html_bp.route('/', methods=['GET'])
+@dishes_html_bp.route('/details/<int:dish_id>', methods=['GET'])
+
+API ROUTES
+dishes_api_bp = Blueprint("dishes_api", __name__, url_prefix="/dishes/api")
+
+For Create Dishes
+@dishes_api_bp.route('/last_record/<int:recipe_id>', methods=['GET'])
+@dishes_api_bp.route('/', methods=['POST'])
+
+For Read Dishes
+@dishes_api_bp.route('/my_dishes', methods=['GET'])
+@dishes_api_bp.route('/dish/<int:dish_id>', methods=['GET'])
+
+For Update Dishes
+None
+
+For Delete Dishes
+@dishes_api_bp.route('/delete_dish/<int:dish_id>', methods=['DELETE'])
+
+
+FOR FOOD PLAN 
+HTMLROUTES
+food_plans_html_bp = Blueprint("food_plans_html", __name__, url_prefix="/plans")
+
+@food_plans_html_bp.route('/', methods=['GET'])
+@food_plans_html_bp.route('/details/<int:dish_id>', methods=['GET'])
+
+API ROUTES
+food_plans_api_bp = Blueprint("food_plans_api", __name__, url_prefix="/food_plans/api")
+
+For Create Food Plan
+@food_plans_api_bp.route('/old', methods=['POST'])
+@food_plans_api_bp.route('/', methods=['GET'])
+@food_plans_api_bp.route('/check-user', methods=['GET'])
+
+For Read Food Plan
+@food_plans_api_bp.route('/plan', methods=['GET'])
+
+For Update Food Plan
+@food_plans_api_bp.route('/update', methods=['PUT'])
+@food_plans_api_bp.route("/recipes/search", methods=['GET'])
+
+For Delete Food Plan
+None
+
+FOR USER INGREDIENTS
+HTML ROUTES
+user_ingredients_html_bp = Blueprint("user_ingredients_html", __name__, url_prefix="/user_ingredients")
+
+@user_ingredients_html_bp.route('/', methods=['GET'])  
+@user_ingredients_html_bp.route('/create', methods=['GET'])  
+@user_ingredients_html_bp.route('/update', methods=['GET'])  
+
+API ROUTES
+user_ingredients_api_bp = Blueprint("user_ingredients_api", __name__, url_prefix="/user_ingredients/api")
+
+For Create User Ingredients
+@user_ingredients_api_bp.route('/create', methods=['POST'])
+
+For Read User Ingredients
+@user_ingredients_api_bp.route("/search")
+# read user ingredients
+@user_ingredients_api_bp.route('/get_user_all_ingredients', methods=['GET'])
+# single api for loading and search ingredient with infinite scroll
+@user_ingredients_api_bp.route('/user_ingredients', methods=['GET'])
+
+For Update User Ingredients
+@user_ingredients_api_bp.route('/edit', methods=['PUT'])
+
+For Delete User Ingredients
+@user_ingredients_api_bp.route('/delete/<int:ing_id>', methods=['DELETE'])
+
+
+FOR WEEKLY DASHBOARD
+HTML ROUTES
+
+weekly_dashboard_html_bp = Blueprint("weekly_dashboard_html", __name__, url_prefix="/weekly_dashboard")
+
+@weekly_dashboard_html_bp.route('/<int:plan_id>/<int:week_no>', methods=['GET'])
+@weekly_dashboard_html_bp.route('/<int:week_no>', methods=['GET']) # use any one of the above of this 
+
+API ROUTES
+weekly_dashboard_api_bp = Blueprint("weekly_dashboard_api", __name__, url_prefix="/weekly_dashboard/api")
+
+@weekly_dashboard_api_bp.route('/save_day_recipes_details', methods=['POST'])
+@weekly_dashboard_api_bp.route('/save_week_recipes_details', methods=['POST'])
+@weekly_dashboard_api_bp.route('/get_weekly_dashboard', methods=['POST'])
+
+
+
+
+
+
+
+
 
 @app.route('/recipes', methods=['GET'])
 @app.route('/my_recipes', methods=['GET'])
