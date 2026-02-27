@@ -28,6 +28,7 @@ from routes.user_ingredients.html_routes import user_ingredients_html_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['GOOGLE_CLIENT_ID'] = '952052673546-qok8mdl18lknmccu3luo1oievbfqjc0r.apps.googleusercontent.com'
 app.register_blueprint(auth_bp)
 app.register_blueprint(recipes_html_bp)
 app.register_blueprint(recipes_api_bp)

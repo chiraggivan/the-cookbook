@@ -1,0 +1,15 @@
+
+ALTER TABLE users
+  ADD COLUMN display_name VARCHAR(100) NULL AFTER username,
+  ADD COLUMN picture_url VARCHAR(512) NULL AFTER display_name,
+  ADD COLUMN email VARCHAR(255) NULL AFTER picture_url,
+  ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER email,
+  ADD COLUMN google_sub VARCHAR(64) NULL UNIQUE AFTER password,
+  ADD COLUMN last_login_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP AFTER role,
+  ADD COLUMN deleted_at TIMESTAMP NULL AFTER created_at;
+    
+ALTER TABLE users
+MODIFY password VARCHAR(255) DEFAULT NULL;
+
+ALTER TABLE users
+MODIFY username varchar(50) NULL UNIQUE;

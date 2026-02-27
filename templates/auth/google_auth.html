@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cookbook - Login</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="login-page">
+    <div
+      id="g_id_onload"
+      data-client_id="{{ config.GOOGLE_CLIENT_ID }}"
+      data-callback="handleGoogleLogin"
+    ></div>
+
+    <div
+      class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-shape="rectangular"
+      data-logo_alignment="left"
+    ></div>
+
+    <!-- Error display (same as before) -->
+    <div id="errorBox" class="text-danger mt-2"></div>
+
+    <script>
+      function handleGoogleLogin(response) {
+        const errorBox = document.getElementById("errorBox");
+
+        try {
+          fetch("/auth/google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ credential: response.credential }),
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error("Google login failed");
+              }
+              return res.json();
+            })
+            .then((data) => {
+              // Store token (exactly like before)
+              localStorage.setItem("access_token", data.access_token);
+
+              // Redirect (same as before)
+              window.location.href = "/recipes/";
+            })
+            .catch((err) => {
+              errorBox.textContent = err.message || "Something went wrong";
+            });
+        } catch (err) {
+          errorBox.textContent = err.message || "Google Sign-In error";
+        }
+      }
+    </script>
+  </body>
+</html>
