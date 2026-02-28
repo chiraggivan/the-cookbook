@@ -40,7 +40,7 @@ def login():
         identity=str(user['user_id']), 
         additional_claims={
             "role": user['role'],
-            "email": user['email']
+            # "email": user['email']
         }
     )
     session['user_id'] = user['user_id']
@@ -56,11 +56,11 @@ def google_login():
         return jsonify({"error": "Missing credential"}), 400
     
     try:
-        # Step 1: Verify the Google ID token
+        # Verify the Google ID token
         id_info = id_token.verify_oauth2_token(
             credential,
             requests.Request(),
-            #current_app.config['GOOGLE_CLIENT_ID']  # you'll add this in config later
+            current_app.config['GOOGLE_CLIENT_ID']
         )
         
         # Extract Google data
@@ -69,20 +69,21 @@ def google_login():
         name = id_info.get('name', '')
         picture = id_info.get('picture', '')
         email_verified = id_info.get('email_verified', False)
-            
+        #print("id_info :", id_info) 
+
     except ValueError as e:
         # Invalid token
         current_app.logger.error(f"Google token verification failed: {str(e)}")
         return jsonify({"error": "Invalid Google token"}), 401
     
-    # Step 2: Connect to DB
+    # Connect to DB
     conn = get_db_connection()
     if conn is None:
         return jsonify({'error': 'Database connection failed'}), 500
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # Step 3: Look up user by email 
+        # Look up user by email 
         cursor.execute("""
             SELECT user_id, email, google_sub, role, is_active 
             FROM users 
@@ -91,17 +92,22 @@ def google_login():
         user = cursor.fetchone()
         
         if user:
-            # User exists → login
             if user['is_active'] == 0:
                 return jsonify({"error": "Account is inactive"}), 403
             
-            # Optional: update google_sub if it was missing
             if not user['google_sub']:
                 cursor.execute("""
                     UPDATE users 
                     SET google_sub = %s, last_login_at = NOW()
                     WHERE user_id = %s
                 """, (google_sub, user['user_id']))
+                conn.commit()
+            else:
+                cursor.execute("""
+                    UPDATE users 
+                    SET last_login_at = NOW()
+                    WHERE user_id = %s
+                """, (user['user_id'],))
                 conn.commit()
             
         else:
@@ -121,14 +127,19 @@ def google_login():
             cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
         
-        # Step 4: Issue JWT
+        # Issue JWT
         access_token = create_access_token(
-            identity=user['user_id'],
+            identity=str(user['user_id']),
             additional_claims={
                 "role": user['role'],
                 "email": user['email']
             }
         )
+
+        # create session variable
+        session['user_id'] = user['user_id']
+        session['role'] = user['role']
+        session['email'] = user['email']
         
         return jsonify({
             "access_token": access_token,

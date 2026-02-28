@@ -23,12 +23,13 @@
       data-logo_alignment="left"
     ></div>
 
-    <!-- Error display (same as before) -->
+    <!-- Error display -->
     <div id="errorBox" class="text-danger mt-2"></div>
 
     <script>
       function handleGoogleLogin(response) {
         const errorBox = document.getElementById("errorBox");
+        errorBox.textContent = "";
 
         try {
           fetch("/auth/google", {
@@ -43,11 +44,14 @@
               return res.json();
             })
             .then((data) => {
-              // Store token (exactly like before)
+              console.log("data :", data);
+              // Store token
               localStorage.setItem("access_token", data.access_token);
 
-              // Redirect (same as before)
-              window.location.href = "/recipes/";
+              // Redirect
+              setTimeout(() => {
+                window.location.href = "/recipes/";
+              }, 100);
             })
             .catch((err) => {
               errorBox.textContent = err.message || "Something went wrong";

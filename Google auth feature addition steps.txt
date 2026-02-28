@@ -1,0 +1,159 @@
+Google auth feature
+
+1. load these libs
+
+Run these one by one (inside venv):
+Bashpip install --upgrade pip setuptools wheel
+
+# Core Flask packages (if not already installed)
+pip install flask flask-cors  # cors if you have frontend on different port
+
+# JWT 
+pip install flask-jwt-extended  # or PyJWT if you use raw
+
+# MySQL connector 
+pip install mysql-connector-python
+
+# Google verification libraries
+pip install google-auth google-auth-oauthlib
+
+
+2. In main auth.py file 
+
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
+3. Add google auth route function
+
+4. Configuration need to add (in app.py or config file)
+# In app.py
+app.config['GOOGLE_CLIENT_ID'] = 'your-client-id-from-google-console.apps.googleusercontent.com'
+
+TESTING with google auth
+
+Step-by-step: Get a real ID token for testing (using Google OAuth Playground)
+
+Go to Google's OAuth 2.0 Playground
+Open this URL in your browser:
+https://developers.google.com/oauthplayground
+Select scopes (important — choose the ones your verification expects)
+In the left panel → Step 1 – Select & authorize APIs
+Click the gear icon (top-right) → uncheck Use your own OAuth credentials (leave blank for now — playground uses Google's test client)
+In the scopes list, expand Google OAuth2 API v2
+Check these (minimum for basic profile/email):
+https://www.googleapis.com/auth/userinfo.email
+https://www.googleapis.com/auth/userinfo.profile
+openid (if shown)
+
+
+Authorize APIs
+Click Authorize APIs (blue button)
+→ Sign in with your own Google account (the one you want to test as a user)
+→ Grant consent
+Exchange authorization code for tokens
+After consent → click Exchange authorization code for tokens (Step 2)
+→ You will now see:
+Access token
+ID token ← this is what you need!
+Refresh token (optional)
+
+Copy the ID token
+Scroll down → find the ID token field (long JWT string starting with eyJ...)
+Copy the entire string.
+
+Test your Flask route with Postman
+Open Postman (or curl)
+Method: POST
+URL: http://localhost:5000/auth/google (or your port/route)
+Headers: Content-Type: application/json
+
+JSON
+{
+  "credential": "paste-the-full-id-token-here"
+}
+
+
+
+
+Here are the exact, click-by-click steps to create a real OAuth 2.0 Client ID in Google Cloud Console — so you can use it in your Flask app for secure Google Sign-In testing.
+Do this in your browser (any modern one works). It takes 15–30 minutes the first time.
+Step 1: Go to Google Cloud Console
+
+Open: https://console.cloud.google.com
+Sign in with your personal Google account (Gmail is fine — no need for a new email yet).
+If prompted, accept terms.
+
+
+Step 2: Create or select a project
+
+At the top, click the project dropdown (says "Select a project" or shows an existing one).
+Click New Project (top-right of the popup).
+Project name: Enter something like xyz.
+Organization/Location: Leave as default (No organization) unless you have one.
+Click Create.
+Wait 5–10 seconds → select the new project from the dropdown.
+
+Step 3: Enable necessary APIs (usually automatic, but confirm)
+
+Left sidebar → APIs & Services → Library.
+Search for: Google Identity or Identity Toolkit API.
+If not enabled → click the result → Enable.
+(Most of the time it's already enabled when you create OAuth client — skip if not found.)
+
+
+Step 4: Configure OAuth consent screen
+
+Left sidebar → APIs & Services → OAuth consent screen.
+User Type: Choose External (unless only for your organization).
+Click Create.
+App information:
+App name: Cookbook (or your app name — users will see this).
+User support email: Your personal Gmail.
+App logo: Optional (upload later if you want).
+App domain: Skip or add your future domain.
+Authorized domains: Add your domain later (skip for now).
+Developer contact: Your email again.
+
+Click Save and Continue.
+Scopes: Click Add or Remove Scopes → select:
+../auth/userinfo.email
+../auth/userinfo.profile
+openid
+(Search for them or scroll to Google APIs section.)
+
+Click Update → Save and Continue.
+Test users: Add your own Gmail as a test user (optional for now).
+Click Save and Continue → Back to Dashboard.
+
+Step 5: Create the OAuth 2.0 Client ID
+
+Left sidebar → APIs & Services → Credentials.
+Top → + Create Credentials → OAuth client ID.
+Application type: Web application.
+Name: Cookbook Web Client (or similar).
+Authorized JavaScript origins:
+Click + Add URI
+Add: http://localhost:5000 (your Flask dev server)
+Later add: https://your-production-domain.com
+
+Authorized redirect URIs:
+Usually not needed for the modern ID token flow (implicit flow).
+If you later use authorization code flow → add http://localhost:5000/callback etc.
+
+Click Create.
+You will see:
+Client ID: long string like 123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+Client secret: also long (you may not need it for ID token flow)
+
+Copy the Client ID — this is what goes in your Flask config:Pythonapp.config['GOOGLE_CLIENT_ID'] = '123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com'
+
+Step 6: Quick post-creation checks
+
+Go back to Credentials → you should see your new Web client listed.
+Go to OAuth consent screen → make sure it's in Testing status (fine for now — up to 100 test users).
+If you see "Unverified app" warning during sign-in → normal for testing; disappears after verification (not needed yet).
+
+What to do next (after this)
+
+Paste the Client ID into your Flask config.
+Re-enable the audience check in your route:Pythonid_info = id_token.verify_oauth2_token(credential, requests.Request(), current_app.config['GOOGLE_CLIENT_ID'])

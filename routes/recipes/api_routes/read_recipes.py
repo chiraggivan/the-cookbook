@@ -10,7 +10,8 @@ from . import recipes_api_bp
 @jwt_required()
 def get_recipes():
 
-    user = g.user #print("logged in user : ",user)
+    user = g.user #
+    print("logged in user : ",user)
     s_user_id = user.get('user_id')
     
     if not s_user_id:
@@ -24,7 +25,7 @@ def get_recipes():
 
         #fetch all the recipes of the users as well as public recipes of other users
         cursor.execute("""
-        SELECT r.recipe_id, r.name, r.user_id, r.portion_size, r.description, u.username 
+        SELECT r.recipe_id, r.name, r.user_id, r.portion_size, r.description, u.username, u.display_name 
         FROM recipes r JOIN users u ON r.user_id = u.user_id
         WHERE r.is_active = TRUE
         AND (r.user_id = %s OR r.privacy = 'public') """,(s_user_id,))
@@ -124,7 +125,8 @@ def get_my_recipes():
 @jwt_required()
 def get_recipe_details(recipe_id):
 
-    user = g.user #print("logged in user : ",user)
+    user = g.user #
+    print("logged in user : ",user)
     s_user_id = user.get('user_id')
     
     if (recipe_id <= 0):
@@ -138,7 +140,7 @@ def get_recipe_details(recipe_id):
 
         #Get recipe info
         cursor.execute("""
-            SELECT r.recipe_id, r.name, r.portion_size, r.description, r.privacy, r.created_at, r.user_id, u.username
+            SELECT r.recipe_id, r.name, r.portion_size, r.description, r.privacy, r.created_at, r.user_id, u.username, u.display_name
             FROM recipes r JOIN users u ON r.user_id = u.user_id 
             WHERE r.recipe_id = %s 
             AND r.is_active = 1

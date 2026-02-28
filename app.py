@@ -54,11 +54,13 @@ def load_logged_in_user():
     # try session (HTML pages)
     user_id = session.get('user_id')
     role = session.get('role')
+    email = session.get('email')
 
     if user_id:
         g.user = {
             'user_id': user_id,
-            'role': role
+            'role': role,
+            'email': email
         }
         return  
 
@@ -76,7 +78,7 @@ def load_logged_in_user():
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute(
-        "SELECT user_id, username, role FROM users WHERE user_id = %s AND is_active = TRUE",
+        "SELECT user_id, username, display_name, role FROM users WHERE user_id = %s AND is_active = TRUE",
         (user_id,)
     )
     user = cursor.fetchone()
@@ -89,7 +91,7 @@ def load_logged_in_user():
 # current_user will be available in all templates
 @app.context_processor
 def inject_user():
-    print("entered context_processor")
+    # print("entered context_processor")
     return dict(current_user=g.user)
 
 

@@ -131,9 +131,15 @@ async function loadRecipeDetails() {
         }
       });
     } else {
-      actionsEl.innerHTML = `
+      if (recipe.username) {
+        actionsEl.innerHTML = `
         <span><strong>By:</strong> ${recipe.username}</span>
       `;
+      } else {
+        actionsEl.innerHTML = `
+        <span><strong>By:</strong> ${recipe.display_name}</span>
+        `;
+      }
     }
 
     // If "dished created" button available/visible then show last dish created info
