@@ -1,0 +1,11 @@
+Work-flow of normal login
+
+1. login page (login.html)
+2. login page has script which calls the api /auth/login and sends username and password along with it.
+3. the function associated with auth/login checks the data and start the process of verifying the username and password with db.
+4. the password is encrypted so the supplied password by user is check with the encrypted password of db.
+5. if password matches, access_token is created. identity is kept as user_id and additional_claims are :role, or any other field you want to keep.
+6. session variable are initiated for user_id and role, etc.
+7. access_token is sent back as json along with the response of 200.
+8a. Before every api call the session variable is checked and then only api call are allowed as it is programmed in app.py.
+8. Back to login page script, depending on response (200 or 400 or 500 or any other) we move forward. if response is success (200) then data variable is initiated with response.json. and from it token is saved and kept in localStorage for a key called "access_token". This token is used to send it on most of the page to confirm the user.
