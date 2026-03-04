@@ -38,7 +38,7 @@ Open this URL in your browser:
 https://developers.google.com/oauthplayground
 Select scopes (important — choose the ones your verification expects)
 In the left panel → Step 1 – Select & authorize APIs
-Click the gear icon (top-right) → uncheck Use your own OAuth credentials (leave blank for now — playground uses Google's test client)
+Click the gear icon (top-right) → uncheck "Use your own OAuth credentials" (leave blank for now — playground uses Google's test client)
 In the scopes list, expand Google OAuth2 API v2
 Check these (minimum for basic profile/email):
 https://www.googleapis.com/auth/userinfo.email
@@ -88,7 +88,7 @@ Step 2: Create or select a project
 
 At the top, click the project dropdown (says "Select a project" or shows an existing one).
 Click New Project (top-right of the popup).
-Project name: Enter something like xyz.
+Project name: Enter project name.
 Organization/Location: Leave as default (No organization) unless you have one.
 Click Create.
 Wait 5–10 seconds → select the new project from the dropdown.
