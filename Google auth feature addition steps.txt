@@ -77,7 +77,7 @@ JSON
 
 Here are the exact, click-by-click steps to create a real OAuth 2.0 Client ID in Google Cloud Console — so you can use it in your Flask app for secure Google Sign-In testing.
 Do this in your browser (any modern one works). It takes 15–30 minutes the first time.
-Step 1: Go to Google Cloud Console
+Step 1: Go to Google Cloud Console.
 
 Open: https://console.cloud.google.com
 Sign in with your personal Google account (Gmail is fine — no need for a new email yet).
