@@ -12,7 +12,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 # Serve the login HTML page
 @auth_bp.route("/login", methods=['GET'])
 def login_page():
-    return render_template("auth/google_auth.html", config=current_app.config) # change here for changing it to old style login
+    return render_template("auth/login.html", config=current_app.config) # change here for changing it to old style login
 
 # Login endpoint to generate JWT
 @auth_bp.route('/login', methods=['POST'])

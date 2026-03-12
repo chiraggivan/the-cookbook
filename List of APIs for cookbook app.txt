@@ -1,4 +1,5 @@
 List of APIs for cookbook app
+
 FOR RECIPES
 HTML ROUTES
 recipes_html_bp = Blueprint("recipes_html", __name__, url_prefix="/recipes")
